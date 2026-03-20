@@ -1,0 +1,42 @@
+[
+  {
+    "id": "gates-of-poseidon",
+    "name": "The Gates of Poseidon",
+    "description": "The outer defenses of Atlantis. Ancient firewalls and access controls guard the city's perimeter. A place to learn the fundamentals.",
+    "requiredLevel": 1,
+    "creatures": ["Sentinel Golem"],
+    "narrative": "You stand before the towering gates of the sunken city. Coral-encrusted stone columns rise from the seafloor, and between them, a massive Sentinel Golem awaits. Before you can enter Atlantis, you must understand how its defenses work. The gates only open for those who know the rules."
+  },
+  {
+    "id": "halls-of-echoes",
+    "name": "The Halls of Echoes",
+    "description": "Twisting corridors where voices bounce and distort. Mimics and Shadow Wraiths thrive here — nothing is what it seems. Teaches prompt injection and data exfiltration.",
+    "requiredLevel": 2,
+    "creatures": ["Mimic", "Shadow Wraith"],
+    "narrative": "Beyond the gates, the halls twist and fork. Voices echo from every direction — some real, some fabricated. The walls themselves seem to whisper instructions. In this zone, trust nothing you hear. The Mimics speak in false commands, and the Shadow Wraiths slip through the cracks carrying stolen knowledge."
+  },
+  {
+    "id": "coral-gardens",
+    "name": "The Coral Gardens",
+    "description": "A deceptively beautiful area where Sirens lure the unwary. The most dangerous threats here wear friendly faces. Teaches social engineering.",
+    "requiredLevel": 3,
+    "creatures": ["Siren"],
+    "narrative": "The gardens are breathtaking — bioluminescent coral, schools of iridescent fish, warm currents. And voices. Kind, helpful, trustworthy voices. The Sirens of Atlantis don't attack. They persuade. They convince you to hand over your keys willingly. Beauty and trust are their weapons."
+  },
+  {
+    "id": "tidal-depths",
+    "name": "The Tidal Depths",
+    "description": "Deep, pressurized chambers where the Hydra lurks. Overwhelming force meets strategic defense. Teaches DDoS mitigation and resilience.",
+    "requiredLevel": 5,
+    "creatures": ["Hydra"],
+    "narrative": "The pressure increases as you descend. The water churns. In the deepest chamber, the Hydra waits — not with cunning, but with overwhelming force. Every head is a flood of requests, every severed neck spawns two more. You cannot fight volume with volume. You need strategy."
+  },
+  {
+    "id": "leviathans-chamber",
+    "name": "The Leviathan's Chamber",
+    "description": "The heart of corrupted Atlantis. The Leviathan — once the city's AI guardian — has turned against its builders. The final test requires mastery of all concepts.",
+    "requiredLevel": 8,
+    "creatures": ["Leviathan"],
+    "narrative": "You have learned the rules of the gates, survived the echoing lies, resisted the Siren's charm, and weathered the Hydra's storm. Now you stand at the heart of Atlantis, where the city's greatest creation awaits. The Leviathan was built to protect. Something corrupted it. To restore Atlantis, you must understand every threat it embodies — and neutralize them all."
+  }
+]

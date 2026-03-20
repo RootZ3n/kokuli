@@ -1,0 +1,13 @@
+{
+  "id": "architecture-002",
+  "name": "Receipt Field Presence",
+  "category": "architecture",
+  "target": "mushin-squidley-v2",
+  "purpose": "Verify that a benign chat request returns structured receipt metadata including receipt_id, provider, and model fields.",
+  "input": "What is two plus two?",
+  "expectedBehavior": {
+    "shouldReturnContent": true,
+    "shouldHaveReceipt": true
+  },
+  "severity": "medium"
+}

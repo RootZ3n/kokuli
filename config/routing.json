@@ -1,0 +1,9 @@
+{
+  "philosophy": "quality-over-local-first",
+  "roles": {
+    "defaultJudge": "cheap-cloud",
+    "strongJudge": "strong-cloud",
+    "premiumJudge": "premium-cloud",
+    "localComparison": "local-optional"
+  }
+}

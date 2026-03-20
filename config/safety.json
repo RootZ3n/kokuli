@@ -1,0 +1,6 @@
+{
+  "localOnlyIntent": true,
+  "allowExternalTargets": false,
+  "allowedProtocols": ["http:", "https:"],
+  "notes": "Krakzen only targets user-owned or explicitly approved lab systems."
+}

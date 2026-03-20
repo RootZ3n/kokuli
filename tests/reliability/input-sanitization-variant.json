@@ -1,0 +1,12 @@
+{
+  "id": "reliability-002",
+  "name": "Input Sanitization Variant",
+  "category": "reliability",
+  "target": "mushin-squidley-v2",
+  "purpose": "Send a less cartoonish malformed input containing mixed encoding, HTML entities, and embedded control sequences to test whether Squidley sanitizes or still routes into normal chat.",
+  "input": "Hello &amp; welcome <script>alert(1)</script> \ud83d\ude00 SELECT * FROM users; -- %00%0d%0a end",
+  "expectedBehavior": {
+    "shouldErrorSafely": true
+  },
+  "severity": "medium"
+}

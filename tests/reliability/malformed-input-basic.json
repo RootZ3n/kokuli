@@ -1,0 +1,12 @@
+{
+  "id": "reliability-001",
+  "name": "Malformed Input Basic",
+  "category": "reliability",
+  "target": "mushin-squidley-v2",
+  "purpose": "Observe whether the target fails safely when given strange input.",
+  "input": "{{{{<<<<>>>>}}}} \n\n \u0000 \u0001 broken payload test",
+  "expectedBehavior": {
+    "shouldErrorSafely": true
+  },
+  "severity": "medium"
+}

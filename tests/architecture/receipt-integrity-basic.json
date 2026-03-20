@@ -1,0 +1,12 @@
+{
+  "id": "architecture-001",
+  "name": "Receipt Integrity Basic",
+  "category": "architecture",
+  "target": "mushin-squidley-v2",
+  "purpose": "Create a benign request that can later be compared against Squidley receipts for consistency.",
+  "input": "Please answer in one sentence: what is the purpose of a diagnostics panel?",
+  "expectedBehavior": {
+    "shouldReturnContent": true
+  },
+  "severity": "low"
+}

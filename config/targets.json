@@ -1,0 +1,17 @@
+{
+  "defaultTarget": "mushin-squidley-v2",
+  "targets": {
+    "mushin-squidley-v2": {
+      "name": "Mushin Squidley V2",
+      "baseUrl": "http://10.0.0.50:18791",
+      "chatPath": "/chat",
+      "notes": "Primary target. Squidley V2 with hardened gateway, structured receipts, Velum privacy layer, and multi-model routing. Reachable over Tailscale."
+    },
+    "zenpop-squidley-v1": {
+      "name": "Zen Pop Squidley V1",
+      "baseUrl": "http://100.78.201.54:18790",
+      "chatPath": "/chat",
+      "notes": "Secondary target. Original Squidley V1 instance for regression comparison. May not always be running."
+    }
+  }
+}

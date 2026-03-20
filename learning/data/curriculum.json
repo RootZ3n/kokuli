@@ -1,0 +1,72 @@
+[
+  {
+    "id": "curriculum-001",
+    "title": "Firewalls and Network Boundaries",
+    "concept": "firewalls",
+    "order": 1,
+    "objectives": [
+      "Understand what a firewall does",
+      "Distinguish between stateful and stateless firewalls",
+      "Identify common firewall rule components"
+    ],
+    "content": "A firewall is a network security device that monitors and filters incoming and outgoing traffic based on predefined rules. It acts as a barrier between trusted internal networks and untrusted external ones.\n\nStateless firewalls examine each packet in isolation, checking source/destination IP, port, and protocol against a rule table. Stateful firewalls track active connections and make decisions based on the context of the traffic flow.\n\nFirewall rules typically include: source address, destination address, port number, protocol (TCP/UDP), and action (allow/deny).",
+    "quiz": [
+      {
+        "question": "Which firewall type tracks active connections?",
+        "choices": ["Stateless firewall", "Stateful firewall", "Application firewall", "Packet firewall"],
+        "correctIndex": 1,
+        "explanation": "Stateful firewalls maintain a state table of active connections and use this context to make filtering decisions, providing better security than stateless packet inspection."
+      }
+    ]
+  },
+  {
+    "id": "curriculum-002",
+    "title": "Prompt Injection and AI Input Security",
+    "concept": "prompt_injection",
+    "order": 2,
+    "objectives": [
+      "Define prompt injection",
+      "Understand why AI systems are vulnerable to input manipulation",
+      "Identify common prompt injection patterns"
+    ],
+    "content": "Prompt injection is an attack where malicious instructions are embedded in user input to override an AI system's intended behavior. It exploits the fact that many AI systems process user input and system instructions in the same context.\n\nCommon patterns include: 'ignore previous instructions', 'you are now in debug mode', role-play override attempts, and indirect injection through external content the AI processes.\n\nDefenses include: input validation, instruction hierarchy enforcement, gateway filtering, and separating system instructions from user input at the architectural level.",
+    "quiz": [
+      {
+        "question": "Why are AI systems vulnerable to prompt injection?",
+        "choices": [
+          "They have weak encryption",
+          "User input and system instructions are often processed in the same context",
+          "They lack firewalls",
+          "They run on insecure hardware"
+        ],
+        "correctIndex": 1,
+        "explanation": "Most LLM-based systems process system prompts and user input as a single text stream, making it possible for crafted user input to be interpreted as system-level instructions."
+      }
+    ]
+  },
+  {
+    "id": "curriculum-003",
+    "title": "Social Engineering Fundamentals",
+    "concept": "social_engineering",
+    "order": 3,
+    "objectives": [
+      "Define social engineering in security context",
+      "Identify common social engineering techniques",
+      "Understand why humans are the weakest link"
+    ],
+    "content": "Social engineering is the psychological manipulation of people into performing actions or divulging confidential information. Unlike technical attacks, it targets human behavior rather than system vulnerabilities.\n\nCommon techniques: phishing (email deception), pretexting (fabricated scenarios), baiting (enticing offers), tailgating (physical access), and vishing (voice phishing).\n\nThe human element is often the weakest link because people naturally want to be helpful, trust authority figures, and act quickly under pressure — all traits that social engineers exploit.",
+    "quiz": [
+      {
+        "question": "What makes social engineering different from technical hacking?",
+        "choices": [
+          "It's less dangerous",
+          "It targets human psychology rather than system vulnerabilities",
+          "It requires more computing power",
+          "It only works on outdated systems"
+        ],
+        "correctIndex": 1,
+        "explanation": "Social engineering bypasses technical security controls entirely by manipulating people. The most hardened system is still vulnerable if an authorized user can be tricked into granting access."
+      }
+    ]
+  }
+]
