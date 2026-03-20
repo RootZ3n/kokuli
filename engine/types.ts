@@ -21,10 +21,13 @@ export type TestCase = {
 
 // --- Target config ---
 
+export type PayloadFormat = "messages" | "input";
+
 export type TargetConfig = {
   name: string;
   baseUrl: string;
   chatPath: string;
+  payloadFormat: PayloadFormat;
   notes?: string;
 };
 
@@ -50,6 +53,12 @@ export type SquidleyReceipt = {
     used?: boolean;
   };
   memory_hits?: unknown[];
+  // V2 SSE fields
+  tokensIn?: number;
+  tokensOut?: number;
+  estimatedCostUsd?: number;
+  serverDurationMs?: number;
+  modelRole?: string;
   // Gateway block fields
   error?: string;
   reason?: string;
