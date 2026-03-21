@@ -6,14 +6,14 @@
       "baseUrl": "http://10.0.0.50:18791",
       "chatPath": "/chat",
       "payloadFormat": "messages",
-      "notes": "Primary target. Squidley V2 with hardened gateway, structured receipts, Velum privacy layer, and multi-model routing. Reachable over Tailscale."
+      "notes": "Primary Squidley V2 instance on Mushin. Hardened gateway, structured receipts, Velum privacy layer, multi-model routing. Reachable over Tailscale."
     },
-    "zenpop-squidley-v1": {
-      "name": "Zen Pop Squidley V1",
-      "baseUrl": "http://100.78.201.54:18790",
+    "mushin-squidley-v2-local": {
+      "name": "Mushin Squidley V2 (Local)",
+      "baseUrl": "http://10.0.0.50:18791",
       "chatPath": "/chat",
-      "payloadFormat": "input",
-      "notes": "Secondary target. Original Squidley V1 instance for regression comparison. May not always be running."
+      "payloadFormat": "messages",
+      "notes": "Same as above, direct local network access."
     }
   }
 }

@@ -7,17 +7,19 @@ Adversarial validation and security training framework for Squidley.
 - Tests Squidley V2 at http://10.0.0.50:18791
 - Generates structured JSON and Markdown reports with receipt-aware parsing
 - Includes optional learning module (The Lost City of Atlantis)
+- Web UI companion (dashboard + Atlantis portal)
 - Portfolio project — document everything
 
 ## Primary Target
 - Base URL: http://10.0.0.50:18791
 - Chat endpoint: /chat
-- Payload: { "input": "..." }
+- Payload: { "messages": [{ "role": "user", "content": "..." }] }
 - Squidley V2: hardened gateway, structured receipts, Velum privacy layer, multi-model routing
 
-## Secondary Target
-- Base URL: http://100.78.201.54:18790
-- ZenPop Squidley V1 for regression comparison
+## Lab
+- Mushin: i7-13700K, RTX 4070, Debian 12 — Squidley V2 host
+- Pop Tart: AMD RX 6800, 32GB DDR5, Pop!_OS — Krakzen host, compute/red team
+- ZenPop: retired, replaced by Mushin
 
 ## Rules
 - Keep it TypeScript
@@ -32,12 +34,15 @@ Adversarial validation and security training framework for Squidley.
 
 ## Key Docs
 - docs/architecture/ARCHITECTURE.md
+- docs/setup/LAB_WORKFLOW.md
 - docs/journal/
 - README.md
 
 ## Commands
 - `npm run dev -- suite all` — run every test
+- `npm run dev -- run <test-id>` — run single test by ID
 - `npm run dev -- list` — list tests
 - `npm run dev -- report summary` — view summary
+- `npm run web` — start web UI on port 3000
 - `npm run dev -- realm status` — learning module
 - `npm run dev -- learn` — curriculum
