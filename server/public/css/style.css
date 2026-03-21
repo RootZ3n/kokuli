@@ -1,0 +1,243 @@
+:root {
+  --bg: #0a0e17;
+  --surface: #111827;
+  --surface-2: #1a2234;
+  --border: #2a3548;
+  --text: #e2e8f0;
+  --text-dim: #8892a4;
+  --accent: #38bdf8;
+  --accent-dim: #1e6a96;
+  --pass: #22c55e;
+  --fail: #ef4444;
+  --warn: #eab308;
+  --atlantis: #8b5cf6;
+  --atlantis-dim: #5b3a9e;
+  --gold: #f59e0b;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* Nav */
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  padding: 1rem 2rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.nav-logo {
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+}
+.nav-links { display: flex; gap: 1.5rem; }
+.nav-links a {
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: color 0.15s;
+}
+.nav-links a:hover, .nav-links a.active { color: var(--text); text-decoration: none; }
+.nav-links a.active { border-bottom: 2px solid var(--accent); padding-bottom: 2px; }
+
+/* Layout */
+.container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+
+/* Cards */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+}
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+.card-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+/* Stats row */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.25rem;
+  text-align: center;
+}
+.stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 0.25rem;
+}
+.stat-label {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.stat-pass .stat-value { color: var(--pass); }
+.stat-fail .stat-value { color: var(--fail); }
+.stat-warn .stat-value { color: var(--warn); }
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn:hover { background: var(--border); }
+.btn-primary { background: var(--accent-dim); border-color: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent); }
+.btn-atlantis { background: var(--atlantis-dim); border-color: var(--atlantis); color: #fff; }
+.btn-atlantis:hover { background: var(--atlantis); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-sm { padding: 0.3rem 0.7rem; font-size: 0.8rem; }
+
+/* Test list */
+.test-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.1s;
+}
+.test-row:hover { background: var(--surface-2); }
+.test-row:last-child { border-bottom: none; }
+.test-info { flex: 1; }
+.test-name { font-weight: 600; font-size: 0.95rem; }
+.test-meta { font-size: 0.8rem; color: var(--text-dim); }
+.test-actions { display: flex; gap: 0.5rem; align-items: center; }
+
+/* Result badges */
+.badge {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.badge-pass { background: rgba(34, 197, 94, 0.15); color: var(--pass); }
+.badge-fail { background: rgba(239, 68, 68, 0.15); color: var(--fail); }
+.badge-warn { background: rgba(234, 179, 8, 0.15); color: var(--warn); }
+.badge-category {
+  background: rgba(56, 189, 248, 0.1);
+  color: var(--accent);
+  font-weight: 500;
+  text-transform: none;
+}
+
+/* Result detail panel */
+.result-panel {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1rem;
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  display: none;
+}
+.result-panel.open { display: block; }
+.result-field { margin-bottom: 0.5rem; }
+.result-label { color: var(--text-dim); font-size: 0.75rem; text-transform: uppercase; }
+.result-value { font-family: 'Cascadia Code', 'Fira Code', monospace; }
+pre.raw-response {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.75rem;
+  overflow-x: auto;
+  max-height: 300px;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* Loading spinner */
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Section headers */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+.section-title { font-size: 1.5rem; font-weight: 700; }
+.section-subtitle { color: var(--text-dim); font-size: 0.9rem; margin-top: 0.25rem; }
+
+/* Parsed fields table */
+.fields-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+.fields-table th, .fields-table td {
+  padding: 0.4rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+.fields-table th { color: var(--text-dim); font-weight: 500; }
+.fields-table td { font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.78rem; }
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.toast.show { opacity: 1; }
+.toast-info { background: var(--accent-dim); border: 1px solid var(--accent); }
+.toast-error { background: rgba(239, 68, 68, 0.2); border: 1px solid var(--fail); }

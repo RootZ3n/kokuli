@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Lost City of Atlantis — Krakzen</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/atlantis.css">
+</head>
+<body class="atlantis-bg">
+  <nav class="nav">
+    <div class="nav-logo">KRAKZEN</div>
+    <div class="nav-links">
+      <a href="/">Dashboard</a>
+      <a href="/atlantis" class="active">Atlantis</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <!-- Player HUD -->
+    <div class="player-hud" id="player-hud">
+      <div class="hud-avatar" id="hud-level">1</div>
+      <div class="hud-info">
+        <div class="hud-name" id="hud-name">Arcanist</div>
+        <div class="hud-level" id="hud-level-text">Level 1</div>
+        <div class="xp-bar"><div class="xp-fill" id="xp-fill" style="width:0%"></div></div>
+      </div>
+      <div class="hud-stats">
+        <div>
+          <div class="hud-stat-label">XP</div>
+          <div class="hud-stat-value" id="hud-xp">0</div>
+        </div>
+        <div>
+          <div class="hud-stat-label">Defeated</div>
+          <div class="hud-stat-value" id="hud-defeated">0</div>
+        </div>
+        <div>
+          <div class="hud-stat-label">Zones</div>
+          <div class="hud-stat-value" id="hud-zones">0/5</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('realm')">The Realm</div>
+      <div class="tab" onclick="switchTab('curriculum')">Curriculum</div>
+    </div>
+
+    <!-- Realm Tab -->
+    <div id="tab-realm">
+      <div class="section-header">
+        <div>
+          <div class="section-title" style="color:var(--atlantis);">The Lost City of Atlantis</div>
+          <div class="section-subtitle">Navigate the ruins. Face the creatures. Learn the knowledge.</div>
+        </div>
+      </div>
+      <div class="zone-grid" id="zone-grid"></div>
+    </div>
+
+    <!-- Curriculum Tab -->
+    <div id="tab-curriculum" style="display:none;">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Security Curriculum</div>
+          <div class="section-subtitle">Structured learning modules aligned with security fundamentals</div>
+        </div>
+      </div>
+      <div id="module-list"></div>
+      <div id="module-content" style="display:none;"></div>
+    </div>
+  </div>
+
+  <!-- Encounter Modal -->
+  <div class="modal-overlay" id="modal">
+    <div class="modal" id="modal-body"></div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="/js/atlantis.js"></script>
+</body>
+</html>

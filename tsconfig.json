@@ -13,6 +13,7 @@
   "include": [
     "engine/**/*.ts",
     "learning/**/*.ts",
+    "server/**/*.ts",
     "providers/**/*.ts",
     "config/**/*.json",
     "tests/**/*.json"

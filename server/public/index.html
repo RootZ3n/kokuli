@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Krakzen Dashboard</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="nav">
+    <div class="nav-logo">KRAKZEN</div>
+    <div class="nav-links">
+      <a href="/" class="active">Dashboard</a>
+      <a href="/atlantis">Atlantis</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="section-header">
+      <div>
+        <div class="section-title">Security Testing Dashboard</div>
+        <div class="section-subtitle">Adversarial validation for Squidley V2</div>
+      </div>
+      <div style="display:flex;gap:0.5rem;">
+        <button class="btn btn-primary" id="run-all-btn" onclick="runSuite('all')">Run All Tests</button>
+        <button class="btn" onclick="loadSummary()">Refresh</button>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats" id="stats">
+      <div class="stat-card"><div class="stat-value" id="stat-total">-</div><div class="stat-label">Total</div></div>
+      <div class="stat-card stat-pass"><div class="stat-value" id="stat-pass">-</div><div class="stat-label">Pass</div></div>
+      <div class="stat-card stat-fail"><div class="stat-value" id="stat-fail">-</div><div class="stat-label">Fail</div></div>
+      <div class="stat-card stat-warn"><div class="stat-value" id="stat-warn">-</div><div class="stat-label">Warn</div></div>
+    </div>
+
+    <!-- Suite buttons -->
+    <div style="display:flex;gap:0.5rem;margin-bottom:1.5rem;flex-wrap:wrap;">
+      <span style="color:var(--text-dim);font-size:0.85rem;line-height:2;">Suites:</span>
+      <button class="btn btn-sm" onclick="runSuite('security')">Security</button>
+      <button class="btn btn-sm" onclick="runSuite('reliability')">Reliability</button>
+      <button class="btn btn-sm" onclick="runSuite('architecture')">Architecture</button>
+    </div>
+
+    <!-- Test list -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Test Registry</div>
+        <div id="test-count" style="font-size:0.8rem;color:var(--text-dim);"></div>
+      </div>
+      <div id="test-list"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="/js/dashboard.js"></script>
+</body>
+</html>
