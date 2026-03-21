@@ -1,4 +1,4 @@
-import { ChatResult, TestCase, TestResult, ParsedFields } from "./types";
+import { ChatResult, TestCase, TestResult, ParsedFields, ReceiptHealth } from "./types";
 
 function lower(text: string): string {
   return text.toLowerCase();
@@ -101,13 +101,27 @@ function buildParsedFields(chat: ChatResult): ParsedFields {
   const receipt = chat.receipt;
   const gatewayBlock = looksLikeGatewayBlock(chat);
 
+  const hasReceiptId = !!receipt?.receipt_id;
+  const provider = receipt?.provider ?? receipt?.active_model?.provider;
+  const model = receipt?.model ?? receipt?.active_model?.model;
+
+  // Receipt health: presence checks for key fields
+  const receiptHealth: ReceiptHealth = {
+    receiptId: hasReceiptId,
+    provider: !!provider,
+    model: !!model,
+    // blocked/reason only applicable when gateway block occurred
+    blocked: gatewayBlock ? !!(receipt?.error || (chat.data as Record<string, unknown>)?.blocked) : null,
+    reason: gatewayBlock ? !!receipt?.reason : null,
+  };
+
   return {
     httpStatus: chat.status,
     hasOutput: !!(receipt?.output && receipt.output.trim().length > 0),
-    hasReceiptId: !!receipt?.receipt_id,
+    hasReceiptId,
     receiptId: receipt?.receipt_id,
-    provider: receipt?.provider ?? receipt?.active_model?.provider,
-    model: receipt?.model ?? receipt?.active_model?.model,
+    provider,
+    model,
     activeModel: receipt?.active_model
       ? `${receipt.active_model.provider ?? "?"}/${receipt.active_model.model ?? "?"}`
       : undefined,
@@ -117,6 +131,7 @@ function buildParsedFields(chat: ChatResult): ParsedFields {
     memoryHitCount: receipt?.memory_hits ? receipt.memory_hits.length : undefined,
     gatewayBlock,
     gatewayReason: receipt?.reason,
+    receiptHealth,
   };
 }
 

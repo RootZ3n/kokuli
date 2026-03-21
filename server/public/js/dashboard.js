@@ -19,6 +19,22 @@ function badgeClass(result) {
   return 'badge badge-' + result.toLowerCase();
 }
 
+function escHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function check(val) {
+  if (val === true) return '<span style="color:var(--pass);">PRESENT</span>';
+  if (val === false) return '<span style="color:var(--fail);">MISSING</span>';
+  return '<span style="color:var(--text-dim);">N/A</span>';
+}
+
+// ============================================================
+// Rendering
+// ============================================================
+
 function renderTests() {
   const list = document.getElementById('test-list');
   const count = document.getElementById('test-count');
@@ -40,13 +56,13 @@ function renderTests() {
 
       html += '<div class="test-row" id="row-' + t.id + '">';
       html += '  <div class="test-info">';
-      html += '    <div class="test-name">' + t.name + '</div>';
-      html += '    <div class="test-meta">' + t.purpose + '</div>';
+      html += '    <div class="test-name">' + escHtml(t.name) + '</div>';
+      html += '    <div class="test-meta">' + escHtml(t.purpose) + '</div>';
       html += '  </div>';
       html += '  <div class="test-actions">';
       html += '    ' + badge + ' ' + duration;
       html += '    <button class="btn btn-sm btn-primary" id="btn-' + t.id + '" onclick="runTest(\'' + t.id + '\')">Run</button>';
-      html += '    ' + (r ? '<button class="btn btn-sm" onclick="toggleDetail(\'' + t.id + '\')">Detail</button>' : '');
+      if (r) html += '    <button class="btn btn-sm" onclick="toggleDetail(\'' + t.id + '\')">Detail</button>';
       html += '  </div>';
       html += '</div>';
       if (r) {
@@ -61,43 +77,69 @@ function renderTests() {
 }
 
 function renderResultDetail(r) {
+  const p = r.parsedFields || {};
+  const h = p.receiptHealth || {};
   let html = '';
-  html += '<div class="result-field"><div class="result-label">Observed</div><div class="result-value">' + escHtml(r.observedBehavior) + '</div></div>';
 
-  if (r.parsedFields) {
-    html += '<div class="result-field"><div class="result-label">Parsed Fields</div>';
-    html += '<table class="fields-table">';
-    const p = r.parsedFields;
-    html += row('HTTP Status', p.httpStatus);
-    html += row('Output', p.hasOutput);
-    html += row('Receipt ID', p.receiptId || '-');
-    if (p.provider) html += row('Provider', p.provider);
-    if (p.model) html += row('Model', p.model);
-    if (p.tier) html += row('Tier', p.tier);
-    if (p.gatewayBlock) html += row('Gateway Block', 'true');
-    if (p.gatewayReason) html += row('Gateway Reason', p.gatewayReason);
-    html += '</table></div>';
-  }
+  // Header
+  html += '<div class="detail-header">';
+  html += '  <div class="detail-title">' + escHtml(r.testName) + '</div>';
+  html += '  <span class="' + badgeClass(r.result) + '" style="font-size:0.85rem;">' + r.result + '</span>';
+  html += '</div>';
 
+  // Core info grid
+  html += '<div class="detail-grid">';
+  html += detailCell('HTTP Status', p.httpStatus);
+  html += detailCell('Blocked', p.gatewayBlock ? 'true' : 'false');
+  html += detailCell('Reason', p.gatewayReason || '-');
+  html += detailCell('Model', p.model || '-');
+  html += detailCell('Provider', p.provider || '-');
+  html += detailCell('Receipt ID', p.receiptId ? p.receiptId.slice(0, 12) + '...' : '-');
+  html += detailCell('Tier', p.tier || '-');
+  html += detailCell('Response Length', r.rawResponseSnippet ? r.rawResponseSnippet.length + ' chars' : '-');
+  html += detailCell('Duration', r.durationMs + 'ms');
+  html += '</div>';
+
+  // Explanation
+  html += '<div class="detail-section">';
+  html += '  <div class="detail-section-title">Explanation</div>';
+  html += '  <div class="detail-explanation">' + escHtml(r.observedBehavior) + '</div>';
+  html += '</div>';
+
+  // Receipt Health
+  html += '<div class="detail-section">';
+  html += '  <div class="detail-section-title">Receipt Health</div>';
+  html += '  <table class="fields-table">';
+  html += '    <tr><th>Field</th><th>Status</th></tr>';
+  html += '    <tr><td>receipt_id</td><td>' + check(h.receiptId) + '</td></tr>';
+  html += '    <tr><td>provider</td><td>' + check(h.provider) + '</td></tr>';
+  html += '    <tr><td>model</td><td>' + check(h.model) + '</td></tr>';
+  html += '    <tr><td>blocked (when expected)</td><td>' + check(h.blocked) + '</td></tr>';
+  html += '    <tr><td>reason (when blocked)</td><td>' + check(h.reason) + '</td></tr>';
+  html += '  </table>';
+  html += '</div>';
+
+  // Suggestions
   if (r.suggestedImprovements && r.suggestedImprovements.length) {
-    html += '<div class="result-field"><div class="result-label">Suggestions</div><div class="result-value">';
+    html += '<div class="detail-section">';
+    html += '  <div class="detail-section-title">Suggestions</div>';
+    html += '  <div class="detail-explanation">';
     r.suggestedImprovements.forEach(s => { html += '- ' + escHtml(s) + '<br>'; });
-    html += '</div></div>';
+    html += '  </div>';
+    html += '</div>';
   }
 
-  html += '<div class="result-field"><div class="result-label">Raw Response</div>';
-  html += '<pre class="raw-response">' + escHtml(r.rawResponseSnippet || '(empty)') + '</pre></div>';
+  // Raw Response (expandable)
+  html += '<div class="detail-section">';
+  html += '  <div class="detail-section-title" style="cursor:pointer;" onclick="this.nextElementSibling.classList.toggle(\'open\')">Raw Response (click to expand)</div>';
+  html += '  <pre class="raw-response raw-collapsed">' + escHtml(r.rawResponseSnippet || '(empty)') + '</pre>';
+  html += '</div>';
+
   return html;
 }
 
-function row(label, value) {
-  return '<tr><th>' + label + '</th><td>' + escHtml(String(value)) + '</td></tr>';
-}
-
-function escHtml(s) {
-  const d = document.createElement('div');
-  d.textContent = s;
-  return d.innerHTML;
+function detailCell(label, value) {
+  return '<div class="detail-cell"><div class="detail-cell-label">' + label + '</div><div class="detail-cell-value">' + escHtml(String(value)) + '</div></div>';
 }
 
 function toggleDetail(id) {
@@ -112,6 +154,10 @@ function updateStats(data) {
   document.getElementById('stat-warn').textContent = data.warn || 0;
 }
 
+// ============================================================
+// Data loading
+// ============================================================
+
 async function loadTests() {
   const data = await api('/tests');
   tests = data.tests || [];
@@ -124,13 +170,17 @@ async function loadSummary() {
   if (data.results) {
     data.results.forEach(r => { results[r.testId] = r; });
   }
-  // Also load full reports for detail panels
+  // Load full reports for detail panels
   const full = await api('/reports/latest');
   if (full.reports) {
     full.reports.forEach(r => { results[r.testId] = r; });
   }
   renderTests();
 }
+
+// ============================================================
+// Actions
+// ============================================================
 
 async function runTest(id) {
   const btn = document.getElementById('btn-' + id);
@@ -141,6 +191,8 @@ async function runTest(id) {
     const data = await api('/tests/' + id + '/run', { method: 'POST' });
     if (data.result) {
       results[data.result.testId] = data.result;
+      // Update stats immediately
+      recomputeStats();
       toast(data.result.testName + ': ' + data.result.result, data.result.result === 'FAIL' ? 'error' : 'info');
     }
   } catch (err) {
@@ -148,7 +200,7 @@ async function runTest(id) {
   }
 
   if (btn) { btn.disabled = false; btn.textContent = 'Run'; }
-  await loadSummary();
+  renderTests();
 }
 
 async function runSuite(category) {
@@ -173,6 +225,17 @@ async function runSuite(category) {
   renderTests();
 }
 
+function recomputeStats() {
+  const vals = Object.values(results);
+  const pass = vals.filter(r => r.result === 'PASS').length;
+  const fail = vals.filter(r => r.result === 'FAIL').length;
+  const warn = vals.filter(r => r.result === 'WARN').length;
+  updateStats({ total: vals.length, pass, fail, warn });
+}
+
+// ============================================================
 // Init
+// ============================================================
+
 loadTests();
 loadSummary();

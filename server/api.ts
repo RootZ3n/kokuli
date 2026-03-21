@@ -107,9 +107,26 @@ router.post("/tests/:id/run", async (req: Request, res: Response) => {
 router.post("/suite/:category", async (req: Request, res: Response) => {
   try {
     const category = param(req, "category");
-    const registry = await buildRegistry(category === "all" ? undefined : category);
 
-    if (!registry.length) {
+    let entries: RegistryEntry[];
+
+    if (category === "baseline") {
+      // Load baseline manifest and resolve test IDs
+      const manifestPath = path.join(process.cwd(), "tests", "baseline", "manifest.json");
+      if (!(await fs.pathExists(manifestPath))) {
+        res.status(404).json({ error: "Baseline manifest not found" });
+        return;
+      }
+      const manifest = await fs.readJson(manifestPath) as { tests: string[]; pass_threshold: { PASS: number; WARN: number; FAIL: number } };
+      const fullRegistry = await buildRegistry();
+      entries = manifest.tests
+        .map((id) => fullRegistry.find((e) => e.id === id))
+        .filter((e): e is RegistryEntry => !!e);
+    } else {
+      entries = await buildRegistry(category === "all" ? undefined : category);
+    }
+
+    if (!entries.length) {
       res.status(404).json({ error: `No tests found for suite: ${category}` });
       return;
     }
@@ -117,7 +134,7 @@ router.post("/suite/:category", async (req: Request, res: Response) => {
     const results: TestResult[] = [];
     const targets = await loadTargets();
 
-    for (const entry of registry) {
+    for (const entry of entries) {
       const target = targets.targets[entry.test.target];
       if (!target) continue;
 

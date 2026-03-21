@@ -17,6 +17,7 @@ ${chalk.cyan("Core Commands:")}
   ${chalk.white("run <test-id>")}         Run a single test by ID
   ${chalk.white("suite <category>")}      Run all tests in a category (security, reliability, architecture)
   ${chalk.white("suite all")}             Run every test across all categories
+  ${chalk.white("suite baseline")}        Run locked baseline suite with threshold gate
   ${chalk.white("list [category]")}       List available test IDs
   ${chalk.white("report latest")}         List latest report files
   ${chalk.white("report summary")}        Show latest suite summary
@@ -150,7 +151,21 @@ async function runById(testId: string, showRaw = false): Promise<TestResult> {
   return runSingle(filePath, showRaw);
 }
 
+type BaselineManifest = {
+  version: string;
+  locked: string;
+  description: string;
+  tests: string[];
+  pass_threshold: { PASS: number; WARN: number; FAIL: number };
+};
+
 async function runSuite(category: string): Promise<void> {
+  // Handle baseline suite specially
+  if (category === "baseline") {
+    await runBaselineSuite();
+    return;
+  }
+
   const registry = await buildRegistry(category === "all" ? undefined : category);
 
   if (!registry.length) {
@@ -168,6 +183,63 @@ async function runSuite(category: string): Promise<void> {
   printSuiteSummary(results);
   await writeSuiteSummary(results);
   console.log(chalk.gray("  Suite summary written to reports/latest/SUMMARY.md"));
+}
+
+async function runBaselineSuite(): Promise<void> {
+  const manifestPath = path.join(process.cwd(), "tests", "baseline", "manifest.json");
+  if (!(await fs.pathExists(manifestPath))) {
+    throw new Error("Baseline manifest not found at tests/baseline/manifest.json");
+  }
+
+  const manifest = (await fs.readJson(manifestPath)) as BaselineManifest;
+  const registry = await buildRegistry();
+
+  console.log(chalk.cyan(`\n[krakzen] Running baseline suite v${manifest.version} (locked ${manifest.locked})`));
+  console.log(chalk.gray(`  ${manifest.description}`));
+  console.log(chalk.gray(`  Threshold: PASS>=${manifest.pass_threshold.PASS}, WARN<=${manifest.pass_threshold.WARN}, FAIL<=${manifest.pass_threshold.FAIL}\n`));
+
+  const results: TestResult[] = [];
+  const missing: string[] = [];
+
+  for (const testId of manifest.tests) {
+    const entry = registry.find((e) => e.id === testId);
+    if (!entry) {
+      missing.push(testId);
+      continue;
+    }
+    const result = await runSingle(entry.filePath);
+    results.push(result);
+  }
+
+  if (missing.length) {
+    console.log(chalk.yellow(`\n  Missing tests: ${missing.join(", ")}`));
+  }
+
+  const pass = results.filter((r) => r.result === "PASS").length;
+  const fail = results.filter((r) => r.result === "FAIL").length;
+  const warn = results.filter((r) => r.result === "WARN").length;
+
+  printSuiteSummary(results);
+  await writeSuiteSummary(results);
+
+  // Threshold check
+  const passOk = pass >= manifest.pass_threshold.PASS;
+  const warnOk = warn <= manifest.pass_threshold.WARN;
+  const failOk = fail <= manifest.pass_threshold.FAIL;
+  const gatePass = passOk && warnOk && failOk;
+
+  console.log(chalk.bold("  Baseline Gate:"));
+  console.log(`    PASS ${pass}>=${manifest.pass_threshold.PASS}: ${passOk ? chalk.green("OK") : chalk.red("FAIL")}`);
+  console.log(`    WARN ${warn}<=${manifest.pass_threshold.WARN}: ${warnOk ? chalk.green("OK") : chalk.red("FAIL")}`);
+  console.log(`    FAIL ${fail}<=${manifest.pass_threshold.FAIL}: ${failOk ? chalk.green("OK") : chalk.red("FAIL")}`);
+  console.log("");
+
+  if (gatePass) {
+    console.log(chalk.green.bold("  BASELINE GATE: PASSED"));
+  } else {
+    console.log(chalk.red.bold("  BASELINE GATE: FAILED"));
+    process.exit(1);
+  }
 }
 
 async function listTests(category?: string): Promise<void> {

@@ -102,6 +102,14 @@ export type TestResult = {
   durationMs: number;
 };
 
+export type ReceiptHealth = {
+  receiptId: boolean;
+  provider: boolean;
+  model: boolean;
+  blocked: boolean | null;  // null = not applicable (non-block test)
+  reason: boolean | null;   // null = not applicable
+};
+
 export type ParsedFields = {
   httpStatus: number;
   hasOutput: boolean;
@@ -116,4 +124,5 @@ export type ParsedFields = {
   memoryHitCount?: number;
   gatewayBlock: boolean;
   gatewayReason?: string;
+  receiptHealth: ReceiptHealth;
 };

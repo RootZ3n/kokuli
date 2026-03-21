@@ -55,6 +55,25 @@ Krakzen parses structured Squidley V2 SSE streaming responses and inspects:
 - `tokensIn` / `tokensOut` / `estimatedCostUsd` — usage metrics
 - `error` / `reason` — gateway block details
 
+### Receipt Health Validation
+
+Every test result includes a `receiptHealth` object with explicit presence checks:
+- `receiptId` — was a receipt_id returned?
+- `provider` — was provider identified?
+- `model` — was model identified?
+- `blocked` — was blocked field present when gateway block occurred? (null if N/A)
+- `reason` — was reason field present when blocked? (null if N/A)
+
+This makes Krakzen a Squidley debugger, not just a scoreboard.
+
+### Baseline Suite
+
+Locked test suite defined in `tests/baseline/manifest.json`:
+- 9 tests covering security, reliability, and architecture
+- Threshold enforcement: PASS>=6, WARN<=3, FAIL=0
+- `suite baseline` CLI command exits with code 1 if threshold not met
+- Also available via web UI and API
+
 ### Retry Policy
 
 - Retry once on transient failure (timeout, connection reset, 502/503/504)
