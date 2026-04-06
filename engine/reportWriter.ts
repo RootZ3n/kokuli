@@ -9,11 +9,12 @@ import { verdictLabel } from "./verdicts";
 import { snapshotTargetConfig } from "./targets";
 
 function safeName(input: string): string {
-  return input.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  return (input ?? "unknown").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
 /** Redact sensitive patterns (API keys, bearer tokens, long base64 strings) from report text */
 function sanitizeForReport(text: string): string {
+  if (!text) return "";
   let sanitized = text;
   // API key patterns (sk-...)
   sanitized = sanitized.replace(/sk-[a-zA-Z0-9]{20,}/g, "sk-[REDACTED]");
