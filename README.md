@@ -139,6 +139,179 @@ Every test produces a JSON + Markdown report with:
 - What the evaluator detected
 - Suggested fixes
 
+## Execution States
+
+Krakzen tracks explicit deterministic execution state per test and per suite:
+
+- `idle`
+- `queued`
+- `running`
+- `passed`
+- `failed`
+- `blocked`
+- `error`
+- `timeout`
+- `skipped`
+- `stale`
+
+State is persisted alongside the latest reports so the dashboard can survive refreshes and show intentional operator language such as "Not run yet", "Awaiting execution", and "Stale result" instead of generic "no data".
+
+Each test record also carries:
+
+- last run timestamp
+- total duration
+- attempt count
+- prior-run comparison when available
+
+## Target Fingerprinting
+
+Each assessment captures a deterministic target fingerprint snapshot so Krakzen can warn when run-to-run comparisons may not be apples-to-apples.
+
+Fingerprint data includes, where exposed:
+
+- base URL and selected target name
+- reachable endpoint inventory from the built-in probe set
+- auth posture summary
+- version/build metadata if a version surface responds
+- headers of interest such as `server`, `x-powered-by`, `via`, and `www-authenticate`
+- comparable fingerprint signature hash
+
+The fingerprint is stored with the latest assessment bundle and surfaced in run detail, exports, and comparison warnings.
+
+## Findings Model
+
+Krakzen now derives a normalized findings layer above raw test results. Findings are deterministic rollups from failed or concerning results and are deduplicated across repeat runs of the same issue.
+
+Each finding includes:
+
+- stable finding ID
+- title and category
+- severity and exploitability
+- target and source test ID
+- evidence summary
+- remediation summary
+- first seen / last seen timestamps
+- regression flag
+- deterministic confidence explanation
+- evaluator provenance
+- lifecycle state
+- compact evidence snapshot
+- workflow state and suppression context where locally tracked
+
+### Lifecycle States
+
+Findings now carry deterministic lifecycle framing:
+
+- `new`
+- `recurring`
+- `regressed`
+- `resolved`
+- `muted`
+- `accepted_risk`
+
+`muted` and `accepted_risk` are local metadata overlays. They change operator framing but do not alter underlying deterministic evidence.
+
+### Fix Verification Workflow
+
+Findings can also carry operator-applied workflow state without changing evidence:
+
+- `detected`
+- `fix_attempted`
+- `retested`
+- `verified_resolved`
+
+This keeps remediation tracking separate from the underlying deterministic run evidence.
+
+### Suppression Governance
+
+Muted and accepted-risk findings require structured local metadata:
+
+- reason
+- timestamp
+- optional owner
+- optional expiry
+- optional review note
+
+Krakzen surfaces warnings when suppression rationale is missing or the suppression has expired.
+
+## Evaluator Provenance
+
+Every failed or warning-level assertion can now show compact provenance:
+
+- evaluator rule ID
+- evaluator rule version
+- rule family
+- deterministic condition summary
+- matched pattern, when applicable
+
+This provenance is exposed in drilldowns and report exports so reviewers can trace each finding back to the exact deterministic rule path.
+
+## Confidence Reasoning
+
+Confidence remains deterministic. Krakzen now records a short explanation for each finding, for example:
+
+- exact pattern match in response body
+- endpoint returned `200` with exposed internal fields
+- repeated reproduction across runs
+- weak signal only / partial evidence
+
+## Verdict Vocabulary
+
+Krakzen now uses a consistent platform vocabulary across dashboard labels, findings, comparisons, and exports:
+
+- `pass`
+- `concern`
+- `fail`
+- `critical`
+- `not_comparable`
+- `accepted_risk`
+- `muted`
+- `resolved`
+- `inconclusive`
+
+Legacy engine outcomes such as `PASS`, `FAIL`, and `WARN` still exist internally for compatibility, but all operator-facing review surfaces normalize through the same verdict mapping layer.
+
+The dashboard exposes this as an "Exposure Map" so operators can sort by severity, exploitability, or recency instead of scanning raw test rows.
+
+## Risk Summary And Gates
+
+The top of the dashboard now provides an executive-readable deterministic summary:
+
+- overall verdict: `Pass`, `Warning`, `Fail`, or `Critical`
+- highest severity observed
+- exploitable finding count
+- public exposure finding count
+- child safety failure count
+- recommended first fix
+
+Krakzen also computes readiness gates from actual test results:
+
+- `Baseline Gate`
+- `Public Exposure Gate`
+- `Prompt Boundary Gate`
+- `Child Safety Gate`
+- `Ship Readiness`
+
+These are rule-based rollups, not AI-generated summaries.
+
+## Operator Summary
+
+The dashboard now includes an operator summary optimized for quick triage:
+
+- overall verdict
+- highest severity
+- critical findings count
+- new regressions count
+- public exposure count
+- child safety failures
+- recommended first fix
+- key evidence highlights
+- direct export links
+
+The goal is fast comprehension from deterministic run, finding, gate, fingerprint, and metric data in under 20 seconds.
+
+The dashboard also includes a screenshot-friendly summary panel optimized for README shots, quick demos, and founder-level review without introducing fake data paths.
+
 ## Transparency
 
 Every request Krakzen makes is logged to a receipt ledger:
@@ -155,6 +328,40 @@ You get a full transparency report showing exactly what happened, which provider
 ```bash
 krakzen report transparency
 ```
+
+The transparency ledger is also exposed in each detailed run artifact, including:
+
+- request/response timeline
+- provider and model
+- token counts and estimated cost
+- latency and routing tier
+- receipt ID and gateway/refusal signals
+- prior run comparison when available
+
+## Performance Metrics
+
+Each assessment also computes lightweight execution metrics:
+
+- total run duration
+- per-suite duration
+- per-test duration
+- timeout count
+- blocked count
+- error count
+- average response latency
+- estimated cost total when transparency data is available
+
+## Execution Coverage And Trust Signals
+
+Each assessment derives execution trust indicators from real execution state and metrics:
+
+- `fully_executed`
+- `partially_executed`
+- `degraded_by_timeouts`
+- `degraded_by_errors`
+- `inconclusive_due_to_target_variance`
+
+These signals are surfaced in operator summary, comparison, and review exports so a reviewer can quickly judge whether the run is trustworthy enough to act on directly.
 
 ## Target Management
 
@@ -183,9 +390,12 @@ npm run web
 Deep-sea Kraken-themed command center at `http://localhost:3000`:
 
 - Target selector dropdown with connectivity probe
-- Category-by-category pass/fail overview bars
-- Severity-coded test rows with one-click execution
-- Expandable detail panels with receipt data and raw responses
+- Top-level risk summary and deterministic readiness gates
+- Category-by-category suite state with last-run metadata
+- Severity-coded test rows with explicit execution state and one-click execution
+- Findings / Exposure Map with sorting by severity, exploitability, and recency
+- Audit-style detail panels with exact request, normalized response, evaluator rules, evidence, remediation, and evidence timeline
+- Run comparison view showing new, resolved, regressed, and unchanged findings
 - Suite launch controls for all 10 categories
 - Transparency dashboard
 
@@ -196,6 +406,8 @@ Also includes the **Atlantis Portal** — a gamified security learning module at
 **Target-agnostic.** Not tied to any specific AI product. Point it at OpenAI, Anthropic, your own self-hosted model, anything with an HTTP API.
 
 **Deterministic evaluation.** No AI judging AI. Results are reproducible pattern matching and rule-based assertions. When Krakzen says FAIL, you can see exactly which pattern triggered it.
+
+**Audit-ready reporting.** Krakzen produces executive summary markdown, technical findings markdown, evidence appendix markdown/JSON, remediation checklists, and retest comparison summaries suitable for engineers or leadership.
 
 **Child safety as a first-class concern.** Not a checkbox — it's the highest-priority test suite with the most tests.
 
@@ -269,6 +481,61 @@ Create a JSON file in `tests/<category>/`:
   "severity": "high"
 }
 ```
+
+## Regression Visibility
+
+Krakzen stores target-level assessment snapshots so the latest run can be compared against the prior comparable run on the same target.
+
+Comparison output classifies findings as:
+
+- new
+- resolved
+- regressed
+- unchanged
+
+This comparison is surfaced in the dashboard and written into the latest report bundle.
+
+If the target fingerprint changes between runs, Krakzen marks the comparison with a warning so operators know the historical diff may not be directly comparable.
+
+Comparison output now explicitly separates:
+
+- new findings
+- recurring findings
+- regressed findings
+- resolved findings
+- not directly comparable items
+
+## Audit Integrity
+
+Assessment snapshots are stored in a simple append-only local history file with:
+
+- sequence number
+- checksum per snapshot payload
+- chain hash linking each snapshot to the prior one
+
+This is intentionally lightweight and standalone. It improves local audit credibility and tamper detection, but it is not a replacement for external signed attestations or immutable storage.
+
+Tradeoff:
+- The integrity chain is only as strong as the local filesystem and access controls around the history file.
+
+## Reproducible Demo Target
+
+Krakzen includes documentation for evaluating the platform against a deliberately vulnerable mock target path:
+
+- [Demo Target Guide](/hogwarts/AI/krakzen/docs/demo/DEMO_TARGET.md)
+
+This is intentionally optional and standalone so others can evaluate Krakzen quickly without coupling it to another project.
+
+## Example Workflow
+
+1. Detect:
+   Run a suite and review the operator summary, evidence snapshot, and evaluator provenance.
+2. Fix:
+   Apply the remediation change suggested in the finding record.
+3. Retest:
+   Run the affected suite again and confirm the finding moves from `detected` to `retested` with stable fingerprint/comparability signals.
+4. Verify:
+   Mark the workflow as `verified_resolved` only after evidence no longer reproduces and the comparison shows the finding as resolved.
 
 ### Endpoint Tests
 

@@ -6,9 +6,11 @@ import { loadTargets, loadTest, saveTargets, resolveTarget, addTarget, removeTar
 import { sendChat, sendRequest } from "../engine/client";
 import { evaluate, evaluateEndpoint } from "../engine/evaluator";
 import { generateFuzzPayloads } from "../engine/fuzzer";
-import { writeReport, writeSuiteSummary } from "../engine/reportWriter";
+import { readLatestResults, writeAssessmentBundle, writeReport, writeSuiteSummary } from "../engine/reportWriter";
 import { TestCase, TestResult, TargetConfig } from "../engine/types";
 import { recordEntry, getLedgerSummary, getSessionLedger, clearLedger, LedgerEntry } from "../engine/ledger";
+import { upgradeLegacyResult } from "../engine/assessment";
+import { loadExecutionStore, updateSuiteExecutionState, updateTestExecutionState } from "../engine/executionStore";
 import { Zone, Creature, CurriculumModule } from "../learning/types";
 import { loadPlayerState, savePlayerState, xpToNextLevel } from "../learning/state";
 
@@ -72,6 +74,7 @@ async function buildRegistry(category?: string): Promise<RegistryEntry[]> {
 router.get("/tests", async (_req: Request, res: Response) => {
   try {
     const registry = await buildRegistry();
+    const executionStore = await loadExecutionStore();
     const tests = registry.map((e) => ({
       id: e.id,
       name: e.test.name,
@@ -79,6 +82,8 @@ router.get("/tests", async (_req: Request, res: Response) => {
       purpose: e.test.purpose,
       severity: e.test.severity,
       target: e.test.target,
+      state: executionStore.tests[e.id]?.state ?? "idle",
+      execution: executionStore.tests[e.id] ?? null,
     }));
     res.json({ tests });
   } catch (err) {
@@ -220,7 +225,17 @@ async function executeTest(testCase: TestCase, target: TargetConfig, targetKey?:
           step.expectedBehavior.shouldProtectMinorPII ||
           step.expectedBehavior.shouldBlockHarmfulContent;
         if (hasEndpointAssertions) {
-          const endpointResult = { ok: chat.ok, status: chat.status, headers: {}, data: chat.data, rawText: chat.receipt?.output || chat.rawText, durationMs: chat.durationMs, retry: chat.retry };
+          const endpointResult = {
+            ok: chat.ok,
+            status: chat.status,
+            headers: chat.response.headers,
+            data: chat.data,
+            rawText: chat.receipt?.output || chat.rawText,
+            durationMs: chat.durationMs,
+            retry: chat.retry,
+            request: chat.request,
+            response: chat.response,
+          };
           const result = evaluateEndpoint(stepCase, endpointResult);
           await writeReport(result);
           results.push(result);
@@ -280,7 +295,17 @@ async function executeTest(testCase: TestCase, target: TargetConfig, targetKey?:
       testCase.expectedBehavior.shouldEnforceAgeAppropriate ||
       testCase.expectedBehavior.shouldProtectMinorPII;
     if (hasEndpointAssertions) {
-      const endpointResult = { ok: chat.ok, status: chat.status, headers: {}, data: chat.data, rawText: chat.receipt?.output || chat.rawText, durationMs: chat.durationMs, retry: chat.retry };
+      const endpointResult = {
+        ok: chat.ok,
+        status: chat.status,
+        headers: chat.response.headers,
+        data: chat.data,
+        rawText: chat.receipt?.output || chat.rawText,
+        durationMs: chat.durationMs,
+        retry: chat.retry,
+        request: chat.request,
+        response: chat.response,
+      };
       const result = evaluateEndpoint(testCase, endpointResult);
       await writeReport(result);
       return [result];
@@ -295,6 +320,60 @@ async function executeTest(testCase: TestCase, target: TargetConfig, targetKey?:
   const result = evaluate(testCase, chat);
   await writeReport(result);
   return [result];
+}
+
+function compareWithPriorRun(result: TestResult, previous?: TestResult): TestResult {
+  if (!previous) return result;
+  return {
+    ...result,
+    priorRunComparison: {
+      previousTimestamp: previous.timestamp,
+      previousResult: previous.result,
+      changed: previous.result !== result.result,
+      summary: previous.result === result.result
+        ? `No verdict change since ${previous.timestamp}.`
+        : `Previous verdict was ${previous.result} at ${previous.timestamp}.`,
+    },
+  };
+}
+
+async function persistExecutedResults(
+  targetKey: string,
+  targetName: string,
+  targetConfig: TargetConfig,
+  results: TestResult[],
+  previousByTestId: Map<string, TestResult>,
+): Promise<TestResult[]> {
+  const persisted: TestResult[] = [];
+
+  for (const result of results) {
+    const prior = previousByTestId.get(result.testId);
+    const upgraded = compareWithPriorRun(upgradeLegacyResult(result), prior);
+    const execution = await updateTestExecutionState({
+      testId: upgraded.testId,
+      suiteId: upgraded.category,
+      state: upgraded.state ?? "stale",
+      durationMs: upgraded.durationMs,
+    });
+    const finalized: TestResult = {
+      ...upgraded,
+      state: execution.state,
+      execution: {
+        state: execution.state,
+        startedAt: execution.startedAt,
+        lastRunAt: execution.lastRunAt,
+        completedAt: execution.completedAt,
+        durationMs: execution.durationMs,
+        attemptCount: execution.attemptCount,
+      },
+    };
+    await writeReport(finalized);
+    persisted.push(finalized);
+    previousByTestId.set(finalized.testId, finalized);
+  }
+
+  await writeAssessmentBundle({ target: targetKey, targetName, targetConfig });
+  return persisted;
 }
 
 // --- Ledger helper for API ---
@@ -342,11 +421,31 @@ router.post("/tests/:id/run", async (req: Request, res: Response) => {
     // Use active target (or query param override)
     const targetKey = typeof req.query.target === "string" ? req.query.target : undefined;
     const resolved = await resolveTarget(targetKey);
+    const priorResults = await readLatestResults();
+    const previousByTestId = new Map<string, TestResult>(priorResults.map((result: TestResult) => [result.testId, result]));
+
+    await updateSuiteExecutionState({ suiteId: entry.test.category, state: "running" });
+    await updateTestExecutionState({ testId: entry.id, suiteId: entry.test.category, state: "queued", incrementAttempt: true });
+    await updateTestExecutionState({ testId: entry.id, suiteId: entry.test.category, state: "running" });
 
     const results = await executeTest(entry.test, resolved.target, resolved.key);
-    await recordTestResults(results, resolved.key);
-    res.json({ result: results.length === 1 ? results[0] : results });
+    const persisted = await persistExecutedResults(resolved.key, resolved.target.name, resolved.target, results, previousByTestId);
+    await recordTestResults(persisted, resolved.key);
+    await updateSuiteExecutionState({
+      suiteId: entry.test.category,
+      state: persisted.some((result: TestResult) => result.result === "FAIL")
+        ? "failed"
+        : persisted.some((result: TestResult) => result.result === "WARN")
+          ? "stale"
+          : "passed",
+      durationMs: persisted.reduce((sum, result: TestResult) => sum + result.durationMs, 0),
+    });
+    res.json({ result: persisted.length === 1 ? persisted[0] : persisted });
   } catch (err) {
+    const testId = param(req, "id");
+    if (testId) {
+      await updateTestExecutionState({ testId, suiteId: "unknown", state: "error" }).catch(() => undefined);
+    }
     res.status(500).json({ error: String(err) });
   }
 });
@@ -387,21 +486,37 @@ router.post("/suite/:category", async (req: Request, res: Response) => {
     // Use active target (or query param override)
     const targetKey = typeof req.query.target === "string" ? req.query.target : undefined;
     const resolved = await resolveTarget(targetKey);
+    const priorResults = await readLatestResults();
+    const previousByTestId = new Map<string, TestResult>(priorResults.map((result: TestResult) => [result.testId, result]));
+    await updateSuiteExecutionState({ suiteId: category, state: "running" });
 
     for (const entry of entries) {
+      await updateTestExecutionState({ testId: entry.id, suiteId: category, state: "queued", incrementAttempt: true });
+      await updateTestExecutionState({ testId: entry.id, suiteId: category, state: "running" });
       const testResults = await executeTest(entry.test, resolved.target, resolved.key);
-      await recordTestResults(testResults, resolved.key);
-      results.push(...testResults);
+      const persisted = await persistExecutedResults(resolved.key, resolved.target.name, resolved.target, testResults, previousByTestId);
+      await recordTestResults(persisted, resolved.key);
+      results.push(...persisted);
     }
 
     await writeSuiteSummary(results);
+    await writeAssessmentBundle({ target: resolved.key, targetName: resolved.target.name, targetConfig: resolved.target, results });
 
     const pass = results.filter((r) => r.result === "PASS").length;
     const fail = results.filter((r) => r.result === "FAIL").length;
     const warn = results.filter((r) => r.result === "WARN").length;
+    await updateSuiteExecutionState({
+      suiteId: category,
+      state: fail > 0 ? "failed" : warn > 0 ? "stale" : "passed",
+      durationMs: results.reduce((sum, result: TestResult) => sum + result.durationMs, 0),
+    });
 
     res.json({ summary: { total: results.length, pass, fail, warn }, results });
   } catch (err) {
+    const category = param(req, "category");
+    if (category) {
+      await updateSuiteExecutionState({ suiteId: category, state: "error" }).catch(() => undefined);
+    }
     res.status(500).json({ error: String(err) });
   }
 });
@@ -421,12 +536,28 @@ router.get("/reports/summary", async (_req: Request, res: Response) => {
   }
 });
 
+router.get("/dashboard", async (_req: Request, res: Response) => {
+  try {
+    const resolved = await resolveTarget();
+    const results = await readLatestResults();
+    const assessment = await writeAssessmentBundle({
+      target: resolved.key,
+      targetName: resolved.target.name,
+      targetConfig: resolved.target,
+      results,
+    });
+    res.json(assessment);
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
+});
+
 // GET /api/reports/latest — list latest report files
 router.get("/reports/latest", async (_req: Request, res: Response) => {
   try {
     const dir = path.join(process.cwd(), "reports", "latest");
     const files = (await fs.readdir(dir))
-      .filter((f) => f.endsWith(".json") && f !== "SUMMARY.json")
+      .filter((f) => f.endsWith(".json") && !["SUMMARY.json", "ASSESSMENT.json", "EXECUTION.json", "EVIDENCE_APPENDIX.json"].includes(f))
       .sort();
 
     const reports = [];

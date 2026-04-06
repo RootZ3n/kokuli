@@ -1,533 +1,699 @@
-// Krakzen Dashboard JS — Deep-Sea Command Center
-
-let tests = [];
-let results = {};
+let registryTests = [];
+let assessment = null;
+let targetData = null;
+let activeTargetKey = "";
 let lastUpdated = null;
-
-// ============================================================
-// Category metadata
-// ============================================================
+let findingSort = "severity";
+const localStateOverrides = {};
 
 const CATEGORIES = {
-  'child-safety': { name: 'Child Safety', icon: '\u{1F6E1}\uFE0F', desc: 'Magister child protection', color: '#ff0055', priority: 1 },
-  'security':     { name: 'Security', icon: '\u{1F512}', desc: 'Prompt injection & refusal', color: '#ff2d2d', priority: 2 },
-  'recon':        { name: 'Reconnaissance', icon: '\u{1F50D}', desc: 'Endpoint discovery & info leaks', color: '#ffaa00', priority: 3 },
-  'auth':         { name: 'Authentication', icon: '\u{1F511}', desc: 'Access control verification', color: '#ffaa00', priority: 4 },
-  'exfil':        { name: 'Data Exfiltration', icon: '\u{1F480}', desc: 'Data leakage & extraction', color: '#ff2d2d', priority: 5 },
-  'multi-turn':   { name: 'Multi-Turn Attacks', icon: '\u{1F517}', desc: 'Multi-step attack chains', color: '#ff6600', priority: 6 },
-  'fuzzing':      { name: 'Fuzzing', icon: '\u26A1', desc: 'Automated input mutation', color: '#00e5ff', priority: 7 },
-  'reliability':  { name: 'Reliability', icon: '\u2699\uFE0F', desc: 'Input handling & sanitization', color: '#00e5ff', priority: 8 },
-  'architecture': { name: 'Architecture', icon: '\u{1F3D7}\uFE0F', desc: 'Receipt & structure validation', color: '#00e5ff', priority: 9 },
-  'baseline':     { name: 'Baseline', icon: '\u{1F4CB}', desc: 'Locked baseline gate', color: '#8b5cf6', priority: 10 },
+  "child-safety": { name: "Child Safety", icon: "\u{1F6E1}\uFE0F", desc: "Magister child protection", color: "#ff0055", priority: 1 },
+  security: { name: "Security", icon: "\u{1F512}", desc: "Prompt injection & refusal", color: "#ff2d2d", priority: 2 },
+  recon: { name: "Reconnaissance", icon: "\u{1F50D}", desc: "Endpoint discovery & info leaks", color: "#ffaa00", priority: 3 },
+  auth: { name: "Authentication", icon: "\u{1F511}", desc: "Access control verification", color: "#ffaa00", priority: 4 },
+  exfil: { name: "Data Exfiltration", icon: "\u{1F480}", desc: "Data leakage & extraction", color: "#ff2d2d", priority: 5 },
+  "multi-turn": { name: "Multi-Turn Attacks", icon: "\u{1F517}", desc: "Multi-step attack chains", color: "#ff6600", priority: 6 },
+  fuzzing: { name: "Fuzzing", icon: "\u26A1", desc: "Automated input mutation", color: "#00e5ff", priority: 7 },
+  reliability: { name: "Reliability", icon: "\u2699\uFE0F", desc: "Input handling & sanitization", color: "#00e5ff", priority: 8 },
+  architecture: { name: "Architecture", icon: "\u{1F3D7}\uFE0F", desc: "Receipt & structure validation", color: "#00e5ff", priority: 9 },
+  baseline: { name: "Baseline", icon: "\u{1F4CB}", desc: "Locked baseline gate", color: "#8b5cf6", priority: 10 },
 };
 
-const SEVERITY_COLORS = {
-  critical: { bg: '#ff0033', text: '#fff', pulse: true },
-  high:     { bg: '#ff2d2d', text: '#fff', pulse: false },
-  medium:   { bg: '#ffaa00', text: '#1a1a2e', pulse: false },
-  low:      { bg: '#00e5ff', text: '#1a1a2e', pulse: false },
+const STATE_META = {
+  idle: { label: "Not run yet", cls: "state-idle" },
+  queued: { label: "Awaiting execution", cls: "state-queued" },
+  running: { label: "Running", cls: "state-running" },
+  passed: { label: "Passed", cls: "state-passed" },
+  failed: { label: "Failed", cls: "state-failed" },
+  blocked: { label: "Blocked", cls: "state-blocked" },
+  error: { label: "Execution error", cls: "state-error" },
+  timeout: { label: "Timed out", cls: "state-timeout" },
+  skipped: { label: "Skipped", cls: "state-skipped" },
+  stale: { label: "Stale result", cls: "state-stale" },
 };
 
-// ============================================================
-// Utility
-// ============================================================
+const VERDICT_CLASS = {
+  pass: "badge-pass",
+  concern: "badge-warn",
+  fail: "badge-fail",
+  critical: "badge-critical",
+  not_comparable: "badge-category",
+  accepted_risk: "badge-category",
+  muted: "badge-category",
+  resolved: "badge-pass",
+  inconclusive: "badge-warn",
+};
+
+const LIFECYCLE_CLASS = {
+  new: "badge-warn",
+  recurring: "badge-pass",
+  regressed: "badge-critical",
+  resolved: "badge-pass",
+  muted: "badge-category",
+  accepted_risk: "badge-category",
+};
+
+const SEVERITY_ORDER = { critical: 4, high: 3, medium: 2, low: 1 };
+const EXPLOITABILITY_ORDER = { high: 3, medium: 2, low: 1 };
 
 async function api(path, opts) {
-  const res = await fetch('/api' + path, opts);
+  const res = await fetch("/api" + path, opts);
+  if (!res.ok) {
+    let message = "Request failed";
+    try {
+      const data = await res.json();
+      message = data.error || message;
+    } catch {
+      message = await res.text() || message;
+    }
+    throw new Error(message);
+  }
   return res.json();
 }
 
+function escHtml(value) {
+  const el = document.createElement("div");
+  el.textContent = value == null ? "" : String(value);
+  return el.innerHTML;
+}
+
 function toast(msg, type) {
-  const el = document.getElementById('toast');
-  const icon = type === 'error' ? '\u2717 ' : '\u2713 ';
-  el.innerHTML = '<span class="toast-icon">' + icon + '</span>' + escHtml(msg);
-  el.className = 'toast toast-' + (type || 'info') + ' show';
-  setTimeout(() => el.classList.remove('show'), 3000);
+  const el = document.getElementById("toast");
+  const icon = type === "error" ? "\u2717 " : "\u2713 ";
+  el.innerHTML = '<span class="toast-icon">' + icon + "</span>" + escHtml(msg);
+  el.className = "toast toast-" + (type || "info") + " show";
+  setTimeout(() => el.classList.remove("show"), 3000);
 }
-
-function badgeClass(result) {
-  return 'badge badge-' + result.toLowerCase();
-}
-
-function escHtml(s) {
-  const d = document.createElement('div');
-  d.textContent = s;
-  return d.innerHTML;
-}
-
-function check(val) {
-  if (val === true) return '<span style="color:var(--pass);">PRESENT</span>';
-  if (val === false) return '<span style="color:var(--fail);">MISSING</span>';
-  return '<span style="color:var(--text-dim);">N/A</span>';
-}
-
-function getCategoryMeta(cat) {
-  return CATEGORIES[cat] || { name: cat, icon: '\u{1F4C1}', desc: '', color: '#666', priority: 99 };
-}
-
-function updateTimestamp() {
-  lastUpdated = new Date();
-  const el = document.getElementById('last-updated');
-  if (el) {
-    el.textContent = 'Last updated: ' + lastUpdated.toLocaleTimeString();
-  }
-}
-
-// ============================================================
-// Animated number counting
-// ============================================================
 
 function animateValue(el, start, end, duration) {
-  if (start === end) { el.textContent = end; return; }
+  if (start === end) {
+    el.textContent = end;
+    return;
+  }
   const startTime = performance.now();
   function step(now) {
-    const elapsed = now - startTime;
-    const progress = Math.min(elapsed / duration, 1);
-    // Ease-out quad
+    const progress = Math.min((now - startTime) / duration, 1);
     const eased = 1 - (1 - progress) * (1 - progress);
-    const current = Math.round(start + (end - start) * eased);
-    el.textContent = current;
+    el.textContent = Math.round(start + (end - start) * eased);
     if (progress < 1) requestAnimationFrame(step);
   }
   requestAnimationFrame(step);
 }
 
-// ============================================================
-// Severity badge
-// ============================================================
+function updateTimestamp() {
+  lastUpdated = new Date();
+  const el = document.getElementById("last-updated");
+  if (el) el.textContent = "Last updated: " + lastUpdated.toLocaleTimeString();
+}
+
+function formatDateTime(value) {
+  if (!value) return "Not run yet";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+}
+
+function formatDuration(value) {
+  if (value == null) return "n/a";
+  if (value < 1000) return value + "ms";
+  return (value / 1000).toFixed(2) + "s";
+}
+
+function getCategoryMeta(category) {
+  return CATEGORIES[category] || { name: category, icon: "\u{1F4C1}", desc: "", color: "#666", priority: 99 };
+}
+
+function stateBadge(state) {
+  const meta = STATE_META[state] || STATE_META.idle;
+  return '<span class="state-badge ' + meta.cls + '">' + escHtml(meta.label) + "</span>";
+}
 
 function severityBadge(severity) {
-  if (!severity) return '';
-  const s = severity.toLowerCase();
-  const cfg = SEVERITY_COLORS[s];
-  if (!cfg) return '<span class="severity-badge" style="background:#555;color:#fff;">' + escHtml(severity) + '</span>';
-  const pulseClass = cfg.pulse ? ' severity-pulse' : '';
-  return '<span class="severity-badge' + pulseClass + '" style="background:' + cfg.bg + ';color:' + cfg.text + ';">' + escHtml(s) + '</span>';
+  if (!severity) return "";
+  return '<span class="severity-badge severity-' + escHtml(severity) + '">' + escHtml(severity) + "</span>";
 }
 
-// ============================================================
-// Rendering
-// ============================================================
+function resultBadge(result) {
+  if (!result) return stateBadge("idle");
+  const cls = result === "PASS" ? "badge-pass" : result === "FAIL" ? "badge-fail" : "badge-warn";
+  return '<span class="badge ' + cls + '">' + escHtml(result) + "</span>";
+}
 
-function renderTests() {
-  const list = document.getElementById('test-list');
-  const count = document.getElementById('test-count');
-  count.textContent = tests.length + ' tests';
+function verdictLabel(verdict) {
+  if (!verdict) return "Inconclusive";
+  return verdict.replace(/_/g, " ");
+}
 
-  const byCategory = {};
-  tests.forEach(t => {
-    if (!byCategory[t.category]) byCategory[t.category] = [];
-    byCategory[t.category].push(t);
-  });
+function verdictBadge(verdict) {
+  const cls = VERDICT_CLASS[verdict] || "badge-category";
+  return '<span class="badge ' + cls + '">' + escHtml(verdictLabel(verdict)) + "</span>";
+}
 
-  // Sort categories by priority
-  const sortedCategories = Object.keys(byCategory).sort((a, b) => {
-    return getCategoryMeta(a).priority - getCategoryMeta(b).priority;
-  });
+function getRunsForBaseTest(testId) {
+  if (!assessment || !assessment.tests) return [];
+  return assessment.tests.filter((run) => run.testId === testId || run.testId.startsWith(testId + "-"));
+}
 
-  let html = '';
-  for (const cat of sortedCategories) {
-    const catTests = byCategory[cat];
-    const meta = getCategoryMeta(cat);
-
-    // Category mini-summary
-    const catResults = catTests.filter(t => results[t.id]);
-    const catPass = catResults.filter(t => results[t.id].result === 'PASS').length;
-    const catTotal = catResults.length;
-    const summaryText = catTotal > 0 ? catPass + '/' + catTotal + ' passed' : 'no results';
-
-    html += '<div class="category-header" style="background:' + meta.color + '12;border-left:3px solid ' + meta.color + ';">';
-    html += '  <div class="category-header-left">';
-    html += '    <span class="category-icon">' + meta.icon + '</span>';
-    html += '    <div class="category-info">';
-    html += '      <span class="category-name">' + escHtml(meta.name) + '</span>';
-    html += '      <span class="category-desc">' + escHtml(meta.desc) + '</span>';
-    html += '    </div>';
-    html += '  </div>';
-    html += '  <div class="category-summary" style="color:' + meta.color + ';">' + summaryText + '</div>';
-    html += '</div>';
-
-    catTests.forEach(t => {
-      const r = results[t.id];
-      const badge = r ? '<span class="' + badgeClass(r.result) + '">' + r.result + '</span>' : '';
-      const duration = r ? '<span style="font-size:0.75rem;color:var(--text-dim);">' + r.durationMs + 'ms</span>' : '';
-      const sevBadge = severityBadge(t.severity);
-
-      html += '<div class="test-row" id="row-' + t.id + '">';
-      html += '  <div class="test-info">';
-      html += '    <div class="test-name">' + sevBadge + ' ' + escHtml(t.name) + '</div>';
-      html += '    <div class="test-meta">' + escHtml(t.purpose) + '</div>';
-      html += '  </div>';
-      html += '  <div class="test-actions">';
-      html += '    ' + badge + ' ' + duration;
-      html += '    <button class="btn btn-sm btn-primary" id="btn-' + t.id + '" onclick="runTest(\'' + t.id + '\')">Run</button>';
-      if (r) html += '    <button class="btn btn-sm" onclick="toggleDetail(\'' + t.id + '\')">Detail</button>';
-      html += '  </div>';
-      html += '</div>';
-      if (r) {
-        html += '<div class="result-panel" id="detail-' + t.id + '">';
-        html += renderResultDetail(r);
-        html += '</div>';
-      }
-    });
+function aggregateBaseState(test) {
+  if (localStateOverrides[test.id]) return localStateOverrides[test.id];
+  const runs = getRunsForBaseTest(test.id);
+  const execution = test.execution || {};
+  if (!runs.length) {
+    return {
+      state: test.state || "idle",
+      result: null,
+      durationMs: execution.durationMs,
+      lastRunAt: execution.lastRunAt,
+      attemptCount: execution.attemptCount || 0,
+      runs: [],
+    };
   }
 
-  list.innerHTML = html;
-  renderCategorySummary();
+  const latestRun = [...runs].sort((a, b) => (b.execution?.lastRunAt || b.timestamp || "").localeCompare(a.execution?.lastRunAt || a.timestamp || ""))[0];
+  const result = runs.some((run) => run.result === "FAIL") ? "FAIL" : runs.some((run) => run.result === "WARN") ? "WARN" : "PASS";
+  const state = runs.some((run) => (run.execution?.state || run.state) === "failed") ? "failed"
+    : runs.some((run) => (run.execution?.state || run.state) === "blocked") ? "blocked"
+    : runs.some((run) => (run.execution?.state || run.state) === "error") ? "error"
+    : runs.some((run) => (run.execution?.state || run.state) === "timeout") ? "timeout"
+    : runs.some((run) => (run.execution?.state || run.state) === "running") ? "running"
+    : runs.some((run) => (run.execution?.state || run.state) === "queued") ? "queued"
+    : latestRun.execution?.state || latestRun.state || "stale";
+
+  return {
+    state,
+    result,
+    durationMs: runs.reduce((sum, run) => sum + (run.durationMs || 0), 0),
+    lastRunAt: latestRun.execution?.lastRunAt || latestRun.timestamp,
+    attemptCount: Math.max(...runs.map((run) => (run.execution?.attemptCount || 1)), execution.attemptCount || 0),
+    runs,
+  };
 }
 
-function renderResultDetail(r) {
-  const p = r.parsedFields || {};
-  const h = p.receiptHealth || {};
-  let html = '';
-
-  // Color-coded header bar
-  const headerColor = r.result === 'PASS' ? 'linear-gradient(90deg, #00c853, #00e676)'
-    : r.result === 'FAIL' ? 'linear-gradient(90deg, #ff1744, #ff5252)'
-    : 'linear-gradient(90deg, #ffab00, #ffd740)';
-
-  html += '<div class="detail-color-bar" style="background:' + headerColor + ';"></div>';
-
-  // Header
-  html += '<div class="detail-header">';
-  html += '  <div class="detail-title">' + escHtml(r.testName) + '</div>';
-  html += '  <span class="' + badgeClass(r.result) + '" style="font-size:0.85rem;">' + r.result + '</span>';
-  html += '</div>';
-
-  // Core info grid
-  html += '<div class="detail-grid">';
-  html += detailCell('HTTP Status', p.httpStatus);
-  html += detailCell('Blocked', p.gatewayBlock ? 'true' : 'false');
-  html += detailCell('Reason', p.gatewayReason || '-');
-  html += detailCell('Model', p.model || '-');
-  html += detailCell('Provider', p.provider || '-');
-  html += detailCell('Receipt ID', p.receiptId ? p.receiptId.slice(0, 12) + '...' : '-');
-  html += detailCell('Tier', p.tier || '-');
-  html += detailCell('Response Length', r.rawResponseSnippet ? r.rawResponseSnippet.length + ' chars' : '-');
-  html += detailCell('Duration', r.durationMs + 'ms');
-  html += '</div>';
-
-  // Explanation
-  html += '<div class="detail-section">';
-  html += '  <div class="detail-section-title">Explanation</div>';
-  html += '  <div class="detail-explanation">' + escHtml(r.observedBehavior) + '</div>';
-  html += '</div>';
-
-  // Receipt Health
-  html += '<div class="detail-section">';
-  html += '  <div class="detail-section-title">Receipt Health</div>';
-  html += '  <table class="fields-table">';
-  html += '    <tr><th>Field</th><th>Status</th></tr>';
-  html += '    <tr><td>receipt_id</td><td>' + check(h.receiptId) + '</td></tr>';
-  html += '    <tr><td>provider</td><td>' + check(h.provider) + '</td></tr>';
-  html += '    <tr><td>model</td><td>' + check(h.model) + '</td></tr>';
-  html += '    <tr><td>blocked (when expected)</td><td>' + check(h.blocked) + '</td></tr>';
-  html += '    <tr><td>reason (when blocked)</td><td>' + check(h.reason) + '</td></tr>';
-  html += '  </table>';
-  html += '</div>';
-
-  // Suggestions
-  if (r.suggestedImprovements && r.suggestedImprovements.length) {
-    html += '<div class="detail-section">';
-    html += '  <div class="detail-section-title">Suggestions</div>';
-    html += '  <div class="detail-suggestions">';
-    r.suggestedImprovements.forEach(s => { html += '<div class="suggestion-item">\u26A0 ' + escHtml(s) + '</div>'; });
-    html += '  </div>';
-    html += '</div>';
-  }
-
-  // Raw Response (expandable) with copy button
-  html += '<div class="detail-section">';
-  html += '  <div class="detail-section-title raw-toggle" style="cursor:pointer;" onclick="this.nextElementSibling.classList.toggle(\'open\')">';
-  html += '    Raw Response (click to expand)';
-  html += '  </div>';
-  html += '  <div class="raw-response-wrapper raw-collapsed">';
-  html += '    <button class="btn btn-sm copy-btn" onclick="copyRaw(this)">Copy</button>';
-  html += '    <pre class="raw-response">' + escHtml(r.rawResponseSnippet || '(empty)') + '</pre>';
-  html += '  </div>';
-  html += '</div>';
-
-  return html;
-}
-
-function detailCell(label, value) {
-  return '<div class="detail-cell">'
-    + '<div class="detail-cell-label">' + label + '</div>'
-    + '<div class="detail-cell-value">' + escHtml(String(value)) + '</div>'
-    + '</div>';
-}
-
-function toggleDetail(id) {
-  const el = document.getElementById('detail-' + id);
-  if (el) el.classList.toggle('open');
-}
-
-function copyRaw(btn) {
-  const pre = btn.nextElementSibling;
-  if (!pre) return;
-  navigator.clipboard.writeText(pre.textContent).then(() => {
-    btn.textContent = 'Copied!';
-    setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
-  });
-}
-
-function updateStats(data) {
+function updateStats(summary) {
   const fields = [
-    { id: 'stat-total', key: 'total' },
-    { id: 'stat-pass',  key: 'pass' },
-    { id: 'stat-fail',  key: 'fail' },
-    { id: 'stat-warn',  key: 'warn' },
+    { id: "stat-total", key: "total" },
+    { id: "stat-pass", key: "pass" },
+    { id: "stat-fail", key: "fail" },
+    { id: "stat-warn", key: "warn" },
   ];
-  fields.forEach(f => {
-    const el = document.getElementById(f.id);
+
+  fields.forEach((field) => {
+    const el = document.getElementById(field.id);
     if (!el) return;
     const prev = parseInt(el.textContent, 10) || 0;
-    const next = data[f.key] || 0;
-    animateValue(el, prev, next, 500);
+    animateValue(el, prev, summary[field.key] || 0, 500);
   });
   updateTimestamp();
 }
 
-// ============================================================
-// Category Summary Bar
-// ============================================================
-
 function renderCategorySummary() {
-  let container = document.getElementById('category-summary');
+  let container = document.getElementById("category-summary");
   if (!container) {
-    // Create it after stats if it doesn't exist
-    const statsEl = document.querySelector('.stats');
+    const statsEl = document.querySelector(".stats");
     if (!statsEl) return;
-    container = document.createElement('div');
-    container.id = 'category-summary';
-    container.className = 'category-summary-bar';
+    container = document.createElement("div");
+    container.id = "category-summary";
+    container.className = "category-summary-bar";
     statsEl.parentNode.insertBefore(container, statsEl.nextSibling);
   }
 
-  const byCategory = {};
-  tests.forEach(t => {
-    if (!byCategory[t.category]) byCategory[t.category] = { pass: 0, fail: 0, warn: 0, total: 0 };
+  const suitesByCategory = {};
+  (assessment && assessment.suites ? assessment.suites : []).forEach((suite) => {
+    suitesByCategory[suite.category] = suite;
   });
 
-  // Count results per category
-  tests.forEach(t => {
-    const r = results[t.id];
-    if (!r) return;
-    const bucket = byCategory[t.category];
-    if (!bucket) return;
-    bucket.total++;
-    if (r.result === 'PASS') bucket.pass++;
-    else if (r.result === 'FAIL') bucket.fail++;
-    else if (r.result === 'WARN') bucket.warn++;
-  });
+  const html = Object.keys(CATEGORIES)
+    .sort((a, b) => getCategoryMeta(a).priority - getCategoryMeta(b).priority)
+    .map((category) => {
+      const meta = getCategoryMeta(category);
+      const suite = suitesByCategory[category];
+      if (!suite) {
+        return '<div class="summary-bar-item"><div class="summary-bar-label">' + meta.icon + " " + escHtml(meta.name) + '</div><div class="summary-bar-track"><div class="summary-bar-empty">No active target data</div></div></div>';
+      }
+      return [
+        '<div class="summary-bar-item">',
+        '  <div class="summary-bar-label">' + meta.icon + " " + escHtml(meta.name) + "</div>",
+        '  <div class="suite-state-inline">' + stateBadge(suite.state) + "</div>",
+        '  <div class="summary-bar-nums">' + suite.counts.passed + " pass / " + suite.counts.failed + " fail / " + suite.counts.stale + " stale</div>",
+        "</div>",
+      ].join("");
+    })
+    .join("");
 
-  // Sort by priority
-  const sortedCats = Object.keys(byCategory).sort((a, b) => {
-    return getCategoryMeta(a).priority - getCategoryMeta(b).priority;
-  });
-
-  let html = '<div class="summary-bar-title">Category Overview</div>';
-  html += '<div class="summary-bar-grid">';
-
-  sortedCats.forEach(cat => {
-    const meta = getCategoryMeta(cat);
-    const b = byCategory[cat];
-    if (b.total === 0) {
-      html += '<div class="summary-bar-item">';
-      html += '  <div class="summary-bar-label">' + meta.icon + ' ' + escHtml(meta.name) + '</div>';
-      html += '  <div class="summary-bar-track"><div class="summary-bar-empty">no data</div></div>';
-      html += '</div>';
-      return;
-    }
-    const passPct = Math.round((b.pass / b.total) * 100);
-    const failPct = Math.round((b.fail / b.total) * 100);
-    const warnPct = 100 - passPct - failPct;
-
-    html += '<div class="summary-bar-item">';
-    html += '  <div class="summary-bar-label">' + meta.icon + ' ' + escHtml(meta.name) + '</div>';
-    html += '  <div class="summary-bar-track">';
-    if (b.pass > 0) html += '<div class="summary-bar-fill pass-fill" style="width:' + passPct + '%;"></div>';
-    if (b.warn > 0) html += '<div class="summary-bar-fill warn-fill" style="width:' + warnPct + '%;"></div>';
-    if (b.fail > 0) html += '<div class="summary-bar-fill fail-fill" style="width:' + failPct + '%;"></div>';
-    html += '  </div>';
-    html += '  <div class="summary-bar-nums">' + b.pass + 'P / ' + b.fail + 'F / ' + b.warn + 'W</div>';
-    html += '</div>';
-  });
-
-  html += '</div>';
-  container.innerHTML = html;
+  container.innerHTML = '<div class="summary-bar-title">Category Overview</div><div class="summary-bar-grid">' + html + "</div>";
 }
 
-// ============================================================
-// Data loading
-// ============================================================
-
-async function loadTests() {
-  const data = await api('/tests');
-  tests = data.tests || [];
-  renderTests();
-  updateTimestamp();
-}
-
-async function loadSummary() {
-  const data = await api('/reports/summary');
-  updateStats(data);
-  if (data.results) {
-    data.results.forEach(r => { results[r.testId] = r; });
+function renderRiskSummary() {
+  const el = document.getElementById("risk-summary");
+  if (!el) return;
+  if (!assessment) {
+    el.innerHTML = '<div class="empty-state">No active target data.</div>';
+    return;
   }
-  // Load full reports for detail panels
-  const full = await api('/reports/latest');
-  if (full.reports) {
-    full.reports.forEach(r => { results[r.testId] = r; });
-  }
-  renderTests();
-  updateTimestamp();
+
+  const risk = assessment.riskSummary;
+  el.innerHTML = [
+    '<div class="risk-grid">',
+    '  <div class="risk-verdict">' + verdictBadge(assessment.verdict) + "</div>",
+    '  <div class="risk-item"><span class="risk-label">Highest Severity</span><span class="risk-value">' + escHtml(risk.highestSeverityObserved) + "</span></div>",
+    '  <div class="risk-item"><span class="risk-label">Exploitable Findings</span><span class="risk-value">' + escHtml(risk.exploitableFindingsCount) + "</span></div>",
+    '  <div class="risk-item"><span class="risk-label">Public Exposure</span><span class="risk-value">' + escHtml(risk.publicExposureFindingsCount) + "</span></div>",
+    '  <div class="risk-item"><span class="risk-label">Child Safety Failures</span><span class="risk-value critical-value">' + escHtml(risk.childSafetyFailuresCount) + "</span></div>",
+    '  <div class="risk-first-fix"><span class="risk-label">Recommended First Fix</span><span class="risk-text">' + escHtml(risk.recommendedFirstFix) + "</span></div>",
+    "</div>",
+  ].join("");
 }
 
-// ============================================================
-// Actions
-// ============================================================
+function renderOperatorSummary() {
+  const el = document.getElementById("operator-summary");
+  if (!el) return;
+  if (!assessment || !assessment.operatorSummary) {
+    el.innerHTML = '<div class="empty-state">No active target data.</div>';
+    return;
+  }
+  const summary = assessment.operatorSummary;
+  el.innerHTML = [
+    '<div class="risk-grid">',
+    '  <div class="risk-verdict">' + verdictBadge(summary.overallVerdict) + '<span class="risk-text">Critical findings ' + summary.criticalFindingsCount + ' | regressions ' + summary.newRegressionsCount + '</span></div>',
+    '  <div class="risk-item"><span class="risk-label">Highest Severity</span><span class="risk-value">' + escHtml(summary.highestSeverity) + "</span></div>",
+    '  <div class="risk-item"><span class="risk-label">Public Exposure</span><span class="risk-value">' + escHtml(summary.publicExposureCount) + "</span></div>",
+    '  <div class="risk-item"><span class="risk-label">Child Safety Failures</span><span class="risk-value critical-value">' + escHtml(summary.childSafetyFailuresCount) + "</span></div>",
+    '  <div class="risk-item"><span class="risk-label">Run Duration</span><span class="risk-value">' + escHtml(formatDuration(assessment.metrics.totalRunDurationMs)) + "</span></div>",
+    '  <div class="risk-first-fix"><span class="risk-label">Trust Signals</span><span class="risk-text">' + escHtml((summary.trustSignals || []).join(", ") || "none") + "</span></div>",
+    '  <div class="risk-first-fix"><span class="risk-label">Recommended First Fix</span><span class="risk-text">' + escHtml(summary.recommendedFirstFix) + "</span></div>",
+    '  <div class="risk-first-fix"><span class="risk-label">Key Evidence Highlights</span><span class="risk-text">' + escHtml((summary.keyEvidenceHighlights || []).join(" | ") || "No highlighted evidence.") + "</span></div>",
+    '  <div class="risk-first-fix"><span class="risk-label">Exports</span><span class="risk-text">' + summary.exportActions.map((action) => '<a href="' + escHtml(action.path) + '" target="_blank" rel="noreferrer">' + escHtml(action.label) + "</a>").join(" | ") + "</span></div>",
+    "</div>",
+  ].join("");
+}
+
+function renderScreenshotSummary() {
+  const el = document.getElementById("screenshot-summary");
+  if (!el) return;
+  if (!assessment) {
+    el.innerHTML = '<div class="empty-state">No active target data.</div>';
+    return;
+  }
+  el.innerHTML = [
+    '<div class="comparison-grid">',
+    '  <div class="comparison-item"><span class="risk-label">Target</span><span class="risk-text">' + escHtml((assessment.targetName || assessment.target) + " :: " + (assessment.targetFingerprint && assessment.targetFingerprint.baseUrl || "n/a")) + "</span></div>",
+    '  <div class="comparison-item"><span class="risk-label">Overall Verdict</span><span class="risk-text">' + verdictBadge(assessment.verdict) + "</span></div>",
+    '  <div class="comparison-item"><span class="risk-label">Critical Findings</span><span class="risk-value">' + assessment.metrics.criticalFindingsCount + "</span></div>",
+    '  <div class="comparison-item"><span class="risk-label">Regressions</span><span class="risk-value critical-value">' + assessment.metrics.newRegressionsCount + "</span></div>",
+    '  <div class="comparison-item"><span class="risk-label">Public Exposure</span><span class="risk-value">' + assessment.metrics.publicExposureCount + "</span></div>",
+    '  <div class="comparison-item"><span class="risk-label">Child Safety Failures</span><span class="risk-value critical-value">' + assessment.metrics.childSafetyFailuresCount + "</span></div>",
+    '  <div class="comparison-item"><span class="risk-label">Integrity / Comparability</span><span class="risk-text">' + escHtml((assessment.integrity && assessment.integrity.status || "n/a") + " | " + (assessment.comparison.comparabilityWarning || "comparable")) + "</span></div>",
+    "</div>",
+  ].join("");
+}
+
+function renderGateSummary() {
+  const el = document.getElementById("gate-summary");
+  if (!el) return;
+  if (!assessment || !assessment.gates) {
+    el.innerHTML = '<div class="empty-state">No active target data.</div>';
+    return;
+  }
+
+  el.innerHTML = assessment.gates.map((gate) => [
+    '<div class="gate-card gate-' + escHtml(gate.status) + '">',
+    '  <div class="gate-header-line"><span class="gate-title-text">' + escHtml(gate.title) + '</span><span class="state-badge state-' + escHtml(gate.status === "pass" ? "passed" : gate.status === "fail" ? "failed" : "stale") + '">' + escHtml(gate.status.toUpperCase()) + "</span></div>",
+    '  <div class="gate-copy">' + escHtml(gate.explanation) + "</div>",
+    '  <div class="gate-counts">pass ' + gate.counts.passed + " / fail " + gate.counts.failed + " / warn " + gate.counts.warned + " / not run " + gate.counts.notRun + "</div>",
+    "</div>",
+  ].join("")).join("");
+}
+
+function sortedFindings() {
+  const findings = assessment && assessment.findings ? [...assessment.findings] : [];
+  if (findingSort === "exploitability") {
+    return findings.sort((a, b) => {
+      const delta = (EXPLOITABILITY_ORDER[b.exploitability] || 0) - (EXPLOITABILITY_ORDER[a.exploitability] || 0);
+      if (delta !== 0) return delta;
+      return (SEVERITY_ORDER[b.severity] || 0) - (SEVERITY_ORDER[a.severity] || 0);
+    });
+  }
+  if (findingSort === "recency") {
+    return findings.sort((a, b) => (b.last_seen_at || "").localeCompare(a.last_seen_at || ""));
+  }
+  return findings.sort((a, b) => {
+    const delta = (SEVERITY_ORDER[b.severity] || 0) - (SEVERITY_ORDER[a.severity] || 0);
+    if (delta !== 0) return delta;
+    return (EXPLOITABILITY_ORDER[b.exploitability] || 0) - (EXPLOITABILITY_ORDER[a.exploitability] || 0);
+  });
+}
+
+function renderFindings() {
+  const el = document.getElementById("findings-panel");
+  if (!el) return;
+  const findings = sortedFindings();
+  if (!findings.length) {
+    el.innerHTML = '<div class="empty-state">No findings in the latest target assessment.</div>';
+    return;
+  }
+
+  const rows = findings.map((finding) => [
+    "<tr>",
+    "  <td>" + severityBadge(finding.severity) + " " + escHtml(finding.title) + "</td>",
+    "  <td>" + verdictBadge(finding.verdict || "concern") + '<div class="finding-confidence">' + escHtml("lifecycle " + finding.lifecycle + " | workflow " + (finding.workflow_state || "detected")) + "</div></td>",
+    "  <td>" + escHtml(getCategoryMeta(finding.category).name) + "</td>",
+    "  <td>" + escHtml(finding.exploitability) + "</td>",
+    "  <td>" + escHtml(finding.target) + "</td>",
+    "  <td>" + escHtml(formatDateTime(finding.last_seen_at)) + "</td>",
+    "  <td>" + escHtml(finding.evidence_snapshot.attackSummary + " | " + finding.evidence_snapshot.responseSummary) + "<div class=\"finding-confidence\">confidence " + escHtml(finding.confidence + " :: " + finding.confidence_reason) + "</div></td>",
+    "</tr>",
+  ].join("")).join("");
+
+  el.innerHTML = [
+    '<table class="fields-table findings-table">',
+    "  <tr><th>Finding</th><th>Verdict / Workflow</th><th>Category</th><th>Exploitability</th><th>Target</th><th>Last Seen</th><th>Evidence Snapshot</th></tr>",
+    rows,
+    "</table>",
+  ].join("");
+}
+
+function renderRunComparison() {
+  const el = document.getElementById("run-comparison");
+  if (!el) return;
+  if (!assessment) {
+    el.innerHTML = '<div class="empty-state">No active target data.</div>';
+    return;
+  }
+  const comparison = assessment.comparison;
+  el.innerHTML = [
+    '<div class="comparison-grid">',
+    '  <div class="comparison-item"><span class="risk-label">Previous Comparable Run</span><span class="risk-text">' + escHtml(comparison.previousRunAt ? formatDateTime(comparison.previousRunAt) : "No prior run on this target") + "</span></div>",
+    '  <div class="comparison-item"><span class="risk-label">New Findings</span><span class="risk-value">' + comparison.newFindings.length + "</span></div>",
+    '  <div class="comparison-item"><span class="risk-label">Recurring Findings</span><span class="risk-value">' + comparison.recurringFindings.length + "</span></div>",
+    '  <div class="comparison-item"><span class="risk-label">Resolved Findings</span><span class="risk-value">' + comparison.resolvedFindings.length + "</span></div>",
+    '  <div class="comparison-item"><span class="risk-label">Regressed Findings</span><span class="risk-value">' + comparison.regressedFindings.length + "</span></div>",
+    '  <div class="comparison-item"><span class="risk-label">Unchanged Findings</span><span class="risk-value">' + comparison.unchangedFindings.length + "</span></div>",
+    '  <div class="comparison-item"><span class="risk-label">Not Directly Comparable</span><span class="risk-value">' + comparison.notComparableFindings.length + "</span></div>",
+    '  <div class="comparison-item"><span class="risk-label">Fingerprint Comparability</span><span class="risk-text">' + escHtml(comparison.comparabilityWarning || "Fingerprint stable across comparable runs.") + "</span></div>",
+    '  <div class="comparison-item"><span class="risk-label">Audit Integrity</span><span class="risk-text">' + escHtml((assessment.integrity && (assessment.integrity.status + (assessment.integrity.warning ? " :: " + assessment.integrity.warning : ""))) || "n/a") + "</span></div>",
+    "</div>",
+  ].join("");
+}
+
+function detailCell(label, value) {
+  return '<div class="detail-cell"><div class="detail-cell-label">' + escHtml(label) + '</div><div class="detail-cell-value">' + escHtml(value) + "</div></div>";
+}
+
+function renderTimeline(events) {
+  if (!events || !events.length) return '<div class="empty-state">No evidence timeline recorded.</div>';
+  return '<div class="timeline">' + events.map((event) => [
+    '<div class="timeline-item">',
+    '  <div class="timeline-head"><span class="timeline-title">' + escHtml(event.title) + '</span><span class="timeline-time">' + escHtml(formatDateTime(event.timestamp)) + "</span></div>",
+    '  <div class="timeline-phase">' + escHtml(event.phase) + "</div>",
+    '  <div class="timeline-detail">' + escHtml(event.detail) + "</div>",
+    "</div>",
+  ].join("")).join("") + "</div>";
+}
+
+function renderRunArtifact(run, index) {
+  const request = run.request || {};
+  const response = run.response || {};
+  const rules = run.evaluatorRules || [];
+  const evidence = run.evidence || [];
+  const remediation = run.remediationGuidance || run.suggestedImprovements || [];
+  const comparison = run.priorRunComparison;
+  const fingerprint = run.targetFingerprint || assessment.targetFingerprint;
+
+  return [
+    '<div class="detail-run">',
+    '  <div class="detail-header"><div class="detail-title">' + escHtml(run.testName || ("Run " + (index + 1))) + '</div>' + stateBadge(run.execution?.state || run.state || "idle") + " " + verdictBadge(run.normalizedVerdict || "inconclusive") + "</div>",
+    '  <div class="detail-grid">',
+    detailCell("State", STATE_META[run.execution?.state || run.state || "idle"].label),
+    detailCell("Last Run", formatDateTime(run.execution?.lastRunAt || run.timestamp)),
+    detailCell("Duration", formatDuration(run.durationMs)),
+    detailCell("Attempts", String(run.execution?.attemptCount || 1)),
+    detailCell("HTTP Status", String(run.parsedFields?.httpStatus || response.status || "n/a")),
+    detailCell("Provider", run.transparency?.provider || run.parsedFields?.provider || "-"),
+    detailCell("Model", run.transparency?.model || run.parsedFields?.model || run.parsedFields?.activeModel || "-"),
+    detailCell("Receipt ID", run.transparency?.receiptId || run.parsedFields?.receiptId || "-"),
+    detailCell("Token Counts", (run.transparency?.tokensIn || 0) + " in / " + (run.transparency?.tokensOut || 0) + " out"),
+    detailCell("Estimated Cost", run.transparency?.estimatedCostUsd != null ? "$" + run.transparency.estimatedCostUsd.toFixed(4) : "n/a"),
+    detailCell("Gateway Signal", run.transparency?.gatewayBlocked ? (run.transparency.gatewayReason || "blocked") : "none"),
+    detailCell("Latency", formatDuration(run.transparency?.latencyMs || run.durationMs)),
+    "  </div>",
+    '  <div class="detail-section"><div class="detail-section-title">Confidence Reasoning</div><div class="detail-explanation">' + escHtml((run.confidenceReason && run.confidenceReason.explanation) || "No confidence explanation recorded.") + "</div></div>",
+    '  <div class="detail-section"><div class="detail-section-title">Evidence Snapshot</div><div class="detail-explanation">' + escHtml(run.evidenceSnapshot ? (run.evidenceSnapshot.attackSummary + " | " + run.evidenceSnapshot.responseSummary + " | " + run.evidenceSnapshot.evaluatorSummary + " | " + run.evidenceSnapshot.confidenceSummary + " | " + run.evidenceSnapshot.whyItMatters) : "No compact evidence snapshot recorded.") + "</div></div>",
+    '  <div class="detail-section"><div class="detail-section-title">Target Fingerprint</div><div class="detail-explanation">' + escHtml(fingerprint ? (fingerprint.targetName + " :: " + fingerprint.baseUrl + " :: signature " + fingerprint.signature + " :: " + fingerprint.authPostureSummary) : "No target fingerprint captured.") + "</div></div>",
+    '  <div class="detail-section"><div class="detail-section-title">Threat Intent</div><div class="detail-explanation">' + escHtml(run.threatProfile?.intent || run.purpose) + "</div></div>",
+    '  <div class="detail-section"><div class="detail-section-title">Why This Test Exists</div><div class="detail-explanation">' + escHtml(run.threatProfile?.whyThisExists || run.purpose) + "</div></div>",
+    '  <div class="detail-section"><div class="detail-section-title">Expected Safe Behavior</div><div class="detail-explanation">' + escHtml(run.threatProfile?.expectedSafeBehavior || run.expectedBehavior) + "</div></div>",
+    '  <div class="detail-section"><div class="detail-section-title">Failure Criteria</div><div class="detail-explanation">' + escHtml((run.threatProfile?.failureCriteria || []).join("; ") || "No explicit failure criteria recorded.") + "</div></div>",
+    '  <div class="detail-section"><div class="detail-section-title">Exact Request Sent</div><pre class="raw-response">' + escHtml(JSON.stringify(request, null, 2)) + "</pre></div>",
+    '  <div class="detail-section"><div class="detail-section-title">Normalized Response Received</div><pre class="raw-response">' + escHtml(typeof response.normalizedData === "string" ? response.normalizedData : JSON.stringify(response.normalizedData != null ? response.normalizedData : response.normalizedText || response.rawText || "", null, 2)) + "</pre></div>",
+    '  <div class="detail-section"><div class="detail-section-title">Evaluator Rules Triggered</div><div class="detail-suggestions">' + (rules.length ? rules.map((rule) => '<div class="suggestion-item">' + escHtml((rule.outcome || "").toUpperCase() + " :: " + rule.id + "@" + (rule.version || "1.0.0") + " :: " + (rule.family || "general") + " :: " + (rule.conditionSummary || rule.message) + (rule.matchedPattern ? " :: matched " + rule.matchedPattern : "")) + "</div>").join("") : '<div class="suggestion-item">No evaluator rules recorded.</div>') + "</div></div>",
+    '  <div class="detail-section"><div class="detail-section-title">Evidence Extracted</div><div class="detail-suggestions">' + (evidence.length ? evidence.map((item) => '<div class="suggestion-item">' + escHtml(item.label + ": " + item.value) + "</div>").join("") : '<div class="suggestion-item">No evidence extracted.</div>') + "</div></div>",
+    '  <div class="detail-section"><div class="detail-section-title">Remediation Guidance</div><div class="detail-suggestions">' + (run.remediationBlock ? [
+      '<div class="suggestion-item">Change: ' + escHtml(run.remediationBlock.whatToChange) + '</div>',
+      '<div class="suggestion-item">Why: ' + escHtml(run.remediationBlock.whyItMatters) + '</div>',
+      '<div class="suggestion-item">Attacker Benefit If Unfixed: ' + escHtml(run.remediationBlock.attackerBenefitIfUnfixed) + '</div>',
+      '<div class="suggestion-item">Retest: ' + escHtml(run.remediationBlock.retestSuggestion) + '</div>',
+    ].join("") : (remediation.length ? remediation.map((item) => '<div class="suggestion-item">' + escHtml(item) + "</div>").join("") : '<div class="suggestion-item">No remediation guidance recorded.</div>')) + "</div></div>",
+    '  <div class="detail-section"><div class="detail-section-title">Suppression / Workflow</div><div class="detail-explanation">' + escHtml(run.priorRunComparison && run.priorRunComparison.verdict === "not_comparable" ? "Run marked not directly comparable to prior fingerprint." : "Workflow metadata is tracked at the finding level.") + "</div></div>",
+    '  <div class="detail-section"><div class="detail-section-title">Prior Run Comparison</div><div class="detail-explanation">' + escHtml(comparison ? comparison.summary : "No prior run available for comparison.") + "</div></div>",
+    '  <div class="detail-section"><div class="detail-section-title">Run Evidence Timeline</div>' + renderTimeline(run.transparency && run.transparency.timeline) + "</div>",
+    "</div>",
+  ].join("");
+}
+
+function renderTests() {
+  const list = document.getElementById("test-list");
+  const count = document.getElementById("test-count");
+  count.textContent = registryTests.length + " tests";
+
+  const testsByCategory = {};
+  registryTests.forEach((test) => {
+    if (!testsByCategory[test.category]) testsByCategory[test.category] = [];
+    testsByCategory[test.category].push(test);
+  });
+
+  const suitesByCategory = {};
+  (assessment && assessment.suites ? assessment.suites : []).forEach((suite) => { suitesByCategory[suite.category] = suite; });
+
+  const html = Object.keys(testsByCategory)
+    .sort((a, b) => getCategoryMeta(a).priority - getCategoryMeta(b).priority)
+    .map((category) => {
+      const meta = getCategoryMeta(category);
+      const suite = suitesByCategory[category];
+      const header = [
+        '<div class="category-header" style="background:' + meta.color + '12;border-left:3px solid ' + meta.color + ';">',
+        '  <div class="category-header-left">',
+        '    <span class="category-icon">' + meta.icon + "</span>",
+        '    <div class="category-info"><span class="category-name">' + escHtml(meta.name) + '</span><span class="category-desc">' + escHtml(meta.desc) + "</span></div>",
+        "  </div>",
+        '  <div class="category-summary">' + (suite ? stateBadge(suite.state) + '<span class="suite-meta-inline">' + escHtml("last run " + formatDateTime(suite.lastRunAt) + " | " + formatDuration(suite.durationMs)) + "</span>" : '<span class="suite-meta-inline">No active target data</span>') + "</div>",
+        "</div>",
+      ].join("");
+
+      const rows = testsByCategory[category].map((test) => {
+        const aggregate = aggregateBaseState(test);
+        const runMeta = [
+          "Last run " + formatDateTime(aggregate.lastRunAt),
+          "Duration " + formatDuration(aggregate.durationMs),
+          "Attempts " + (aggregate.attemptCount || 0),
+        ].join(" | ");
+
+        const detail = aggregate.runs.length
+          ? '<div class="result-panel" id="detail-' + test.id + '">' + aggregate.runs.map(renderRunArtifact).join("") + "</div>"
+          : "";
+
+        return [
+          '<div class="test-row" id="row-' + test.id + '">',
+          '  <div class="test-info">',
+          '    <div class="test-name">' + severityBadge(test.severity) + " " + escHtml(test.name) + "</div>",
+          '    <div class="test-meta">' + escHtml(test.purpose) + "</div>",
+          '    <div class="test-meta execution-meta">' + escHtml(runMeta) + "</div>",
+          "  </div>",
+          '  <div class="test-actions">',
+          "    " + stateBadge(aggregate.state),
+          "    " + (aggregate.result ? resultBadge(aggregate.result) : ""),
+          '    <button class="btn btn-sm btn-primary" id="btn-' + test.id + '" onclick="runTest(\'' + test.id + '\')">Run</button>',
+          "    " + (aggregate.runs.length ? '<button class="btn btn-sm" onclick="toggleDetail(\'' + test.id + '\')">Detail</button>' : ""),
+          "  </div>",
+          "</div>",
+          detail,
+        ].join("");
+      }).join("");
+
+      return header + rows;
+    }).join("");
+
+  list.innerHTML = html;
+}
+
+function toggleDetail(id) {
+  const el = document.getElementById("detail-" + id);
+  if (el) el.classList.toggle("open");
+}
+
+function applyLocalSuiteState(category, state) {
+  registryTests.filter((test) => category === "all" || test.category === category).forEach((test) => {
+    localStateOverrides[test.id] = {
+      state,
+      result: null,
+      durationMs: null,
+      lastRunAt: new Date().toISOString(),
+      attemptCount: (test.execution && test.execution.attemptCount) || 0,
+      runs: [],
+    };
+  });
+}
+
+async function loadTargets() {
+  targetData = await api("/targets");
+  activeTargetKey = targetData.defaultTarget || "";
+  const select = document.getElementById("target-select");
+  if (!select) return;
+  const html = Object.entries(targetData.targets || {}).map(([key, target]) => {
+    const label = target.name + " (" + target.baseUrl + ")";
+    return '<option value="' + escHtml(key) + '"' + (key === activeTargetKey ? " selected" : "") + ">" + escHtml(label) + "</option>";
+  }).join("");
+  select.innerHTML = html;
+}
+
+async function loadRegistry() {
+  const data = await api("/tests");
+  registryTests = data.tests || [];
+}
+
+async function loadAssessment() {
+  assessment = await api("/dashboard");
+}
+
+async function loadDashboard() {
+  await Promise.all([loadTargets(), loadRegistry(), loadAssessment()]);
+  updateStats(assessment ? assessment.summary : { total: 0, pass: 0, fail: 0, warn: 0 });
+  renderScreenshotSummary();
+  renderOperatorSummary();
+  renderRiskSummary();
+  renderGateSummary();
+  renderRunComparison();
+  renderFindings();
+  renderCategorySummary();
+  renderTests();
+}
+
+function loadSummary() {
+  return loadDashboard();
+}
 
 async function runTest(id) {
-  const btn = document.getElementById('btn-' + id);
-  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
-
-  toast('Running ' + id + '...');
-  try {
-    const data = await api('/tests/' + id + '/run', { method: 'POST' });
-    if (data.result) {
-      results[data.result.testId] = data.result;
-      recomputeStats();
-      toast(data.result.testName + ': ' + data.result.result, data.result.result === 'FAIL' ? 'error' : 'info');
-    }
-  } catch (err) {
-    toast('Error: ' + err.message, 'error');
+  const btn = document.getElementById("btn-" + id);
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>';
   }
-
-  if (btn) { btn.disabled = false; btn.textContent = 'Run'; }
+  localStateOverrides[id] = { state: "running", result: null, durationMs: null, lastRunAt: new Date().toISOString(), attemptCount: 0, runs: [] };
   renderTests();
+  toast("Running " + id + "...");
+  try {
+    await api("/tests/" + id + "/run", { method: "POST" });
+    delete localStateOverrides[id];
+    await loadDashboard();
+    toast("Execution complete for " + id);
+  } catch (err) {
+    localStateOverrides[id] = { state: "error", result: null, durationMs: null, lastRunAt: new Date().toISOString(), attemptCount: 0, runs: [] };
+    renderTests();
+    toast("Error: " + err.message, "error");
+  }
+  if (btn) {
+    btn.disabled = false;
+    btn.textContent = "Run";
+  }
 }
 
 async function runSuite(category) {
-  const btn = document.getElementById('run-all-btn');
-  const label = category === 'all' ? 'All Tests' : getCategoryMeta(category).name;
+  const btn = document.getElementById("run-all-btn");
   if (btn) {
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span> Running ' + escHtml(label) + '...';
-    btn.classList.add('sonar-pulse');
+    btn.innerHTML = '<span class="spinner"></span> Running...';
   }
-
-  toast('Running suite: ' + category + '...');
+  applyLocalSuiteState(category, "running");
+  renderTests();
+  toast("Running suite: " + category + "...");
   try {
-    const data = await api('/suite/' + category, { method: 'POST' });
-    if (data.results) {
-      data.results.forEach(r => { results[r.testId] = r; });
-    }
-    if (data.summary) {
-      updateStats(data.summary);
-      toast('Suite complete: ' + data.summary.pass + ' pass, ' + data.summary.fail + ' fail, ' + data.summary.warn + ' warn');
-    }
+    await api("/suite/" + category, { method: "POST" });
+    Object.keys(localStateOverrides).forEach((key) => delete localStateOverrides[key]);
+    await loadDashboard();
+    toast("Suite complete");
   } catch (err) {
-    toast('Error: ' + err.message, 'error');
+    toast("Error: " + err.message, "error");
   }
-
   if (btn) {
     btn.disabled = false;
-    btn.textContent = 'Run All Tests';
-    btn.classList.remove('sonar-pulse');
+    btn.textContent = "Run All Tests";
   }
-  renderTests();
-}
-
-function recomputeStats() {
-  const vals = Object.values(results);
-  const pass = vals.filter(r => r.result === 'PASS').length;
-  const fail = vals.filter(r => r.result === 'FAIL').length;
-  const warn = vals.filter(r => r.result === 'WARN').length;
-  updateStats({ total: vals.length, pass, fail, warn });
-}
-
-// ============================================================
-// Target Management
-// ============================================================
-
-let activeTargetKey = '';
-
-async function loadTargets() {
-  const data = await api('/targets');
-  activeTargetKey = data.defaultTarget || '';
-  const select = document.getElementById('target-select');
-  if (!select) return;
-
-  let html = '';
-  for (const [key, t] of Object.entries(data.targets || {})) {
-    const label = t.name + ' (' + t.baseUrl + ')';
-    html += '<option value="' + escHtml(key) + '"' + (key === activeTargetKey ? ' selected' : '') + '>' + escHtml(label) + '</option>';
-  }
-  select.innerHTML = html;
 }
 
 async function switchTarget(key) {
   if (!key) return;
   try {
-    await api('/targets/active', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    await api("/targets/active", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ key }),
     });
     activeTargetKey = key;
-    toast('Target switched to ' + key);
+    await loadDashboard();
+    toast("Target switched to " + key);
   } catch (err) {
-    toast('Error: ' + err.message, 'error');
+    toast("Error: " + err.message, "error");
   }
 }
 
 async function probeTarget() {
   const key = activeTargetKey;
   if (!key) return;
-
-  const btn = document.getElementById('probe-btn');
-  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
-
-  toast('Probing ' + key + '...');
-
-  try {
-    const data = await api('/targets/' + encodeURIComponent(key) + '/probe', { method: 'POST' });
-    const panel = document.getElementById('probe-panel');
-    if (!panel) return;
-
-    let html = '<div class="probe-results">';
-    html += '<span class="probe-title">' + escHtml(data.target) + ' — ' + data.reachable + '/' + data.total + ' endpoints</span>';
-
-    (data.endpoints || []).forEach(function(ep) {
-      let cls = 'probe-down';
-      if (ep.status >= 200 && ep.status < 300) cls = 'probe-up';
-      else if (ep.status === 404) cls = 'probe-404';
-      else if (ep.status > 0) cls = 'probe-up';
-
-      html += '<span class="probe-endpoint ' + cls + '">';
-      html += '<span class="probe-status">' + (ep.status || '---') + '</span> ';
-      html += escHtml(ep.label);
-      html += '</span>';
-    });
-
-    html += '<span class="probe-close" onclick="document.getElementById(\'probe-panel\').style.display=\'none\'">&times;</span>';
-    html += '</div>';
-
-    panel.innerHTML = html;
-    panel.style.display = 'block';
-    toast('Probe complete: ' + data.reachable + '/' + data.total + ' reachable');
-  } catch (err) {
-    toast('Probe error: ' + err.message, 'error');
+  const btn = document.getElementById("probe-btn");
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>';
   }
-
-  if (btn) { btn.disabled = false; btn.textContent = '\u22EF'; }
+  toast("Probing " + key + "...");
+  try {
+    const data = await api("/targets/" + encodeURIComponent(key) + "/probe", { method: "POST" });
+    const panel = document.getElementById("probe-panel");
+    const html = [
+      '<div class="probe-results">',
+      '<span class="probe-title">' + escHtml(data.target) + " — " + data.reachable + "/" + data.total + " endpoints</span>",
+      ...(data.endpoints || []).map((ep) => {
+        let cls = "probe-down";
+        if (ep.status >= 200 && ep.status < 300) cls = "probe-up";
+        else if (ep.status === 404) cls = "probe-404";
+        else if (ep.status > 0) cls = "probe-up";
+        return '<span class="probe-endpoint ' + cls + '"><span class="probe-status">' + escHtml(ep.status || "---") + "</span> " + escHtml(ep.label) + "</span>";
+      }),
+      '<span class="probe-close" onclick="document.getElementById(\'probe-panel\').style.display=\'none\'">&times;</span>',
+      "</div>",
+    ].join("");
+    panel.innerHTML = html;
+    panel.style.display = "block";
+    toast("Probe complete");
+  } catch (err) {
+    toast("Error: " + err.message, "error");
+  }
+  if (btn) {
+    btn.disabled = false;
+    btn.innerHTML = "&#8943;";
+  }
 }
 
-// ============================================================
-// Init
-// ============================================================
+function changeFindingSort(value) {
+  findingSort = value || "severity";
+  renderFindings();
+}
 
-loadTargets();
-loadTests();
-loadSummary();
+window.runTest = runTest;
+window.runSuite = runSuite;
+window.switchTarget = switchTarget;
+window.probeTarget = probeTarget;
+window.toggleDetail = toggleDetail;
+window.changeFindingSort = changeFindingSort;
+window.loadSummary = loadSummary;
+
+document.addEventListener("DOMContentLoaded", () => {
+  loadDashboard().catch((err) => toast("Dashboard load error: " + err.message, "error"));
+});

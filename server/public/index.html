@@ -96,6 +96,60 @@
 
     <!-- Category Summary (injected by JS after stats) -->
 
+    <div class="card screenshot-card">
+      <div class="card-header">
+        <div class="card-title"><span class="card-title-icon">&#128247;</span> Review Snapshot</div>
+      </div>
+      <div id="screenshot-summary"></div>
+    </div>
+
+    <div class="dashboard-grid">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><span class="card-title-icon">&#9873;</span> Operator Summary</div>
+        </div>
+        <div id="operator-summary"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><span class="card-title-icon">&#9888;</span> Risk Summary</div>
+        </div>
+        <div id="risk-summary"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><span class="card-title-icon">&#9876;</span> Readiness Gates</div>
+        </div>
+        <div id="gate-summary"></div>
+      </div>
+    </div>
+
+    <div class="dashboard-grid">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><span class="card-title-icon">&#8644;</span> Run Comparison And Integrity</div>
+        </div>
+        <div id="run-comparison"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><span class="card-title-icon">&#128202;</span> Exposure Map</div>
+          <div class="header-actions">
+            <label class="sort-label" for="finding-sort">Sort</label>
+            <select id="finding-sort" class="target-select" onchange="changeFindingSort(this.value)">
+              <option value="severity">Severity</option>
+              <option value="exploitability">Exploitability</option>
+              <option value="recency">Recency</option>
+            </select>
+          </div>
+        </div>
+        <div id="findings-panel"></div>
+      </div>
+    </div>
+
     <!-- Suite Controls / Mission Launch -->
     <div class="suite-controls">
       <div class="suite-label">Mission Suites</div>

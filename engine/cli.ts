@@ -6,7 +6,7 @@ import { loadTargets, loadTest, resolveTarget, setActiveTarget, addTarget, remov
 import { sendChat, sendRequest } from "./client";
 import { evaluate, evaluateEndpoint } from "./evaluator";
 import { generateFuzzPayloads } from "./fuzzer";
-import { writeReport, writeSuiteSummary, writeTransparencyReport } from "./reportWriter";
+import { writeAssessmentBundle, writeReport, writeSuiteSummary, writeTransparencyReport } from "./reportWriter";
 import { TestCase, TestResult, TargetConfig } from "./types";
 import { recordEntry, getLedgerSummary, getSessionLedger, computeSummary, LedgerEntry } from "./ledger";
 import { handleLearningCommand } from "../learning/cli";
@@ -263,6 +263,15 @@ function printSuiteSummary(results: TestResult[]): void {
   console.log("");
 }
 
+async function refreshAssessmentArtifacts(results?: TestResult[]): Promise<void> {
+  await writeAssessmentBundle({
+    target: activeTargetKey,
+    targetName: getTarget().name,
+    targetConfig: getTarget(),
+    results,
+  });
+}
+
 // --- Core commands (all use activeTarget instead of test.target) ---
 
 async function runSingle(testPath: string, showRaw = false): Promise<TestResult | TestResult[]> {
@@ -304,6 +313,7 @@ async function runSingle(testPath: string, showRaw = false): Promise<TestResult 
   const result = evaluate(testCase, chat);
 
   await writeReport(result);
+  await refreshAssessmentArtifacts();
   await recordResultToLedger(result, target.chatPath, "POST");
   printResult(result);
 
@@ -335,6 +345,7 @@ async function runEndpointTest(
 
   const result = evaluateEndpoint(testCase, response);
   await writeReport(result);
+  await refreshAssessmentArtifacts();
   await recordResultToLedger(result, endpoint, method);
   printResult(result);
 
@@ -365,11 +376,13 @@ async function runChatEndpointTest(
     const endpointResult = {
       ok: chat.ok,
       status: chat.status,
-      headers: {},
+      headers: chat.response.headers,
       data: chat.data,
       rawText: chat.receipt?.output || chat.rawText,
       durationMs: chat.durationMs,
       retry: chat.retry,
+      request: chat.request,
+      response: chat.response,
     };
     result = evaluateEndpoint(testCase, endpointResult);
   } else {
@@ -377,6 +390,7 @@ async function runChatEndpointTest(
   }
 
   await writeReport(result);
+  await refreshAssessmentArtifacts();
   await recordResultToLedger(result, "/chat", "POST");
   printResult(result);
 
@@ -438,11 +452,13 @@ async function runMultiTurn(
         const endpointResult = {
           ok: chat.ok,
           status: chat.status,
-          headers: {},
+          headers: chat.response.headers,
           data: chat.data,
           rawText: chat.receipt?.output || chat.rawText,
           durationMs: chat.durationMs,
           retry: chat.retry,
+          request: chat.request,
+          response: chat.response,
         };
         result = evaluateEndpoint(stepCase, endpointResult);
       } else {
@@ -467,6 +483,7 @@ async function runMultiTurn(
   const warn = results.filter((r) => r.result === "WARN").length;
   const overall = fail > 0 ? chalk.red("FAIL") : warn > 0 ? chalk.yellow("WARN") : chalk.green("PASS");
   console.log(chalk.bold(`\n  Multi-turn result: ${overall} (${pass}P/${fail}F/${warn}W across ${results.length} steps)`));
+  await refreshAssessmentArtifacts();
 
   return results;
 }
@@ -516,6 +533,7 @@ async function runFuzz(
   const warn = results.filter((r) => r.result === "WARN").length;
   const overall = fail > 0 ? chalk.red("FAIL") : warn > 0 ? chalk.yellow("WARN") : chalk.green("PASS");
   console.log(chalk.bold(`\n  Fuzz result: ${overall} (${pass}P/${fail}F/${warn}W across ${results.length} payloads)`));
+  await refreshAssessmentArtifacts();
 
   return results;
 }
@@ -559,6 +577,7 @@ async function runSuite(category: string): Promise<void> {
 
   printSuiteSummary(results);
   await writeSuiteSummary(results);
+  await refreshAssessmentArtifacts(results);
 
   const sessionEntries = getSessionLedger();
   if (sessionEntries.length > 0) {
@@ -606,6 +625,7 @@ async function runBaselineSuite(): Promise<void> {
 
   printSuiteSummary(results);
   await writeSuiteSummary(results);
+  await refreshAssessmentArtifacts(results);
 
   const passOk = pass >= manifest.pass_threshold.PASS;
   const warnOk = warn <= manifest.pass_threshold.WARN;

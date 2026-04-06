@@ -1,5 +1,5 @@
 import axios from "axios";
-import { ChatResult, SquidleyReceipt, RetryInfo, TargetConfig, EndpointResult } from "./types";
+import { ChatResult, SquidleyReceipt, RetryInfo, TargetConfig, EndpointResult, RequestRecord, ResponseRecord } from "./types";
 
 function stringifyUnknown(value: unknown): string {
   if (typeof value === "string") return value;
@@ -180,12 +180,36 @@ function buildPayload(target: TargetConfig, input: string): unknown {
   return { input };
 }
 
+function buildResponseRecord(status: number, headers: Record<string, string>, rawText: string, data: unknown): ResponseRecord {
+  let normalizedData: unknown = data;
+  if (typeof normalizedData === "string") {
+    try {
+      normalizedData = JSON.parse(normalizedData);
+    } catch {
+      normalizedData = normalizedData;
+    }
+  }
+
+  const normalizedText = typeof normalizedData === "string"
+    ? normalizedData
+    : stringifyUnknown(normalizedData);
+
+  return {
+    status,
+    headers,
+    rawText,
+    normalizedText,
+    normalizedData,
+  };
+}
+
 type AttemptResult = {
   ok: boolean;
   status: number;
   data: unknown;
   rawText: string;
   isSSE: boolean;
+  headers: Record<string, string>;
   error?: unknown;
 };
 
@@ -207,6 +231,10 @@ async function attemptChat(
     const rawText = typeof response.data === "string" ? response.data : stringifyUnknown(response.data);
     const contentType = (response.headers["content-type"] ?? "") as string;
     const isSSE = contentType.includes("text/event-stream") || rawText.trimStart().startsWith("data:");
+    const headers: Record<string, string> = {};
+    for (const [k, v] of Object.entries(response.headers)) {
+      headers[k] = String(v);
+    }
 
     return {
       ok: response.status >= 200 && response.status < 300,
@@ -214,6 +242,7 @@ async function attemptChat(
       data: response.data,
       rawText,
       isSSE,
+      headers,
     };
   } catch (error: unknown) {
     return {
@@ -224,6 +253,7 @@ async function attemptChat(
         : { message: error instanceof Error ? error.message : "Unknown request error" },
       rawText: "",
       isSSE: false,
+      headers: {},
       error,
     };
   }
@@ -238,6 +268,13 @@ export async function sendChat(
 ): Promise<ChatResult> {
   const url = `${target.baseUrl}${target.chatPath}`;
   const payload = buildPayload(target, input);
+  const request: RequestRecord = {
+    url,
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: payload,
+    payloadFormat: target.payloadFormat,
+  };
   const start = Date.now();
   const retry: RetryInfo = { attempted: false };
 
@@ -292,6 +329,8 @@ export async function sendChat(
     receipt,
     retry,
     durationMs,
+    request,
+    response: buildResponseRecord(result.status, result.headers, result.rawText, result.data),
   };
 }
 
@@ -306,6 +345,10 @@ export async function sendRequest(
   timeout = 15000
 ): Promise<EndpointResult> {
   const url = `${baseUrl}${endpoint}`;
+  const requestHeaders = {
+    "content-type": "application/json",
+    ...(headers ?? {}),
+  };
   const start = Date.now();
   const retry: RetryInfo = { attempted: false };
 
@@ -318,8 +361,7 @@ export async function sendRequest(
         timeout,
         validateStatus: () => true,
         headers: {
-          "content-type": "application/json",
-          ...(headers ?? {}),
+          ...requestHeaders,
         },
         responseType: "text",
         transformResponse: [(data: unknown) => data],
@@ -367,5 +409,13 @@ export async function sendRequest(
     rawText: result.rawText,
     durationMs: Date.now() - start,
     retry,
+    request: {
+      url,
+      method,
+      headers: requestHeaders,
+      body,
+      payloadFormat: "json",
+    },
+    response: buildResponseRecord(result.status, result.headers, result.rawText, result.data),
   };
 }
