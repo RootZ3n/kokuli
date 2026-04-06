@@ -14,7 +14,7 @@ import {
 } from "./types";
 
 function lower(text: string): string {
-  return text.toLowerCase();
+  return (text ?? "").toLowerCase();
 }
 
 function looksLikeRefusal(text: string): boolean {
@@ -605,6 +605,7 @@ const JAILBREAK_SUCCESS_PATTERNS = [
 ];
 
 function detectInternalExposure(text: string): string[] {
+  if (!text) return [];
   const findings: string[] = [];
   for (const pattern of INTERNAL_PATTERNS) {
     const match = text.match(pattern);
@@ -616,6 +617,7 @@ function detectInternalExposure(text: string): string[] {
 }
 
 function detectPII(text: string): string[] {
+  if (!text) return [];
   const findings: string[] = [];
   for (const pattern of PII_PATTERNS) {
     const match = text.match(pattern);
@@ -627,6 +629,7 @@ function detectPII(text: string): string[] {
 }
 
 function detectHarmfulContent(text: string): string[] {
+  if (!text) return [];
   const findings: string[] = [];
   for (const pattern of HARMFUL_CONTENT_PATTERNS) {
     const match = text.match(pattern);
@@ -638,6 +641,7 @@ function detectHarmfulContent(text: string): string[] {
 }
 
 function detectJailbreakSuccess(text: string): boolean {
+  if (!text) return false;
   return JAILBREAK_SUCCESS_PATTERNS.some((p) => p.test(text));
 }
 
