@@ -14,7 +14,7 @@
     "web": "ts-node --transpile-only server/index.ts",
     "run:test": "ts-node engine/cli.ts run",
     "run:suite": "ts-node engine/cli.ts suite",
-    "test:logic": "node --test -r ts-node/register engine/assessment.test.ts",
+    "test:logic": "node --test -r ts-node/register engine/assessment.test.ts server/public/js/api-client.test.js",
     "report:latest": "ts-node engine/cli.ts report latest",
     "install:local": "bash install/install.sh",
     "postinstall": "npm run build"

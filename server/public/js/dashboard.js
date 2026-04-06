@@ -57,18 +57,7 @@ const SEVERITY_ORDER = { critical: 4, high: 3, medium: 2, low: 1 };
 const EXPLOITABILITY_ORDER = { high: 3, medium: 2, low: 1 };
 
 async function api(path, opts) {
-  const res = await fetch("/api" + path, opts);
-  if (!res.ok) {
-    let message = "Request failed";
-    try {
-      const data = await res.json();
-      message = data.error || message;
-    } catch {
-      message = await res.text() || message;
-    }
-    throw new Error(message);
-  }
-  return res.json();
+  return window.KrakzenApi.apiFetch(path, opts);
 }
 
 function escHtml(value) {
@@ -146,6 +135,173 @@ function verdictLabel(verdict) {
 function verdictBadge(verdict) {
   const cls = VERDICT_CLASS[verdict] || "badge-category";
   return '<span class="badge ' + cls + '">' + escHtml(verdictLabel(verdict)) + "</span>";
+}
+
+function deriveLegacyVerdict(summary) {
+  if ((summary.fail || 0) > 0) return "fail";
+  if ((summary.warn || 0) > 0) return "concern";
+  if ((summary.pass || 0) > 0) return "pass";
+  return "inconclusive";
+}
+
+function deriveLegacyFindings(reports) {
+  return (reports || [])
+    .filter((report) => report.result === "FAIL" || report.result === "WARN")
+    .map((report) => {
+      const severity = report.category === "child-safety" ? "critical"
+        : report.category === "security" || report.category === "exfil" ? "high"
+          : report.category === "recon" || report.category === "auth" ? "medium"
+            : "low";
+      const verdict = report.result === "FAIL" ? (severity === "critical" ? "critical" : "fail") : "concern";
+      return {
+        id: report.testId,
+        title: report.testName,
+        category: report.category,
+        severity: severity,
+        target: report.target || activeTargetKey || "active-target",
+        test_id: report.testId,
+        status: report.result === "FAIL" ? "open" : "open",
+        lifecycle: "new",
+        workflow_state: "detected",
+        verdict: verdict,
+        exploitability: ["recon", "auth", "exfil", "child-safety"].includes(report.category) ? "high" : "medium",
+        impact: severity === "critical" ? "critical" : severity === "high" ? "high" : severity === "medium" ? "moderate" : "low",
+        confidence: report.result === "FAIL" ? "high" : "medium",
+        confidence_reason: report.result === "FAIL" ? "Deterministic failure reported in legacy result." : "Legacy warning result reconstructed client-side.",
+        evidence_summary: report.observedBehavior || "Legacy report evidence unavailable.",
+        evidence_snapshot: {
+          attackSummary: (report.threatProfile && report.threatProfile.intent) || report.purpose || report.testName,
+          responseSummary: report.rawResponseSnippet || report.observedBehavior || "No response excerpt available.",
+          evaluatorSummary: (report.evaluatorRules && report.evaluatorRules[0] && report.evaluatorRules[0].label) || "Legacy evaluator rule detail unavailable.",
+          confidenceSummary: report.result === "FAIL" ? "Deterministic failure carried from persisted report." : "Warning carried from persisted report.",
+          whyItMatters: (report.remediationBlock && report.remediationBlock.whyItMatters) || "Legacy report reconstructed because /api/dashboard is unavailable on the running server.",
+        },
+        remediation_summary: (report.remediationBlock && report.remediationBlock.whatToChange) || (report.remediationGuidance && report.remediationGuidance[0]) || (report.suggestedImprovements && report.suggestedImprovements[0]) || "Review the failing test and rerun against an updated server.",
+        remediation_block: report.remediationBlock || {
+          whatToChange: (report.remediationGuidance && report.remediationGuidance[0]) || (report.suggestedImprovements && report.suggestedImprovements[0]) || "Review the failing test and rerun against an updated server.",
+          whyItMatters: "This finding was reconstructed from legacy report endpoints because the newer assessment endpoint was unavailable.",
+          attackerBenefitIfUnfixed: "The underlying issue remains actionable until the failing deterministic test no longer reproduces.",
+          retestSuggestion: "Restart the current Krakzen web server and rerun the affected suite.",
+        },
+        provenance: report.evaluatorRules || [],
+        first_seen_at: report.timestamp || new Date().toISOString(),
+        last_seen_at: report.timestamp || new Date().toISOString(),
+        regression: false,
+        occurrences: 1,
+      };
+    });
+}
+
+function buildLegacyAssessment(summaryData, latestData) {
+  const reports = (latestData && latestData.reports) || [];
+  const summary = {
+    total: summaryData.total || reports.length,
+    pass: summaryData.pass || 0,
+    fail: summaryData.fail || 0,
+    warn: summaryData.warn || 0,
+  };
+  const findings = deriveLegacyFindings(reports);
+  const targetName = targetData && targetData.targets && targetData.targets[activeTargetKey] ? targetData.targets[activeTargetKey].name : activeTargetKey;
+  const highestSeverity = findings.some((finding) => finding.severity === "critical") ? "critical"
+    : findings.some((finding) => finding.severity === "high") ? "high"
+      : findings.some((finding) => finding.severity === "medium") ? "medium"
+        : findings.some((finding) => finding.severity === "low") ? "low"
+          : "none";
+  const suites = Object.keys(CATEGORIES).map((category) => {
+    const categoryReports = reports.filter((report) => report.category === category);
+    const pass = categoryReports.filter((report) => report.result === "PASS").length;
+    const fail = categoryReports.filter((report) => report.result === "FAIL").length;
+    const warn = categoryReports.filter((report) => report.result === "WARN").length;
+    return {
+      suiteId: category,
+      suiteName: category,
+      category: category,
+      state: fail > 0 ? "failed" : warn > 0 ? "stale" : pass > 0 ? "passed" : "idle",
+      total: categoryReports.length,
+      counts: {
+        idle: 0,
+        queued: 0,
+        running: 0,
+        passed: pass,
+        failed: fail,
+        blocked: 0,
+        error: 0,
+        timeout: 0,
+        skipped: 0,
+        stale: warn,
+      },
+      lastRunAt: categoryReports[0] ? categoryReports[0].timestamp : undefined,
+      durationMs: categoryReports.reduce((sum, report) => sum + (report.durationMs || 0), 0),
+    };
+  }).filter((suite) => suite.total > 0);
+
+  return {
+    generatedAt: summaryData.timestamp || new Date().toISOString(),
+    target: activeTargetKey || "active-target",
+    targetName: targetName,
+    summary: summary,
+    verdict: deriveLegacyVerdict(summary),
+    riskSummary: {
+      overallVerdict: findings.some((finding) => finding.severity === "critical") ? "Critical" : summary.fail > 0 ? "Fail" : summary.warn > 0 ? "Warning" : "Pass",
+      highestSeverityObserved: highestSeverity,
+      exploitableFindingsCount: findings.filter((finding) => finding.exploitability !== "low").length,
+      publicExposureFindingsCount: findings.filter((finding) => ["recon", "auth", "exfil"].includes(finding.category)).length,
+      childSafetyFailuresCount: findings.filter((finding) => finding.category === "child-safety").length,
+      recommendedFirstFix: findings[0] ? findings[0].remediation_summary : "Restart the current Krakzen server to restore the richer assessment endpoint.",
+    },
+    operatorSummary: {
+      overallVerdict: deriveLegacyVerdict(summary),
+      highestSeverity: highestSeverity,
+      criticalFindingsCount: findings.filter((finding) => finding.severity === "critical").length,
+      newRegressionsCount: 0,
+      publicExposureCount: findings.filter((finding) => ["recon", "auth", "exfil"].includes(finding.category)).length,
+      childSafetyFailuresCount: findings.filter((finding) => finding.category === "child-safety").length,
+      recommendedFirstFix: findings[0] ? findings[0].remediation_summary : "Restart the current Krakzen server to restore the richer assessment endpoint.",
+      keyEvidenceHighlights: findings.slice(0, 3).map((finding) => finding.evidence_snapshot.responseSummary),
+      trustSignals: reports.length ? ["partially_executed"] : ["inconclusive_due_to_target_variance"],
+      exportActions: [],
+    },
+    metrics: {
+      totalRunDurationMs: reports.reduce((sum, report) => sum + (report.durationMs || 0), 0),
+      perSuiteDurationMs: suites.reduce((acc, suite) => { acc[suite.category] = suite.durationMs || 0; return acc; }, {}),
+      perTestDurationMs: reports.reduce((acc, report) => { acc[report.testId] = report.durationMs || 0; return acc; }, {}),
+      timeoutCount: 0,
+      blockedCount: reports.filter((report) => report.parsedFields && report.parsedFields.gatewayBlock).length,
+      errorCount: 0,
+      averageResponseLatencyMs: reports.length ? Math.round(reports.reduce((sum, report) => sum + (report.durationMs || 0), 0) / reports.length) : 0,
+      totalEstimatedCostUsd: undefined,
+      criticalFindingsCount: findings.filter((finding) => finding.severity === "critical").length,
+      newRegressionsCount: 0,
+      publicExposureCount: findings.filter((finding) => ["recon", "auth", "exfil"].includes(finding.category)).length,
+      childSafetyFailuresCount: findings.filter((finding) => finding.category === "child-safety").length,
+    },
+    coverage: {
+      runTrustSignals: [reports.length ? "partially_executed" : "inconclusive_due_to_target_variance"],
+      suiteTrustSignals: suites.reduce((acc, suite) => { acc[suite.category] = [suite.state === "failed" ? "partially_executed" : "fully_executed"]; return acc; }, {}),
+    },
+    integrity: {
+      sequence: 0,
+      checksum: "",
+      chainHash: "",
+      status: "warning",
+      warning: "Running server does not expose /api/dashboard; dashboard is using legacy report endpoints.",
+    },
+    targetFingerprint: undefined,
+    gates: [],
+    findings: findings,
+    suites: suites,
+    tests: reports,
+    comparison: {
+      newFindings: findings,
+      recurringFindings: [],
+      resolvedFindings: [],
+      regressedFindings: [],
+      unchangedFindings: [],
+      notComparableFindings: findings,
+      previousRunAt: undefined,
+      comparabilityWarning: "Running server does not expose /api/dashboard; comparison is limited.",
+    },
+  };
 }
 
 function getRunsForBaseTest(testId) {
@@ -560,11 +716,24 @@ async function loadRegistry() {
 }
 
 async function loadAssessment() {
-  assessment = await api("/dashboard");
+  try {
+    assessment = await api("/dashboard");
+  } catch (err) {
+    if (err && err.status === 404) {
+      const [summaryData, latestData] = await Promise.all([
+        api("/reports/summary"),
+        api("/reports/latest"),
+      ]);
+      assessment = buildLegacyAssessment(summaryData || {}, latestData || {});
+      return;
+    }
+    throw err;
+  }
 }
 
 async function loadDashboard() {
-  await Promise.all([loadTargets(), loadRegistry(), loadAssessment()]);
+  await loadTargets();
+  await Promise.all([loadRegistry(), loadAssessment()]);
   updateStats(assessment ? assessment.summary : { total: 0, pass: 0, fail: 0, warn: 0 });
   renderScreenshotSummary();
   renderOperatorSummary();

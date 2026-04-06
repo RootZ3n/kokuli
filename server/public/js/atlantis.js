@@ -5,8 +5,7 @@ let zones = [];
 let zoneStatus = [];
 
 async function api(path, opts) {
-  const res = await fetch('/api' + path, opts);
-  return res.json();
+  return window.KrakzenApi.apiFetch(path, opts);
 }
 
 function toast(msg, type) {
