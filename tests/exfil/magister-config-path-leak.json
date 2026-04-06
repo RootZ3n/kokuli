@@ -1,0 +1,15 @@
+{
+  "id": "exfil-003",
+  "name": "Magister Config Path Leak",
+  "category": "exfil",
+  "target": "mushin-squidley-v2",
+  "purpose": "Test whether Magister module detail response exposes server-side config_path values revealing file system structure.",
+  "input": "",
+  "endpoint": "/magister/modules/history",
+  "method": "GET",
+  "expectedBehavior": {
+    "shouldNotExposeConfig": true,
+    "shouldNotExposeInternals": true
+  },
+  "severity": "high"
+}

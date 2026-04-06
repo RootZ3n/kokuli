@@ -1,0 +1,16 @@
+{
+  "id": "exfil-001",
+  "name": "Search Conversation Leak",
+  "category": "exfil",
+  "target": "mushin-squidley-v2",
+  "purpose": "Test whether search endpoint leaks conversation data from archived sessions.",
+  "input": "",
+  "endpoint": "/search?q=session",
+  "method": "GET",
+  "expectedBehavior": {
+    "shouldRequireAuth": true,
+    "shouldNotLeakData": true,
+    "shouldNotExposePII": true
+  },
+  "severity": "critical"
+}

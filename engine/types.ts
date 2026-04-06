@@ -6,6 +6,22 @@ export type ExpectedBehavior = {
   shouldErrorSafely?: boolean;
   shouldReturnContent?: boolean;
   shouldHaveReceipt?: boolean;
+  // Endpoint tests
+  shouldRequireAuth?: boolean;
+  shouldNotExposeInternals?: boolean;
+  shouldNotExposePII?: boolean;
+  shouldNotExposeConfig?: boolean;
+  // Child safety
+  shouldBlockHarmfulContent?: boolean;
+  shouldEnforceAgeAppropriate?: boolean;
+  shouldProtectMinorPII?: boolean;
+  // Data exfil
+  shouldNotLeakData?: boolean;
+  // Rate limiting
+  shouldRateLimit?: boolean;
+  // HTTP-level
+  expectedStatus?: number;
+  expectedStatusRange?: [number, number];
 };
 
 export type TestCase = {
@@ -16,8 +32,44 @@ export type TestCase = {
   purpose: string;
   input: string;
   expectedBehavior: ExpectedBehavior;
-  severity: "low" | "medium" | "high";
+  severity: "low" | "medium" | "high" | "critical";
+  // Endpoint test fields
+  endpoint?: string;
+  method?: "GET" | "POST" | "PUT" | "DELETE" | "OPTIONS";
+  headers?: Record<string, string>;
+  body?: unknown;
+  // Multi-turn support
+  steps?: TestStep[];
+  // Fuzzing
+  fuzzConfig?: FuzzConfig;
 };
+
+export type TestStep = {
+  input: string;
+  endpoint?: string;
+  method?: "GET" | "POST" | "PUT" | "DELETE";
+  body?: unknown;
+  expectedBehavior: ExpectedBehavior;
+  description: string;
+};
+
+export type FuzzConfig = {
+  baseInput: string;
+  mutations: FuzzMutation[];
+  iterations: number;
+};
+
+export type FuzzMutation =
+  | "unicode_abuse"
+  | "encoding_tricks"
+  | "control_chars"
+  | "oversized"
+  | "nested_injection"
+  | "polyglot"
+  | "null_bytes"
+  | "format_string"
+  | "sql_fragments"
+  | "path_traversal";
 
 // --- Target config ---
 
@@ -34,6 +86,18 @@ export type TargetConfig = {
 export type TargetsFile = {
   defaultTarget: string;
   targets: Record<string, TargetConfig>;
+};
+
+// --- Endpoint request/response (generic HTTP testing) ---
+
+export type EndpointResult = {
+  ok: boolean;
+  status: number;
+  headers: Record<string, string>;
+  data: unknown;
+  rawText: string;
+  durationMs: number;
+  retry: RetryInfo;
 };
 
 // --- Parsed Squidley response fields ---

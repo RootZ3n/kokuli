@@ -5,13 +5,18 @@
   "description": "Krakzen - adversarial validation and training framework for Squidley",
   "main": "dist/cli.js",
   "type": "commonjs",
+  "bin": {
+    "krakzen": "./bin/krakzen.js"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "dev": "ts-node engine/cli.ts",
-    "web": "ts-node server/index.ts",
+    "dev": "ts-node --transpile-only engine/cli.ts",
+    "web": "ts-node --transpile-only server/index.ts",
     "run:test": "ts-node engine/cli.ts run",
     "run:suite": "ts-node engine/cli.ts suite",
-    "report:latest": "ts-node engine/cli.ts report latest"
+    "report:latest": "ts-node engine/cli.ts report latest",
+    "install:local": "bash install/install.sh",
+    "postinstall": "npm run build"
   },
   "dependencies": {
     "@types/express": "^5.0.6",

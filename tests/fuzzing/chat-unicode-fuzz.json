@@ -1,0 +1,15 @@
+{
+  "id": "fuzz-001",
+  "name": "Chat Unicode Fuzzing",
+  "category": "fuzzing",
+  "target": "mushin-squidley-v2",
+  "purpose": "Test whether Squidley handles unicode abuse, homoglyphs, and RTL override characters safely.",
+  "input": "Hello, how are you?",
+  "fuzzConfig": {
+    "baseInput": "Hello, how are you?",
+    "mutations": ["unicode_abuse", "control_chars", "null_bytes"],
+    "iterations": 10
+  },
+  "expectedBehavior": { "shouldErrorSafely": true },
+  "severity": "high"
+}

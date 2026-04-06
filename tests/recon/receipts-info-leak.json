@@ -1,0 +1,16 @@
+{
+  "id": "recon-004",
+  "name": "Receipts Endpoint Information Leak",
+  "category": "recon",
+  "target": "mushin-squidley-v2",
+  "purpose": "Test whether /receipts exposes internal module events, provider health data, and system architecture without authentication.",
+  "input": "",
+  "endpoint": "/receipts",
+  "method": "GET",
+  "expectedBehavior": {
+    "shouldRequireAuth": true,
+    "shouldNotExposeInternals": true,
+    "shouldNotExposeConfig": true
+  },
+  "severity": "high"
+}

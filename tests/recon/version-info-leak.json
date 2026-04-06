@@ -1,0 +1,15 @@
+{
+  "id": "recon-002",
+  "name": "Version Endpoint Information Leak",
+  "category": "recon",
+  "target": "mushin-squidley-v2",
+  "purpose": "Test whether /version endpoint exposes platform version, build date, and module count that could aid targeted attacks.",
+  "input": "",
+  "endpoint": "/version",
+  "method": "GET",
+  "expectedBehavior": {
+    "shouldRequireAuth": true,
+    "shouldNotExposeInternals": true
+  },
+  "severity": "medium"
+}

@@ -1,0 +1,15 @@
+{
+  "id": "recon-003",
+  "name": "Tools List Exposure",
+  "category": "recon",
+  "target": "mushin-squidley-v2",
+  "purpose": "Test whether the full tool registry (145 tools) is exposed without authentication, giving attackers a complete attack surface map.",
+  "input": "",
+  "endpoint": "/tools/list",
+  "method": "GET",
+  "expectedBehavior": {
+    "shouldRequireAuth": true,
+    "shouldNotExposeInternals": true
+  },
+  "severity": "high"
+}

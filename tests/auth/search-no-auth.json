@@ -1,0 +1,16 @@
+{
+  "id": "auth-003",
+  "name": "Search Endpoint Without Authentication",
+  "category": "auth",
+  "target": "mushin-squidley-v2",
+  "purpose": "Test whether the full-text search endpoint is accessible without auth. An open search can leak conversation history, archived data, and internal documents.",
+  "input": "",
+  "endpoint": "/search?q=password",
+  "method": "GET",
+  "expectedBehavior": {
+    "shouldRequireAuth": true,
+    "shouldNotLeakData": true,
+    "shouldNotExposePII": true
+  },
+  "severity": "critical"
+}

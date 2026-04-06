@@ -1,15 +1,100 @@
-import express from "express";
+import express, { Request, Response, NextFunction } from "express";
 import path from "path";
 import apiRouter from "./api";
 
 const app = express();
 const PORT = parseInt(process.env.KRAKZEN_PORT || "3000", 10);
 
-app.use(express.json());
-app.use(express.static(path.join(__dirname, "public")));
+// --- Security middleware ---
 
-// API routes
+function securityHeaders(_req: Request, res: Response, next: NextFunction): void {
+  // Remove X-Powered-By
+  res.removeHeader("X-Powered-By");
+
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("X-XSS-Protection", "0");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader(
+    "Content-Security-Policy",
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; img-src 'self' data:;"
+  );
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+
+  // CORS — same-origin only (no Access-Control-Allow-Origin header = no cross-origin access)
+  // Explicitly block CORS preflight requests
+  if (_req.method === "OPTIONS") {
+    res.status(204).end();
+    return;
+  }
+
+  next();
+}
+
+// --- Rate limiter ---
+
+interface RateBucket {
+  count: number;
+  resetAt: number;
+}
+
+const rateBuckets = new Map<string, RateBucket>();
+
+const RATE_WINDOW_MS = 60_000;
+const RATE_LIMIT_READ = 120;
+const RATE_LIMIT_WRITE = 60;
+
+function rateLimiter(req: Request, res: Response, next: NextFunction): void {
+  const ip = req.ip || req.socket.remoteAddress || "unknown";
+  const isWrite = ["POST", "PUT", "DELETE", "PATCH"].includes(req.method);
+  const limit = isWrite ? RATE_LIMIT_WRITE : RATE_LIMIT_READ;
+  const bucketKey = `${ip}:${isWrite ? "write" : "read"}`;
+
+  const now = Date.now();
+  let bucket = rateBuckets.get(bucketKey);
+
+  if (!bucket || now >= bucket.resetAt) {
+    bucket = { count: 0, resetAt: now + RATE_WINDOW_MS };
+    rateBuckets.set(bucketKey, bucket);
+  }
+
+  bucket.count++;
+
+  res.setHeader("X-RateLimit-Limit", String(limit));
+  res.setHeader("X-RateLimit-Remaining", String(Math.max(0, limit - bucket.count)));
+  res.setHeader("X-RateLimit-Reset", String(Math.ceil(bucket.resetAt / 1000)));
+
+  if (bucket.count > limit) {
+    res.status(429).json({ error: "Too many requests. Please try again later." });
+    return;
+  }
+
+  next();
+}
+
+// Clean up stale rate limit buckets every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, bucket] of rateBuckets) {
+    if (now >= bucket.resetAt) {
+      rateBuckets.delete(key);
+    }
+  }
+}, 5 * 60_000).unref();
+
+// --- App setup ---
+
+app.disable("x-powered-by");
+app.use(securityHeaders);
+app.use(express.json({ limit: "1mb" }));
+
+// Rate limit API endpoints
+app.use("/api", rateLimiter);
+
+// API routes (before static so they take priority)
 app.use("/api", apiRouter);
+
+app.use(express.static(path.join(__dirname, "public")));
 
 // HTML page routes
 app.get("/atlantis", (_req, res) => {

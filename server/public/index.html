@@ -3,55 +3,148 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Krakzen Dashboard</title>
+  <title>Krakzen — Deep Sea Threat Detection</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
+
+  <!-- Underwater abyss background -->
+  <div class="abyss-bg"></div>
+
   <nav class="nav">
-    <div class="nav-logo">KRAKZEN</div>
-    <div class="nav-links">
-      <a href="/" class="active">Dashboard</a>
-      <a href="/atlantis">Atlantis</a>
+    <div class="nav-inner">
+      <div class="nav-brand">
+        <div class="nav-logo">KRAKZEN</div>
+        <div class="nav-tagline">From the depths, we hunt.</div>
+      </div>
+      <div class="nav-center">
+        <div class="target-selector" id="target-selector">
+          <label class="target-label">TARGET</label>
+          <select class="target-select" id="target-select" onchange="switchTarget(this.value)">
+            <option value="">Loading...</option>
+          </select>
+          <button class="btn btn-sm target-probe-btn" id="probe-btn" onclick="probeTarget()" title="Probe target connectivity">&#8943;</button>
+        </div>
+      </div>
+      <div class="nav-links">
+        <a href="/" class="active">
+          <span class="nav-link-icon">&#9678;</span>
+          Dashboard
+        </a>
+        <a href="/atlantis">
+          <span class="nav-link-icon">&#9670;</span>
+          Atlantis
+        </a>
+      </div>
     </div>
   </nav>
 
+  <!-- Probe results panel (hidden by default) -->
+  <div class="probe-panel" id="probe-panel" style="display:none;"></div>
+
   <div class="container">
+
+    <!-- Header -->
     <div class="section-header">
       <div>
-        <div class="section-title">Security Testing Dashboard</div>
-        <div class="section-subtitle">Adversarial validation for Squidley V2</div>
+        <div class="section-title">Threat Overview</div>
+        <div class="section-subtitle">Adversarial security validation &mdash; scanning the deep</div>
+        <div class="last-updated" id="last-updated"></div>
       </div>
-      <div style="display:flex;gap:0.5rem;">
-        <button class="btn btn-primary" id="run-all-btn" onclick="runSuite('all')">Run All Tests</button>
-        <button class="btn" onclick="loadSummary()">Refresh</button>
+      <div class="header-actions">
+        <button class="btn btn-primary btn-glow" id="run-all-btn" onclick="runSuite('all')">
+          <span class="btn-sonar"></span>
+          Run All Tests
+        </button>
+        <button class="btn" onclick="loadSummary()">
+          <span class="btn-icon">&#8635;</span>
+          Refresh
+        </button>
       </div>
     </div>
 
-    <!-- Stats -->
+    <!-- Stats / Depth Gauges -->
     <div class="stats" id="stats">
-      <div class="stat-card"><div class="stat-value" id="stat-total">-</div><div class="stat-label">Total</div></div>
-      <div class="stat-card stat-pass"><div class="stat-value" id="stat-pass">-</div><div class="stat-label">Pass</div></div>
-      <div class="stat-card stat-fail"><div class="stat-value" id="stat-fail">-</div><div class="stat-label">Fail</div></div>
-      <div class="stat-card stat-warn"><div class="stat-value" id="stat-warn">-</div><div class="stat-label">Warn</div></div>
+      <div class="stat-card stat-total">
+        <div class="stat-ring">
+          <div class="stat-value" id="stat-total">-</div>
+        </div>
+        <div class="stat-label">Total Scans</div>
+      </div>
+      <div class="stat-card stat-pass">
+        <div class="stat-ring ring-pass">
+          <div class="stat-value" id="stat-pass">-</div>
+        </div>
+        <div class="stat-label">Secure</div>
+      </div>
+      <div class="stat-card stat-fail">
+        <div class="stat-ring ring-fail">
+          <div class="stat-value" id="stat-fail">-</div>
+        </div>
+        <div class="stat-label">Breached</div>
+      </div>
+      <div class="stat-card stat-warn">
+        <div class="stat-ring ring-warn">
+          <div class="stat-value" id="stat-warn">-</div>
+        </div>
+        <div class="stat-label">Warnings</div>
+      </div>
     </div>
 
-    <!-- Suite buttons -->
-    <div style="display:flex;gap:0.5rem;margin-bottom:1.5rem;flex-wrap:wrap;">
-      <span style="color:var(--text-dim);font-size:0.85rem;line-height:2;">Suites:</span>
-      <button class="btn btn-sm btn-primary" onclick="runSuite('baseline')">Baseline Gate</button>
-      <button class="btn btn-sm" onclick="runSuite('security')">Security</button>
-      <button class="btn btn-sm" onclick="runSuite('reliability')">Reliability</button>
-      <button class="btn btn-sm" onclick="runSuite('architecture')">Architecture</button>
+    <!-- Category Summary (injected by JS after stats) -->
+
+    <!-- Suite Controls / Mission Launch -->
+    <div class="suite-controls">
+      <div class="suite-label">Mission Suites</div>
+      <div class="suite-buttons">
+        <button class="btn btn-sm btn-mission btn-primary" onclick="runSuite('baseline')">
+          <span class="suite-icon">&#9673;</span> Baseline Gate
+        </button>
+        <button class="btn btn-sm btn-mission" onclick="runSuite('security')">
+          <span class="suite-icon">&#9888;</span> Security
+        </button>
+        <button class="btn btn-sm btn-mission" onclick="runSuite('reliability')">
+          <span class="suite-icon">&#9881;</span> Reliability
+        </button>
+        <button class="btn btn-sm btn-mission" onclick="runSuite('architecture')">
+          <span class="suite-icon">&#9638;</span> Architecture
+        </button>
+        <button class="btn btn-sm btn-mission" onclick="runSuite('recon')">
+          <span class="suite-icon">&#128269;</span> Recon
+        </button>
+        <button class="btn btn-sm btn-mission" onclick="runSuite('auth')">
+          <span class="suite-icon">&#128274;</span> Auth
+        </button>
+        <button class="btn btn-sm btn-mission" onclick="runSuite('exfil')">
+          <span class="suite-icon">&#128232;</span> Exfil
+        </button>
+        <button class="btn btn-sm btn-mission btn-critical-mission" onclick="runSuite('child-safety')">
+          <span class="suite-icon">&#9888;</span> Child Safety
+        </button>
+        <button class="btn btn-sm btn-mission" onclick="runSuite('multi-turn')">
+          <span class="suite-icon">&#128260;</span> Multi-Turn
+        </button>
+        <button class="btn btn-sm btn-mission" onclick="runSuite('fuzzing')">
+          <span class="suite-icon">&#128163;</span> Fuzzing
+        </button>
+      </div>
     </div>
 
-    <!-- Test list -->
+    <!-- Test Registry -->
     <div class="card">
       <div class="card-header">
-        <div class="card-title">Test Registry</div>
-        <div id="test-count" style="font-size:0.8rem;color:var(--text-dim);"></div>
+        <div class="card-title">
+          <span class="card-title-icon">&#9878;</span>
+          Test Registry
+        </div>
+        <div id="test-count" class="test-count"></div>
       </div>
       <div id="test-list"></div>
     </div>
+
   </div>
 
   <div class="toast" id="toast"></div>

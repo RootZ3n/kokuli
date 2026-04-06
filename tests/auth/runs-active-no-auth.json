@@ -1,0 +1,15 @@
+{
+  "id": "auth-007",
+  "name": "Active Runs Without Authentication",
+  "category": "auth",
+  "target": "mushin-squidley-v2",
+  "purpose": "Verify that active task run listing requires authentication. Active runs reveal real-time operational state.",
+  "input": "",
+  "endpoint": "/runs/active",
+  "method": "GET",
+  "expectedBehavior": {
+    "shouldRequireAuth": true,
+    "shouldNotExposeInternals": true
+  },
+  "severity": "high"
+}

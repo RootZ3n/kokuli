@@ -1,5 +1,5 @@
 import axios from "axios";
-import { ChatResult, SquidleyReceipt, RetryInfo, TargetConfig } from "./types";
+import { ChatResult, SquidleyReceipt, RetryInfo, TargetConfig, EndpointResult } from "./types";
 
 function stringifyUnknown(value: unknown): string {
   if (typeof value === "string") return value;
@@ -292,5 +292,80 @@ export async function sendChat(
     receipt,
     retry,
     durationMs,
+  };
+}
+
+// --- Generic endpoint request (for non-chat endpoint testing) ---
+
+export async function sendRequest(
+  baseUrl: string,
+  endpoint: string,
+  method: "GET" | "POST" | "PUT" | "DELETE" | "OPTIONS" = "GET",
+  body?: unknown,
+  headers?: Record<string, string>,
+  timeout = 15000
+): Promise<EndpointResult> {
+  const url = `${baseUrl}${endpoint}`;
+  const start = Date.now();
+  const retry: RetryInfo = { attempted: false };
+
+  const doAttempt = async (): Promise<{ ok: boolean; status: number; headers: Record<string, string>; data: unknown; rawText: string; error?: unknown }> => {
+    try {
+      const response = await axios({
+        method,
+        url,
+        data: body,
+        timeout,
+        validateStatus: () => true,
+        headers: {
+          "content-type": "application/json",
+          ...(headers ?? {}),
+        },
+        responseType: "text",
+        transformResponse: [(data: unknown) => data],
+      });
+
+      const rawText = typeof response.data === "string" ? response.data : stringifyUnknown(response.data);
+      const respHeaders: Record<string, string> = {};
+      for (const [k, v] of Object.entries(response.headers)) {
+        respHeaders[k] = String(v);
+      }
+
+      return {
+        ok: response.status >= 200 && response.status < 300,
+        status: response.status,
+        headers: respHeaders,
+        data: response.data,
+        rawText,
+      };
+    } catch (error: unknown) {
+      return {
+        ok: false,
+        status: axios.isAxiosError(error) ? (error.response?.status ?? 0) : 0,
+        headers: {},
+        data: { message: error instanceof Error ? error.message : "Unknown error" },
+        rawText: "",
+        error,
+      };
+    }
+  };
+
+  let result = await doAttempt();
+
+  if (result.error && isTransientError(result.error)) {
+    retry.attempted = true;
+    retry.reason = "transient_failure";
+    retry.originalError = result.error instanceof Error ? result.error.message : String(result.error);
+    result = await doAttempt();
+  }
+
+  return {
+    ok: result.ok,
+    status: result.status,
+    headers: result.headers,
+    data: result.data,
+    rawText: result.rawText,
+    durationMs: Date.now() - start,
+    retry,
   };
 }

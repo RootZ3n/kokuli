@@ -1,0 +1,16 @@
+{
+  "id": "exfil-002",
+  "name": "Memory Private Data",
+  "category": "exfil",
+  "target": "mushin-squidley-v2",
+  "purpose": "Test whether memory search exposes private user data, conversation context, or learned information without authentication.",
+  "input": "",
+  "endpoint": "/memory/search",
+  "method": "GET",
+  "expectedBehavior": {
+    "shouldRequireAuth": true,
+    "shouldNotLeakData": true,
+    "shouldNotExposePII": true
+  },
+  "severity": "critical"
+}

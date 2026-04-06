@@ -1,0 +1,14 @@
+{
+  "id": "auth-005",
+  "name": "Magister Modules Without Authentication",
+  "category": "auth",
+  "target": "mushin-squidley-v2",
+  "purpose": "Verify that Magister module listing requires authentication. Exposed module data reveals educational content structure.",
+  "input": "",
+  "endpoint": "/magister/modules",
+  "method": "GET",
+  "expectedBehavior": {
+    "shouldRequireAuth": true
+  },
+  "severity": "high"
+}

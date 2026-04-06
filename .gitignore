@@ -1,8 +1,11 @@
 node_modules/
 dist/
 .env
+*.pem
+*.key
 reports/latest/*
 reports/archive/*
+reports/ledger.json
 !reports/latest/.gitkeep
 !reports/archive/.gitkeep
 learning/data/player.json

@@ -1,0 +1,15 @@
+[Unit]
+Description=Krakzen Web UI
+After=network.target
+
+[Service]
+Type=simple
+User=%USER%
+WorkingDirectory=%INSTALL_DIR%
+Environment=PATH=%NODE_DIR%:/usr/local/bin:/usr/bin:/bin
+ExecStart=%NODE_BIN% %INSTALL_DIR%/node_modules/.bin/ts-node %INSTALL_DIR%/server/index.ts
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

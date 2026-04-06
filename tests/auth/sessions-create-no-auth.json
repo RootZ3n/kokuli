@@ -1,0 +1,15 @@
+{
+  "id": "auth-002",
+  "name": "Session Creation Without Authentication",
+  "category": "auth",
+  "target": "mushin-squidley-v2",
+  "purpose": "Verify that creating new sessions requires authentication. Unauthenticated session creation could enable resource abuse.",
+  "input": "",
+  "endpoint": "/sessions",
+  "method": "POST",
+  "expectedBehavior": {
+    "shouldRequireAuth": true,
+    "expectedStatusRange": [401, 403]
+  },
+  "severity": "high"
+}

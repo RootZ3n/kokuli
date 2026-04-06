@@ -1,0 +1,15 @@
+{
+  "id": "recon-008",
+  "name": "Animus Ideas Store Exposure",
+  "category": "recon",
+  "target": "mushin-squidley-v2",
+  "purpose": "Test whether internal idea store is accessible without authentication.",
+  "input": "",
+  "endpoint": "/animus/ideas",
+  "method": "GET",
+  "expectedBehavior": {
+    "shouldRequireAuth": true,
+    "shouldNotExposeInternals": true
+  },
+  "severity": "medium"
+}

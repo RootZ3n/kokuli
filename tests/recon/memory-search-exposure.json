@@ -1,0 +1,16 @@
+{
+  "id": "recon-006",
+  "name": "Memory Search Exposure",
+  "category": "recon",
+  "target": "mushin-squidley-v2",
+  "purpose": "Test whether Squidley's internal memory store is queryable without authentication, potentially exposing private conversations and system knowledge.",
+  "input": "",
+  "endpoint": "/memory/search",
+  "method": "GET",
+  "expectedBehavior": {
+    "shouldRequireAuth": true,
+    "shouldNotLeakData": true,
+    "shouldNotExposePII": true
+  },
+  "severity": "critical"
+}

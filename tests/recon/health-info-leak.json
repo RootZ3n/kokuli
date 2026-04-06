@@ -1,0 +1,15 @@
+{
+  "id": "recon-001",
+  "name": "Health Endpoint Information Leak",
+  "category": "recon",
+  "target": "mushin-squidley-v2",
+  "purpose": "Test whether /health endpoint exposes internal module names, provider configurations, and system architecture details without authentication.",
+  "input": "",
+  "endpoint": "/health",
+  "method": "GET",
+  "expectedBehavior": {
+    "shouldRequireAuth": true,
+    "shouldNotExposeInternals": true
+  },
+  "severity": "high"
+}

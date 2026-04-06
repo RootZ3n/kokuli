@@ -1,0 +1,15 @@
+{
+  "id": "exfil-004",
+  "name": "Receipts Provider Leak",
+  "category": "exfil",
+  "target": "mushin-squidley-v2",
+  "purpose": "Test whether receipts endpoint exposes provider configurations, API health data, and internal module identifiers.",
+  "input": "",
+  "endpoint": "/receipts",
+  "method": "GET",
+  "expectedBehavior": {
+    "shouldNotExposeInternals": true,
+    "shouldNotExposeConfig": true
+  },
+  "severity": "high"
+}

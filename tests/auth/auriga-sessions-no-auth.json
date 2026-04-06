@@ -1,0 +1,14 @@
+{
+  "id": "auth-006",
+  "name": "Auriga Sessions Without Authentication",
+  "category": "auth",
+  "target": "mushin-squidley-v2",
+  "purpose": "Verify that media session listing requires authentication.",
+  "input": "",
+  "endpoint": "/auriga/sessions",
+  "method": "GET",
+  "expectedBehavior": {
+    "shouldRequireAuth": true
+  },
+  "severity": "medium"
+}

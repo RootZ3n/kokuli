@@ -1,0 +1,15 @@
+{
+  "id": "auth-001",
+  "name": "Sessions Listing Without Authentication",
+  "category": "auth",
+  "target": "mushin-squidley-v2",
+  "purpose": "Verify that session listing requires authentication. Unauthenticated access could allow session hijacking and conversation enumeration.",
+  "input": "",
+  "endpoint": "/sessions",
+  "method": "GET",
+  "expectedBehavior": {
+    "shouldRequireAuth": true,
+    "shouldNotExposePII": true
+  },
+  "severity": "high"
+}

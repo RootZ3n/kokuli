@@ -8,12 +8,123 @@
       "payloadFormat": "messages",
       "notes": "Primary Squidley V2 instance on Mushin. Hardened gateway, structured receipts, Velum privacy layer, multi-model routing. Reachable over Tailscale."
     },
-    "mushin-squidley-v2-local": {
-      "name": "Mushin Squidley V2 (Local)",
-      "baseUrl": "http://10.0.0.50:18791",
+    "squidley-lite": {
+      "name": "Squidley Lite",
+      "baseUrl": "http://192.168.1.100:8080",
       "chatPath": "/chat",
       "payloadFormat": "messages",
-      "notes": "Same as above, direct local network access."
+      "notes": "Squidley Lite on laptop for portable testing"
+    },
+    "more-input": {
+      "name": "More Input",
+      "baseUrl": "http://10.0.0.50:9000",
+      "chatPath": "/api/chat",
+      "payloadFormat": "messages",
+      "notes": "More Input - standalone product for uncle"
+    }
+  },
+  "endpoints": {
+    "chat": {
+      "path": "/chat",
+      "method": "POST",
+      "auth": "unknown",
+      "notes": "Main chat interface — SSE streaming"
+    },
+    "health": {
+      "path": "/health",
+      "method": "GET",
+      "auth": "none",
+      "notes": "Full module health — exposes internals"
+    },
+    "version": {
+      "path": "/version",
+      "method": "GET",
+      "auth": "none",
+      "notes": "Platform version and module count"
+    },
+    "receipts": {
+      "path": "/receipts",
+      "method": "GET",
+      "auth": "none",
+      "notes": "System event receipts — module internals"
+    },
+    "sessions": {
+      "path": "/sessions",
+      "method": "GET",
+      "auth": "none",
+      "notes": "Chat session list — session IDs, models, metadata"
+    },
+    "sessions-create": {
+      "path": "/sessions",
+      "method": "POST",
+      "auth": "none",
+      "notes": "Create new chat session"
+    },
+    "runs": {
+      "path": "/runs",
+      "method": "GET",
+      "auth": "none",
+      "notes": "Task run list — internal goals, modules"
+    },
+    "runs-active": {
+      "path": "/runs/active",
+      "method": "GET",
+      "auth": "none",
+      "notes": "Active runs only"
+    },
+    "approvals": {
+      "path": "/approvals",
+      "method": "GET",
+      "auth": "none",
+      "notes": "Approval queue"
+    },
+    "search": {
+      "path": "/search",
+      "method": "GET",
+      "auth": "none",
+      "notes": "Full-text search — requires ?q= param"
+    },
+    "memory-search": {
+      "path": "/memory/search",
+      "method": "GET",
+      "auth": "none",
+      "notes": "Squidley memory store — internal knowledge"
+    },
+    "tools-list": {
+      "path": "/tools/list",
+      "method": "GET",
+      "auth": "none",
+      "notes": "All 145 tools exposed"
+    },
+    "weather": {
+      "path": "/weather",
+      "method": "GET",
+      "auth": "none",
+      "notes": "Weather data"
+    },
+    "magister-modules": {
+      "path": "/magister/modules",
+      "method": "GET",
+      "auth": "none",
+      "notes": "Magister learning modules list"
+    },
+    "magister-module": {
+      "path": "/magister/modules/",
+      "method": "GET",
+      "auth": "none",
+      "notes": "Individual module detail — config paths"
+    },
+    "auriga-sessions": {
+      "path": "/auriga/sessions",
+      "method": "GET",
+      "auth": "none",
+      "notes": "Media sessions"
+    },
+    "animus-ideas": {
+      "path": "/animus/ideas",
+      "method": "GET",
+      "auth": "none",
+      "notes": "Idea store — internal data"
     }
   }
 }
