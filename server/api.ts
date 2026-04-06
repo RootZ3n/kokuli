@@ -95,6 +95,8 @@ async function buildRegistry(category?: string): Promise<RegistryEntry[]> {
     const id = path.basename(filePath, ".json");
     try {
       const test = await loadTest(filePath);
+      // Skip non-test files (e.g. baseline/manifest.json)
+      if (!test.name || !test.category) continue;
       entries.push({ id, filePath, test });
     } catch {
       // skip
@@ -474,33 +476,42 @@ async function persistExecutedResults(
   const persisted: TestResult[] = [];
 
   for (const result of results) {
-    const prior = previousByTestId.get(result.testId);
-    const upgraded = compareWithPriorRun(upgradeLegacyResult(result), prior);
-    const execution = await updateTestExecutionState({
-      testId: upgraded.testId,
-      suiteId: upgraded.category,
-      state: upgraded.state ?? "stale",
-      durationMs: upgraded.durationMs,
-    });
-    const finalized: TestResult = {
-      ...upgraded,
-      state: execution.state,
-      targetConfigSnapshot: snapshotTargetConfig(targetConfig as ResolvedTargetConfig),
-      execution: {
+    try {
+      const prior = previousByTestId.get(result.testId);
+      const upgraded = compareWithPriorRun(upgradeLegacyResult(result), prior);
+      const execution = await updateTestExecutionState({
+        testId: upgraded.testId,
+        suiteId: upgraded.category,
+        state: upgraded.state ?? "stale",
+        durationMs: upgraded.durationMs,
+      });
+      const finalized: TestResult = {
+        ...upgraded,
         state: execution.state,
-        startedAt: execution.startedAt,
-        lastRunAt: execution.lastRunAt,
-        completedAt: execution.completedAt,
-        durationMs: execution.durationMs,
-        attemptCount: execution.attemptCount,
-      },
-    };
-    await writeReport(finalized);
-    persisted.push(finalized);
-    previousByTestId.set(finalized.testId, finalized);
+        targetConfigSnapshot: snapshotTargetConfig(targetConfig as ResolvedTargetConfig),
+        execution: {
+          state: execution.state,
+          startedAt: execution.startedAt,
+          lastRunAt: execution.lastRunAt,
+          completedAt: execution.completedAt,
+          durationMs: execution.durationMs,
+          attemptCount: execution.attemptCount,
+        },
+      };
+      await writeReport(finalized);
+      persisted.push(finalized);
+      previousByTestId.set(finalized.testId, finalized);
+    } catch (persistErr) {
+      console.error(`[krakzen] Error persisting result for ${result.testId}:`, persistErr instanceof Error ? persistErr.stack : persistErr);
+      persisted.push(result);
+    }
   }
 
-  await writeAssessmentBundle({ target: targetKey, targetName, targetConfig });
+  try {
+    await writeAssessmentBundle({ target: targetKey, targetName, targetConfig });
+  } catch (assessmentErr) {
+    console.error("[krakzen] Assessment bundle error (non-fatal):", assessmentErr instanceof Error ? assessmentErr.stack : assessmentErr);
+  }
   return persisted;
 }
 
@@ -619,16 +630,25 @@ router.post("/suite/:category", async (req: Request, res: Response) => {
     await updateSuiteExecutionState({ suiteId: category, state: "running" });
 
     for (const entry of entries) {
-      await updateTestExecutionState({ testId: entry.id, suiteId: category, state: "queued", incrementAttempt: true });
-      await updateTestExecutionState({ testId: entry.id, suiteId: category, state: "running" });
-      const testResults = await executeTest(entry.test, resolved.target, resolved.key);
-      const persisted = await persistExecutedResults(resolved.key, resolved.target.name, resolved.target, testResults, previousByTestId);
-      await recordTestResults(persisted, resolved.key);
-      results.push(...persisted);
+      try {
+        await updateTestExecutionState({ testId: entry.id, suiteId: category, state: "queued", incrementAttempt: true });
+        await updateTestExecutionState({ testId: entry.id, suiteId: category, state: "running" });
+        const testResults = await executeTest(entry.test, resolved.target, resolved.key);
+        const persisted = await persistExecutedResults(resolved.key, resolved.target.name, resolved.target, testResults, previousByTestId);
+        await recordTestResults(persisted, resolved.key);
+        results.push(...persisted);
+      } catch (entryErr) {
+        console.error(`[krakzen] Error running test ${entry.id}:`, entryErr instanceof Error ? entryErr.stack : entryErr);
+        await updateTestExecutionState({ testId: entry.id, suiteId: category, state: "error" }).catch(() => undefined);
+      }
     }
 
     await writeSuiteSummary(results);
-    await writeAssessmentBundle({ target: resolved.key, targetName: resolved.target.name, targetConfig: resolved.target, results });
+    try {
+      await writeAssessmentBundle({ target: resolved.key, targetName: resolved.target.name, targetConfig: resolved.target, results });
+    } catch (assessmentErr) {
+      console.error("[krakzen] Assessment bundle error (non-fatal):", assessmentErr instanceof Error ? assessmentErr.stack : assessmentErr);
+    }
 
     const pass = results.filter((r) => r.result === "PASS").length;
     const fail = results.filter((r) => r.result === "FAIL").length;
@@ -645,7 +665,8 @@ router.post("/suite/:category", async (req: Request, res: Response) => {
     if (category) {
       await updateSuiteExecutionState({ suiteId: category, state: "error" }).catch(() => undefined);
     }
-    res.status(500).json({ error: String(err) });
+    console.error("[krakzen] Suite error:", err instanceof Error ? err.stack : err);
+    res.status(500).json({ error: String(err), stack: err instanceof Error ? err.stack : undefined });
   }
 });
 

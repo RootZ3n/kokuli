@@ -329,7 +329,7 @@ function renderExecutiveSummaryMarkdown(assessment: DashboardAssessment): string
     ``,
     `| Gate | Status | Notes |`,
     `|------|--------|-------|`,
-    ...assessment.gates.map((gate) => `| ${gate.title} | ${gate.status.toUpperCase()} | ${gate.explanation} |`),
+    ...(assessment.gates || []).map((gate) => `| ${gate.title ?? ""} | ${(gate.status ?? "").toUpperCase()} | ${gate.explanation ?? ""} |`),
     ``,
     `## Run Comparison`,
     ``,

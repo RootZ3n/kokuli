@@ -153,6 +153,8 @@ async function buildRegistry(category?: string): Promise<TestRegistryEntry[]> {
     const id = path.basename(filePath, ".json");
     try {
       const test = await loadTest(filePath);
+      // Skip non-test files (e.g. baseline/manifest.json)
+      if (!test.name || !test.category) continue;
       entries.push({ id, filePath, test });
     } catch {
       // skip unparseable files

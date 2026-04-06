@@ -96,7 +96,7 @@ function normalizeResultState(result: TestResult): ResultState {
 }
 
 function getRootTestId(testId: string): string {
-  return testId.replace(/-(step|fuzz)-\d+$/, "");
+  return (testId ?? "").replace(/-(step|fuzz)-\d+$/, "");
 }
 
 function severityFromResult(result: TestResult): Severity {
@@ -120,8 +120,8 @@ function deriveFindingTitle(result: TestResult): string {
     return "Gateway Block Triggered";
   }
 
-  const snippet = result.evidence?.[0]?.label ?? result.observedBehavior;
-  return snippet.split(".")[0].slice(0, 120) || result.testName;
+  const snippet = result.evidence?.[0]?.label ?? result.observedBehavior ?? result.testName ?? "Unknown";
+  return (snippet ?? "Unknown").split(".")[0].slice(0, 120) || result.testName || "Unknown";
 }
 
 function deriveExploitability(result: TestResult): Exploitability {
@@ -215,6 +215,7 @@ function deriveRemediationBlock(result: TestResult): RemediationBlock {
 }
 
 function truncate(text: string, max = 160): string {
+  if (!text) return "";
   const normalized = text.replace(/\s+/g, " ").trim();
   if (normalized.length <= max) return normalized;
   return `${normalized.slice(0, Math.max(0, max - 3))}...`;
