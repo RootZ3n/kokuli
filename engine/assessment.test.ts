@@ -5,7 +5,7 @@ import path from "path";
 import { buildDashboardAssessment, deriveFindings, deriveGates, deriveRunDelta, upgradeLegacyResult } from "./assessment";
 import { compareFingerprints } from "./fingerprint";
 import { verifyIntegrityChain } from "./history";
-import { renderSecurityReviewMarkdown } from "./reportWriter";
+import { renderAssistantShareMarkdown, renderPlainLanguageReportMarkdown, renderSecurityReviewMarkdown } from "./reportWriter";
 import { verdictFromGate, verdictFromLifecycle, verdictFromOverall, verdictFromResult, verdictLabel } from "./verdicts";
 import { FindingRecord, TestResult } from "./types";
 
@@ -548,4 +548,47 @@ test("security review export includes scope findings and suppressions", async ()
   assert.match(markdown, /## Key Findings/);
   assert.match(markdown, /## Regression Summary/);
   await clearFindingMetadata();
+});
+
+test("plain language report explains the run in simple deterministic terms", async () => {
+  const assessment = await buildDashboardAssessment({
+    target: "demo-target",
+    targetName: "Demo Target",
+    results: [makeResult({
+      result: "FAIL",
+      state: "failed",
+      evidence: [{ kind: "pattern", label: "Internal exposure", value: "Internal exposure: \"/etc/passwd\"" }],
+      remediationGuidance: ["Remove internal paths from responses."],
+    })],
+    previousFindings: [],
+  });
+  const markdown = renderPlainLanguageReportMarkdown(assessment);
+  assert.match(markdown, /# Krakzen Plain Language Report/);
+  assert.match(markdown, /## Big Answer/);
+  assert.match(markdown, /What that means:/);
+  assert.match(markdown, /## First Thing To Fix/);
+  assert.match(markdown, /## What To Do Next/);
+});
+
+test("assistant share package is ready to paste into external assistants", async () => {
+  const assessment = await buildDashboardAssessment({
+    target: "demo-target",
+    targetName: "Demo Target",
+    results: [makeResult({
+      result: "WARN",
+      state: "stale",
+      category: "recon",
+      observedBehavior: "The endpoint returned environment details.",
+      rawResponseSnippet: "ENV=prod",
+      evidence: [{ kind: "response", label: "Environment leak", value: "ENV=prod" }],
+      remediationGuidance: ["Remove environment details from public responses."],
+    })],
+    previousFindings: [],
+  });
+  const markdown = renderAssistantShareMarkdown(assessment);
+  assert.match(markdown, /# Krakzen AI Share Package/);
+  assert.match(markdown, /Codex, ChatGPT, or Claude/);
+  assert.match(markdown, /## Assessment Snapshot/);
+  assert.match(markdown, /## Key Findings/);
+  assert.match(markdown, /## Comparison/);
 });

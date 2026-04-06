@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-04-06
+
+- Added first-class saved target configuration with explicit endpoint overrides, auth settings, timestamps, and path-mode control.
+- Added deterministic target resolution rules for `explicit_only` and `explicit_plus_defaults`.
+- Added backend target CRUD, target resolution, and temporary quick-probe support for one-off unsaved runs.
+- Added dashboard target editor controls for new target, edit target, and quick probe flows.
+- Captured resolved target configuration snapshots in run metadata and exports without exposing secret token values.
+- Added compatibility normalization for legacy preset targets that still used `chatPath`.
+- Added logic coverage for target validation, migration, path resolution, temporary targets, and local CRUD persistence.
+
+## 2026-04-06
+
+- Added automatic plain-language and AI-share report artifacts to the latest report bundle:
+  - `PLAIN_LANGUAGE_REPORT.md`
+  - `AI_SHARE_PACKAGE.md`
+- Added dashboard copy actions for plain-language sharing and copy-ready packages for Codex, ChatGPT, and Claude.
+- Served `/reports` directly from the web server so dashboard export links now resolve to actual report artifacts.
+- Updated run completion UX to signal that reports were refreshed automatically.
+- Added deterministic test coverage for the new plain-language and AI-share markdown renderers.
+
 ## 2026-04-05
 
 - Standardized operator-facing verdict vocabulary across assessment, findings, comparison, dashboard, and exports.

@@ -262,6 +262,7 @@ function findingFingerprint(result: TestResult): string {
 }
 
 function shouldCreateFinding(result: TestResult): boolean {
+  if ((result.execution?.state ?? result.state) === "skipped") return false;
   return result.result === "FAIL" || result.result === "WARN";
 }
 
@@ -632,6 +633,8 @@ function buildOperatorSummary(assessment: {
     keyEvidenceHighlights,
     trustSignals: assessment.coverage.runTrustSignals,
     exportActions: [
+      { label: "Plain Language Report", path: "/reports/latest/PLAIN_LANGUAGE_REPORT.md" },
+      { label: "AI Share Package", path: "/reports/latest/AI_SHARE_PACKAGE.md" },
       { label: "Executive Summary", path: "/reports/latest/EXECUTIVE_SUMMARY.md" },
       { label: "Technical Findings", path: "/reports/latest/TECHNICAL_FINDINGS.md" },
       { label: "Evidence Appendix", path: "/reports/latest/EVIDENCE_APPENDIX.md" },
@@ -646,6 +649,7 @@ export async function buildDashboardAssessment(args: {
   targetName?: string;
   results: TestResult[];
   previousFindings?: FindingRecord[];
+  targetConfigSnapshot?: DashboardAssessment["targetConfigSnapshot"];
   targetFingerprint?: TargetFingerprint;
   previousFingerprint?: TargetFingerprint;
   integrity?: DashboardAssessment["integrity"];
@@ -685,6 +689,7 @@ export async function buildDashboardAssessment(args: {
     metrics,
     coverage,
     integrity: args.integrity,
+    targetConfigSnapshot: args.targetConfigSnapshot,
     targetFingerprint: args.targetFingerprint,
     gates,
     findings,

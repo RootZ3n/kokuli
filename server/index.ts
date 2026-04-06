@@ -1,9 +1,19 @@
 import express, { Request, Response, NextFunction } from "express";
 import path from "path";
+import fs from "fs-extra";
 import apiRouter from "./api";
 
 const app = express();
 const PORT = parseInt(process.env.KRAKZEN_PORT || "3000", 10);
+const SERVER_STARTED_AT = new Date().toISOString();
+const PACKAGE_VERSION = (() => {
+  try {
+    const pkg = fs.readJsonSync(path.join(process.cwd(), "package.json")) as { version?: string };
+    return pkg.version || "0.0.0";
+  } catch {
+    return "0.0.0";
+  }
+})();
 
 // --- Security middleware ---
 
@@ -92,9 +102,18 @@ app.use(express.json({ limit: "1mb" }));
 app.use("/api", rateLimiter);
 
 // API routes (before static so they take priority)
+app.get("/api/meta", (_req, res) => {
+  res.json({
+    version: PACKAGE_VERSION,
+    serverStartedAt: SERVER_STARTED_AT,
+    pid: process.pid,
+  });
+});
+
 app.use("/api", apiRouter);
 
 app.use(express.static(path.join(__dirname, "public")));
+app.use("/reports", express.static(path.join(process.cwd(), "reports")));
 
 // HTML page routes
 app.get("/atlantis", (_req, res) => {

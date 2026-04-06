@@ -2,17 +2,35 @@ import { Router, Request, Response } from "express";
 import path from "path";
 import fs from "fs-extra";
 import { globSync } from "glob";
-import { loadTargets, loadTest, saveTargets, resolveTarget, addTarget, removeTarget, setActiveTarget } from "../engine/loaders";
+import { loadTest } from "../engine/loaders";
 import { sendChat, sendRequest } from "../engine/client";
 import { evaluate, evaluateEndpoint } from "../engine/evaluator";
 import { generateFuzzPayloads } from "../engine/fuzzer";
 import { readLatestResults, writeAssessmentBundle, writeReport, writeSuiteSummary } from "../engine/reportWriter";
-import { TestCase, TestResult, TargetConfig } from "../engine/types";
+import { TestCase, TestResult, TargetConfig, ResolvedTargetConfig, TargetEndpointKey } from "../engine/types";
 import { recordEntry, getLedgerSummary, getSessionLedger, clearLedger, LedgerEntry } from "../engine/ledger";
 import { upgradeLegacyResult } from "../engine/assessment";
 import { loadExecutionStore, updateSuiteExecutionState, updateTestExecutionState } from "../engine/executionStore";
 import { Zone, Creature, CurriculumModule } from "../learning/types";
 import { loadPlayerState, savePlayerState, xpToNextLevel } from "../learning/state";
+import {
+  createTarget,
+  deleteTarget,
+  getTargetById,
+  loadTargets,
+  redactTargetSecrets,
+  resolvePathForAlias,
+  resolveRequestPath,
+  resolveTarget,
+  resolveTemporaryTarget,
+  resolveExecutionTarget,
+  saveTargets,
+  setActiveTarget,
+  snapshotTargetConfig,
+  TARGET_ENDPOINT_KEYS,
+  updateTarget,
+  formatTargetValidationError,
+} from "../engine/targets";
 
 const router = Router();
 
@@ -33,6 +51,25 @@ function isValidCategory(s: string): boolean {
 
 function isNonNegativeInt(n: unknown): boolean {
   return typeof n === 'number' && Number.isInteger(n) && n >= 0;
+}
+
+async function resolveExecutionTargetFromBody(body: unknown, fallbackKey?: string): Promise<{ key: string; target: ResolvedTargetConfig }> {
+  const payload = (body && typeof body === "object" ? body : {}) as { targetId?: string; targetConfig?: TargetConfig };
+  if (payload.targetConfig) {
+    const target = resolveTemporaryTarget(payload.targetConfig);
+    return { key: target.id, target };
+  }
+  return resolveTarget(payload.targetId || fallbackKey);
+}
+
+function getProbeEndpointDefinitions(target: ResolvedTargetConfig): Array<{ key: TargetEndpointKey; label: string; path: string }> {
+  return TARGET_ENDPOINT_KEYS
+    .map((key) => ({
+      key,
+      label: key.charAt(0).toUpperCase() + key.slice(1),
+      path: resolvePathForAlias(target, key),
+    }))
+    .filter((entry): entry is { key: TargetEndpointKey; label: string; path: string } => Boolean(entry.path));
 }
 
 // Express v5 params can be string | string[] | undefined
@@ -95,9 +132,23 @@ router.get("/tests", async (_req: Request, res: Response) => {
 router.get("/targets", async (_req: Request, res: Response) => {
   try {
     const data = await loadTargets();
-    res.json(data);
+    res.json({
+      defaultTarget: data.defaultTarget,
+      targets: Object.fromEntries(Object.entries(data.targets).map(([id, target]) => [id, redactTargetSecrets(target)])),
+    });
   } catch (err) {
     res.status(500).json({ error: String(err) });
+  }
+});
+
+router.get("/targets/:id", async (req: Request, res: Response) => {
+  try {
+    const id = param(req, "id");
+    if (!isValidKey(id)) { res.status(400).json({ error: "Invalid target id format" }); return; }
+    const target = await getTargetById(id);
+    res.json({ target: redactTargetSecrets(target) });
+  } catch (err) {
+    res.status(404).json({ error: String(err) });
   }
 });
 
@@ -110,87 +161,147 @@ router.post("/targets/active", async (req: Request, res: Response) => {
     const target = await setActiveTarget(key);
     res.json({ ok: true, activeTarget: key, target });
   } catch (err) {
-    res.status(400).json({ error: String(err) });
+    res.status(400).json({ error: formatTargetValidationError(err) });
   }
 });
 
 // POST /api/targets — add a new target
 router.post("/targets", async (req: Request, res: Response) => {
   try {
-    const { key, name, baseUrl, chatPath, payloadFormat, notes } = req.body as {
-      key: string; name?: string; baseUrl: string; chatPath?: string; payloadFormat?: string; notes?: string;
-    };
-    if (!key || typeof key !== "string" || !baseUrl || typeof baseUrl !== "string") {
-      res.status(400).json({ error: "Missing 'key' and 'baseUrl'" }); return;
-    }
-    if (!isValidKey(key)) { res.status(400).json({ error: "Invalid key format: alphanumeric, hyphens, underscores only, max 100 chars" }); return; }
-    if (!isValidUrl(baseUrl)) { res.status(400).json({ error: "Invalid baseUrl: must be a valid URL" }); return; }
-    if (chatPath !== undefined && typeof chatPath !== "string") { res.status(400).json({ error: "chatPath must be a string" }); return; }
-    if (payloadFormat !== undefined && typeof payloadFormat !== "string") { res.status(400).json({ error: "payloadFormat must be a string" }); return; }
-
-    const target: TargetConfig = {
-      name: name ?? key.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" "),
-      baseUrl: baseUrl.replace(/\/+$/, ""),
-      chatPath: chatPath ?? "/chat",
-      payloadFormat: (payloadFormat === "input" ? "input" : "messages") as "messages" | "input",
-      notes,
-    };
-
-    await addTarget(key, target);
-    res.json({ ok: true, key, target });
+    const target = await createTarget(req.body as TargetConfig & { id: string });
+    res.json({ ok: true, key: target.id, target: redactTargetSecrets(target) });
   } catch (err) {
-    res.status(400).json({ error: String(err) });
+    res.status(400).json({ error: formatTargetValidationError(err) });
   }
 });
 
-// DELETE /api/targets/:key — remove a target
-router.delete("/targets/:key", async (req: Request, res: Response) => {
+router.put("/targets/:id", async (req: Request, res: Response) => {
   try {
-    const key = param(req, "key");
-    if (!isValidKey(key)) { res.status(400).json({ error: "Invalid key format" }); return; }
-    await removeTarget(key);
-    res.json({ ok: true, removed: key });
+    const id = param(req, "id");
+    if (!isValidKey(id)) { res.status(400).json({ error: "Invalid target id format" }); return; }
+    const target = await updateTarget(id, req.body as Partial<TargetConfig>);
+    res.json({ ok: true, key: id, target: redactTargetSecrets(target) });
   } catch (err) {
-    res.status(400).json({ error: String(err) });
+    res.status(400).json({ error: formatTargetValidationError(err) });
   }
 });
 
-// POST /api/targets/:key/probe — probe a target for connectivity
-router.post("/targets/:key/probe", async (req: Request, res: Response) => {
+// DELETE /api/targets/:id — remove a target
+router.delete("/targets/:id", async (req: Request, res: Response) => {
   try {
-    const key = param(req, "key");
-    const resolved = await resolveTarget(key);
+    const id = param(req, "id");
+    if (!isValidKey(id)) { res.status(400).json({ error: "Invalid key format" }); return; }
+    await deleteTarget(id);
+    res.json({ ok: true, removed: id });
+  } catch (err) {
+    res.status(400).json({ error: formatTargetValidationError(err) });
+  }
+});
+
+router.post("/targets/resolve", async (req: Request, res: Response) => {
+  try {
+    const payload = (req.body && typeof req.body === "object" ? req.body : {}) as { id?: string; target?: TargetConfig };
+    const resolved = payload.target ? { key: payload.target.id || "temporary-target", target: resolveTemporaryTarget(payload.target) } : await resolveTarget(payload.id);
+    res.json({ ok: true, key: resolved.key, target: { ...redactTargetSecrets(resolved.target), resolvedEndpoints: resolved.target.resolvedEndpoints, source: resolved.target.source } });
+  } catch (err) {
+    res.status(400).json({ error: formatTargetValidationError(err) });
+  }
+});
+
+// POST /api/targets/probe — saved or temporary target probe
+router.post("/targets/probe", async (req: Request, res: Response) => {
+  try {
+    const payload = (req.body && typeof req.body === "object" ? req.body : {}) as { id?: string; target?: TargetConfig };
+    const resolved = payload.target ? { key: payload.target.id || "temporary-target", target: resolveTemporaryTarget(payload.target) } : await resolveTarget(payload.id);
     const target = resolved.target;
-
-    const probes = [
-      { path: "/", label: "Root" },
-      { path: target.chatPath, label: "Chat" },
-      { path: "/health", label: "Health" },
-      { path: "/version", label: "Version" },
-      { path: "/sessions", label: "Sessions" },
-      { path: "/runs", label: "Runs" },
-      { path: "/tools/list", label: "Tools" },
-      { path: "/magister/modules", label: "Magister" },
-    ];
-
-    const results: { path: string; label: string; status: number; bytes: number }[] = [];
+    const probes = getProbeEndpointDefinitions(target);
+    const results: { key: string; path: string; label: string; status: number; bytes: number }[] = [];
     for (const p of probes) {
       try {
-        const r = await sendRequest(target.baseUrl, p.path, "GET", undefined, undefined, 5000);
-        results.push({ path: p.path, label: p.label, status: r.status, bytes: r.rawText.length });
+        const r = await sendRequest(target.baseUrl, p.path, "GET", undefined, (target.auth.headerName && target.auth.token) ? { [target.auth.headerName]: target.auth.token } : undefined, 5000);
+        results.push({ key: p.key, path: p.path, label: p.label, status: r.status, bytes: r.rawText.length });
       } catch {
-        results.push({ path: p.path, label: p.label, status: 0, bytes: 0 });
+        results.push({ key: p.key, path: p.path, label: p.label, status: 0, bytes: 0 });
       }
     }
-
     const reachable = results.filter((r) => r.status > 0).length;
-    res.json({ ok: true, key, target: target.name, baseUrl: target.baseUrl, reachable, total: results.length, endpoints: results });
+    res.json({
+      ok: true,
+      key: resolved.key,
+      target: target.name,
+      baseUrl: target.baseUrl,
+      source: target.source,
+      pathMode: target.pathMode,
+      authHeaderConfigured: target.auth.headerName || null,
+      reachable,
+      total: results.length,
+      resolvedEndpoints: target.resolvedEndpoints,
+      endpoints: results,
+    });
+  } catch (err) {
+    res.status(400).json({ error: String(err) });
+  }
+});
+
+// POST /api/targets/:id/probe — legacy saved target probe endpoint
+router.post("/targets/:id/probe", async (req: Request, res: Response) => {
+  try {
+    const resolved = await resolveTarget(param(req, "id"));
+    const target = resolved.target;
+    const probes = getProbeEndpointDefinitions(target);
+    const results: { key: string; path: string; label: string; status: number; bytes: number }[] = [];
+    for (const p of probes) {
+      try {
+        const r = await sendRequest(target.baseUrl, p.path, "GET", undefined, (target.auth.headerName && target.auth.token) ? { [target.auth.headerName]: target.auth.token } : undefined, 5000);
+        results.push({ key: p.key, path: p.path, label: p.label, status: r.status, bytes: r.rawText.length });
+      } catch {
+        results.push({ key: p.key, path: p.path, label: p.label, status: 0, bytes: 0 });
+      }
+    }
+    res.json({ ok: true, key: resolved.key, target: target.name, baseUrl: target.baseUrl, source: target.source, pathMode: target.pathMode, authHeaderConfigured: target.auth.headerName || null, reachable: results.filter((r) => r.status > 0).length, total: results.length, resolvedEndpoints: target.resolvedEndpoints, endpoints: results });
   } catch (err) {
     res.status(400).json({ error: String(err) });
   }
 });
 
 // --- Unified test execution helper ---
+
+function buildSkippedResult(testCase: TestCase, target: TargetConfig, reason: string): TestResult {
+  const timestamp = new Date().toISOString();
+  return {
+    testId: testCase.id,
+    testName: testCase.name,
+    category: testCase.category,
+    target: testCase.target,
+    purpose: testCase.purpose,
+    timestamp,
+    result: "WARN",
+    confidence: "low",
+    observedBehavior: reason,
+    expectedBehavior: "Run only when the target defines the required endpoint path.",
+    suggestedImprovements: ["Add the missing endpoint path or use explicit_plus_defaults for this target."],
+    rawResponseSnippet: reason,
+    parsedFields: {
+      httpStatus: 0,
+      hasOutput: false,
+      hasReceiptId: false,
+      gatewayBlock: false,
+      receiptHealth: { receiptId: false, provider: false, model: false, blocked: null, reason: null },
+    },
+    retry: { attempted: false },
+    durationMs: 0,
+    state: "skipped",
+    execution: {
+      state: "skipped",
+      lastRunAt: timestamp,
+      completedAt: timestamp,
+      durationMs: 0,
+      attemptCount: 1,
+    },
+    remediationGuidance: ["Add the endpoint path to the target configuration and rerun the test."],
+    targetConfigSnapshot: snapshotTargetConfig(target as ResolvedTargetConfig),
+  };
+}
 
 async function executeTest(testCase: TestCase, target: TargetConfig, targetKey?: string): Promise<TestResult[]> {
   // Override the test's hardcoded target with the actual target being used
@@ -215,7 +326,14 @@ async function executeTest(testCase: TestCase, target: TargetConfig, targetKey?:
       };
 
       if (step.endpoint && step.endpoint !== "/chat") {
-        const response = await sendRequest(target.baseUrl, step.endpoint, step.method ?? "GET", step.body);
+        const resolvedPath = resolveRequestPath(target as ResolvedTargetConfig, step.endpoint);
+        if (resolvedPath.skipped || !resolvedPath.path) {
+          results.push(buildSkippedResult(stepCase, target, `Skipped because the target does not define a resolved path for ${resolvedPath.alias || step.endpoint}.`));
+          continue;
+        }
+        const response = await sendRequest(target.baseUrl, resolvedPath.path, step.method ?? "GET", step.body, {
+          ...((target.auth?.headerName && target.auth?.token) ? { [target.auth.headerName]: target.auth.token } : {}),
+        });
         const result = evaluateEndpoint(stepCase, response);
         await writeReport(result);
         results.push(result);
@@ -274,7 +392,16 @@ async function executeTest(testCase: TestCase, target: TargetConfig, targetKey?:
 
   // Endpoint tests (non-chat, or non-POST methods on /chat)
   if (testCase.endpoint && testCase.endpoint !== "/chat") {
-    const response = await sendRequest(target.baseUrl, testCase.endpoint, testCase.method ?? "GET", testCase.body, testCase.headers);
+    const resolvedPath = resolveRequestPath(target as ResolvedTargetConfig, testCase.endpoint);
+    if (resolvedPath.skipped || !resolvedPath.path) {
+      const result = buildSkippedResult(testCase, target, `Skipped because the target does not define a resolved path for ${resolvedPath.alias || testCase.endpoint}.`);
+      await writeReport(result);
+      return [result];
+    }
+    const response = await sendRequest(target.baseUrl, resolvedPath.path, testCase.method ?? "GET", testCase.body, {
+      ...(testCase.headers || {}),
+      ...((target.auth?.headerName && target.auth?.token) ? { [target.auth.headerName]: target.auth.token } : {}),
+    });
     const result = evaluateEndpoint(testCase, response);
     await writeReport(result);
     return [result];
@@ -358,6 +485,7 @@ async function persistExecutedResults(
     const finalized: TestResult = {
       ...upgraded,
       state: execution.state,
+      targetConfigSnapshot: snapshotTargetConfig(targetConfig as ResolvedTargetConfig),
       execution: {
         state: execution.state,
         startedAt: execution.startedAt,
@@ -420,7 +548,7 @@ router.post("/tests/:id/run", async (req: Request, res: Response) => {
 
     // Use active target (or query param override)
     const targetKey = typeof req.query.target === "string" ? req.query.target : undefined;
-    const resolved = await resolveTarget(targetKey);
+    const resolved = await resolveExecutionTargetFromBody(req.body, targetKey);
     const priorResults = await readLatestResults();
     const previousByTestId = new Map<string, TestResult>(priorResults.map((result: TestResult) => [result.testId, result]));
 
@@ -485,7 +613,7 @@ router.post("/suite/:category", async (req: Request, res: Response) => {
     const results: TestResult[] = [];
     // Use active target (or query param override)
     const targetKey = typeof req.query.target === "string" ? req.query.target : undefined;
-    const resolved = await resolveTarget(targetKey);
+    const resolved = await resolveExecutionTargetFromBody(req.body, targetKey);
     const priorResults = await readLatestResults();
     const previousByTestId = new Map<string, TestResult>(priorResults.map((result: TestResult) => [result.testId, result]));
     await updateSuiteExecutionState({ suiteId: category, state: "running" });
@@ -538,15 +666,19 @@ router.get("/reports/summary", async (_req: Request, res: Response) => {
 
 router.get("/dashboard", async (_req: Request, res: Response) => {
   try {
+    const assessmentPath = path.join(process.cwd(), "reports", "latest", "ASSESSMENT.json");
+    if (await fs.pathExists(assessmentPath)) {
+      res.json(await fs.readJson(assessmentPath));
+      return;
+    }
     const resolved = await resolveTarget();
     const results = await readLatestResults();
-    const assessment = await writeAssessmentBundle({
+    res.json(await writeAssessmentBundle({
       target: resolved.key,
       targetName: resolved.target.name,
       targetConfig: resolved.target,
       results,
-    });
-    res.json(assessment);
+    }));
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }

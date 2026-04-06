@@ -1,16 +1,7 @@
 import crypto from "crypto";
 import { sendRequest } from "./client";
 import { TargetConfig, TargetFingerprint } from "./types";
-
-const FINGERPRINT_PROBES = [
-  { path: "/", label: "Root" },
-  { path: "/health", label: "Health" },
-  { path: "/version", label: "Version" },
-  { path: "/sessions", label: "Sessions" },
-  { path: "/runs", label: "Runs" },
-  { path: "/tools/list", label: "Tools" },
-  { path: "/magister/modules", label: "Magister" },
-];
+import { resolvePathForAlias, TARGET_ENDPOINT_KEYS } from "./targets";
 
 const HEADERS_OF_INTEREST = [
   "server",
@@ -47,7 +38,13 @@ function detectVersionMetadata(rawText: string): string | undefined {
 }
 
 export async function captureTargetFingerprint(targetKey: string, target: TargetConfig): Promise<TargetFingerprint> {
-  const probes = [{ path: target.chatPath, label: "Chat" }, ...FINGERPRINT_PROBES];
+  const probes = TARGET_ENDPOINT_KEYS
+    .map((key) => ({
+      key,
+      path: resolvePathForAlias(target as never, key),
+      label: key.charAt(0).toUpperCase() + key.slice(1),
+    }))
+    .filter((probe): probe is { key: typeof probe.key; path: string; label: string } => typeof probe.path === "string");
   const endpoints: TargetFingerprint["reachableEndpoints"] = [];
   const mergedHeaders: Record<string, string> = {};
   let versionMetadata: string | undefined;
@@ -57,7 +54,7 @@ export async function captureTargetFingerprint(targetKey: string, target: Target
       const response = await sendRequest(target.baseUrl, probe.path, "GET", undefined, undefined, 5000);
       const headersOfInterest = pickHeaders(response.headers);
       Object.assign(mergedHeaders, headersOfInterest);
-      if (probe.path === "/version" && response.ok) {
+      if (probe.key === "version" && response.ok) {
         versionMetadata = detectVersionMetadata(response.rawText);
       }
       endpoints.push({

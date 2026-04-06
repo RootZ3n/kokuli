@@ -2,25 +2,52 @@
   "defaultTarget": "mushin-squidley-v2",
   "targets": {
     "mushin-squidley-v2": {
+      "id": "mushin-squidley-v2",
       "name": "Mushin Squidley V2",
       "baseUrl": "http://10.0.0.50:18791",
-      "chatPath": "/chat",
       "payloadFormat": "messages",
-      "notes": "Primary Squidley V2 instance on Mushin. Hardened gateway, structured receipts, Velum privacy layer, multi-model routing. Reachable over Tailscale."
+      "chatPath": "/chat",
+      "pathMode": "explicit_plus_defaults",
+      "endpoints": {
+        "chat": "/chat"
+      },
+      "auth": {},
+      "notes": "Primary Squidley V2 instance on Mushin. Hardened gateway, structured receipts, Velum privacy layer, multi-model routing. Reachable over Tailscale.",
+      "enabled": true,
+      "createdAt": "2026-04-06T11:15:12.219Z",
+      "updatedAt": "2026-04-06T11:15:12.219Z"
     },
     "squidley-lite": {
+      "id": "squidley-lite",
       "name": "Squidley Lite",
       "baseUrl": "http://192.168.1.100:8080",
-      "chatPath": "/chat",
       "payloadFormat": "messages",
-      "notes": "Squidley Lite on laptop for portable testing"
+      "chatPath": "/chat",
+      "pathMode": "explicit_plus_defaults",
+      "endpoints": {
+        "chat": "/chat"
+      },
+      "auth": {},
+      "notes": "Squidley Lite on laptop for portable testing",
+      "enabled": true,
+      "createdAt": "2026-04-06T11:15:12.219Z",
+      "updatedAt": "2026-04-06T11:15:12.219Z"
     },
     "more-input": {
+      "id": "more-input",
       "name": "More Input",
       "baseUrl": "http://10.0.0.50:9000",
-      "chatPath": "/api/chat",
       "payloadFormat": "messages",
-      "notes": "More Input - standalone product for uncle"
+      "chatPath": "/api/chat",
+      "pathMode": "explicit_plus_defaults",
+      "endpoints": {
+        "chat": "/api/chat"
+      },
+      "auth": {},
+      "notes": "More Input - standalone product for uncle",
+      "enabled": true,
+      "createdAt": "2026-04-06T11:15:12.219Z",
+      "updatedAt": "2026-04-06T11:15:12.219Z"
     }
   },
   "endpoints": {

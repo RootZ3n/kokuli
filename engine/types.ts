@@ -277,17 +277,76 @@ export type FuzzMutation =
 
 export type PayloadFormat = "messages" | "input";
 
+export type TargetPathMode = "explicit_only" | "explicit_plus_defaults";
+
+export type TargetEndpointKey =
+  | "chat"
+  | "health"
+  | "search"
+  | "memory"
+  | "receipts"
+  | "runs"
+  | "sessions"
+  | "tools"
+  | "version"
+  | "approvals"
+  | "magister"
+  | "root";
+
+export type TargetEndpointConfig = Partial<Record<TargetEndpointKey, string>>;
+
+export type TargetAuthConfig = {
+  headerName?: string;
+  token?: string;
+};
+
 export type TargetConfig = {
+  id?: string;
   name: string;
   baseUrl: string;
-  chatPath: string;
   payloadFormat: PayloadFormat;
+  chatPath?: string;
+  pathMode?: TargetPathMode;
+  endpoints?: TargetEndpointConfig;
+  auth?: TargetAuthConfig;
   notes?: string;
+  enabled?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type TargetsFile = {
   defaultTarget: string;
   targets: Record<string, TargetConfig>;
+  endpoints?: Record<string, { path: string; method?: string; auth?: string; notes?: string }>;
+};
+
+export type ResolvedTargetConfig = TargetConfig & {
+  id: string;
+  pathMode: TargetPathMode;
+  endpoints: TargetEndpointConfig;
+  resolvedEndpoints: TargetEndpointConfig;
+  auth: TargetAuthConfig;
+  enabled: boolean;
+  source: "saved" | "temporary";
+};
+
+export type TargetConfigSnapshot = {
+  id: string;
+  name: string;
+  baseUrl: string;
+  source: "saved" | "temporary";
+  pathMode: TargetPathMode;
+  payloadFormat: PayloadFormat;
+  enabled: boolean;
+  auth: {
+    headerName?: string;
+    hasToken: boolean;
+  };
+  resolvedEndpoints: TargetEndpointConfig;
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 // --- Endpoint request/response (generic HTTP testing) ---
@@ -384,6 +443,7 @@ export type TestResult = {
   remediationBlock?: RemediationBlock;
   transparency?: TransparencyRecord;
   targetFingerprint?: TargetFingerprint;
+  targetConfigSnapshot?: TargetConfigSnapshot;
   priorRunComparison?: RunComparisonRecord;
 };
 
@@ -545,6 +605,7 @@ export type DashboardAssessment = {
   metrics: AssessmentMetrics;
   coverage: ExecutionCoverage;
   integrity?: IntegrityRecord;
+  targetConfigSnapshot?: TargetConfigSnapshot;
   targetFingerprint?: TargetFingerprint;
   gates: GateRecord[];
   findings: FindingRecord[];

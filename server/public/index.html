@@ -26,7 +26,11 @@
           <select class="target-select" id="target-select" onchange="switchTarget(this.value)">
             <option value="">Loading...</option>
           </select>
+          <button class="btn btn-sm" onclick="openTargetEditor('new')">New Target</button>
+          <button class="btn btn-sm" onclick="openTargetEditor('edit')">Edit Target</button>
+          <button class="btn btn-sm" onclick="openTargetEditor('quick')">Quick Probe</button>
           <button class="btn btn-sm target-probe-btn" id="probe-btn" onclick="probeTarget()" title="Probe target connectivity">&#8943;</button>
+          <div class="target-runtime-note" id="target-runtime-note"></div>
         </div>
       </div>
       <div class="nav-links">
@@ -53,6 +57,7 @@
         <div class="section-title">Threat Overview</div>
         <div class="section-subtitle">Adversarial security validation &mdash; scanning the deep</div>
         <div class="last-updated" id="last-updated"></div>
+        <div class="last-updated" id="server-meta"></div>
       </div>
       <div class="header-actions">
         <button class="btn btn-primary btn-glow" id="run-all-btn" onclick="runSuite('all')">
@@ -203,7 +208,42 @@
 
   <div class="toast" id="toast"></div>
 
+  <div class="modal-overlay" id="target-modal" style="display:none;">
+    <div class="modal-card target-modal-card">
+      <div class="card-header">
+        <div class="card-title">Target Configuration</div>
+        <button class="btn btn-sm" onclick="closeTargetEditor()">Close</button>
+      </div>
+      <div class="target-form-grid">
+        <label class="target-form-field"><span>Target Id</span><input id="target-form-id" class="target-select" /></label>
+        <label class="target-form-field"><span>Target Name</span><input id="target-form-name" class="target-select" /></label>
+        <label class="target-form-field target-form-field-wide"><span>Base URL</span><input id="target-form-base-url" class="target-select" placeholder="https://example.test" /></label>
+        <label class="target-form-field"><span>Path Mode</span><select id="target-form-path-mode" class="target-select"><option value="explicit_plus_defaults">explicit_plus_defaults</option><option value="explicit_only">explicit_only</option></select></label>
+        <label class="target-form-field"><span>Payload Format</span><select id="target-form-payload-format" class="target-select"><option value="messages">messages</option><option value="input">input</option></select></label>
+        <label class="target-form-field"><span>Chat Path</span><input id="target-form-chat" class="target-select" placeholder="/chat" /></label>
+        <label class="target-form-field"><span>Health Path</span><input id="target-form-health" class="target-select" placeholder="/health" /></label>
+        <label class="target-form-field"><span>Search Path</span><input id="target-form-search" class="target-select" placeholder="/search" /></label>
+        <label class="target-form-field"><span>Memory Path</span><input id="target-form-memory" class="target-select" placeholder="/memory/search" /></label>
+        <label class="target-form-field"><span>Receipts Path</span><input id="target-form-receipts" class="target-select" placeholder="/receipts" /></label>
+        <label class="target-form-field"><span>Runs Path</span><input id="target-form-runs" class="target-select" placeholder="/runs" /></label>
+        <label class="target-form-field"><span>Sessions Path</span><input id="target-form-sessions" class="target-select" placeholder="/sessions" /></label>
+        <label class="target-form-field"><span>Tools Path</span><input id="target-form-tools" class="target-select" placeholder="/tools/list" /></label>
+        <label class="target-form-field"><span>Version Path</span><input id="target-form-version" class="target-select" placeholder="/version" /></label>
+        <label class="target-form-field"><span>Auth Header</span><input id="target-form-auth-header" class="target-select" placeholder="authorization" /></label>
+        <label class="target-form-field"><span>Auth Token</span><input id="target-form-auth-token" class="target-select" type="password" placeholder="leave blank to keep existing token" /></label>
+        <label class="target-form-field target-form-field-wide"><span>Notes</span><textarea id="target-form-notes" class="target-select target-textarea"></textarea></label>
+      </div>
+      <div class="target-form-actions">
+        <button class="btn btn-primary btn-glow" onclick="saveTargetConfig()">Save Target</button>
+        <button class="btn" onclick="probeDraftTarget()">Probe</button>
+        <button class="btn" onclick="useTemporaryTarget()">Use For Run</button>
+      </div>
+      <div class="target-form-help" id="target-form-help">Temporary targets are visible in run metadata but are not saved unless you choose Save Target.</div>
+    </div>
+  </div>
+
   <script src="/js/api-client.js"></script>
+  <script src="/js/target-form.js"></script>
   <script src="/js/dashboard.js"></script>
 </body>
 </html>

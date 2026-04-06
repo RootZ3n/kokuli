@@ -1,5 +1,6 @@
 import axios from "axios";
 import { ChatResult, SquidleyReceipt, RetryInfo, TargetConfig, EndpointResult, RequestRecord, ResponseRecord } from "./types";
+import { resolvePathForAlias } from "./targets";
 
 function stringifyUnknown(value: unknown): string {
   if (typeof value === "string") return value;
@@ -180,6 +181,13 @@ function buildPayload(target: TargetConfig, input: string): unknown {
   return { input };
 }
 
+function buildAuthHeaders(target: TargetConfig): Record<string, string> {
+  const headerName = target.auth?.headerName?.trim();
+  const token = target.auth?.token;
+  if (!headerName || !token) return {};
+  return { [headerName]: token };
+}
+
 function buildResponseRecord(status: number, headers: Record<string, string>, rawText: string, data: unknown): ResponseRecord {
   let normalizedData: unknown = data;
   if (typeof normalizedData === "string") {
@@ -216,13 +224,14 @@ type AttemptResult = {
 async function attemptChat(
   url: string,
   payload: unknown,
-  timeout: number
+  timeout: number,
+  authHeaders: Record<string, string>
 ): Promise<AttemptResult> {
   try {
     const response = await axios.post(url, payload, {
       timeout,
       validateStatus: () => true,
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", ...authHeaders },
       // Accept text to handle SSE streams that come back as text
       responseType: "text",
       transformResponse: [(data: unknown) => data],
@@ -266,19 +275,24 @@ export async function sendChat(
   input: string,
   timeout = 30000
 ): Promise<ChatResult> {
-  const url = `${target.baseUrl}${target.chatPath}`;
+  const chatPath = resolvePathForAlias(target as never, "chat") || target.chatPath || (target.pathMode === "explicit_plus_defaults" ? "/chat" : undefined);
+  if (!chatPath) {
+    throw new Error("Target configuration does not define a chat endpoint path.");
+  }
+  const authHeaders = buildAuthHeaders(target);
+  const url = `${target.baseUrl}${chatPath}`;
   const payload = buildPayload(target, input);
   const request: RequestRecord = {
     url,
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...authHeaders },
     body: payload,
     payloadFormat: target.payloadFormat,
   };
   const start = Date.now();
   const retry: RetryInfo = { attempted: false };
 
-  let result = await attemptChat(url, payload, timeout);
+  let result = await attemptChat(url, payload, timeout, authHeaders);
 
   // Retry once on transient failure
   if (result.error && isTransientError(result.error)) {
@@ -286,7 +300,7 @@ export async function sendChat(
     retry.attempted = true;
     retry.reason = "transient_failure";
     retry.originalError = errMsg;
-    result = await attemptChat(url, payload, timeout);
+    result = await attemptChat(url, payload, timeout, authHeaders);
   }
 
   if (!result.rawText && result.data) {

@@ -307,14 +307,14 @@ async function runSingle(testPath: string, showRaw = false): Promise<TestResult 
 
   // --- Standard chat tests (original behavior) ---
   console.log(chalk.cyan(`\n[krakzen] Running: ${testCase.name}`));
-  console.log(chalk.gray(`  target: ${target.name} -> ${target.baseUrl}${target.chatPath}`));
+  console.log(chalk.gray(`  target: ${target.name} -> ${target.baseUrl}${target.chatPath || "/chat"}`));
 
   const chat = await sendChat(target, testCase.input);
   const result = evaluate(testCase, chat);
 
   await writeReport(result);
   await refreshAssessmentArtifacts();
-  await recordResultToLedger(result, target.chatPath, "POST");
+  await recordResultToLedger(result, target.chatPath || "/chat", "POST");
   printResult(result);
 
   if (showRaw) {
@@ -467,7 +467,7 @@ async function runMultiTurn(
     }
 
     await writeReport(result);
-    const stepEndpoint = step.endpoint ?? target.chatPath;
+    const stepEndpoint = step.endpoint ?? target.chatPath ?? "/chat";
     const stepMethod = step.method ?? (step.endpoint && step.endpoint !== "/chat" ? "GET" : "POST");
     await recordResultToLedger(result, stepEndpoint, stepMethod);
     printResult(result);
@@ -523,7 +523,7 @@ async function runFuzz(
     const result = evaluate(fuzzCase, chat);
 
     await writeReport(result);
-    await recordResultToLedger(result, target.chatPath, "POST");
+    await recordResultToLedger(result, target.chatPath || "/chat", "POST");
     printResult(result);
     results.push(result);
   }
@@ -830,7 +830,7 @@ async function probeTarget(key: string, target: TargetConfig): Promise<void> {
   // Check base connectivity
   const probes = [
     { path: "/", label: "Root" },
-    { path: target.chatPath, label: "Chat endpoint" },
+    { path: target.chatPath || "/chat", label: "Chat endpoint" },
     { path: "/health", label: "Health" },
     { path: "/version", label: "Version" },
     { path: "/sessions", label: "Sessions" },

@@ -6,6 +6,7 @@ import { appendAssessmentSnapshot, getLatestSnapshot, verifyIntegrityChain, load
 import { DashboardAssessment, TargetConfig, TestResult } from "./types";
 import { LedgerSummary, LedgerEntry } from "./ledger";
 import { verdictLabel } from "./verdicts";
+import { snapshotTargetConfig } from "./targets";
 
 function safeName(input: string): string {
   return input.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -164,10 +165,15 @@ export async function writeSuiteSummary(results: TestResult[]): Promise<void> {
 
 function formatAssessmentSummary(assessment: DashboardAssessment): string {
   const risk = assessment.riskSummary;
+  const config = assessment.targetConfigSnapshot;
   return [
     `**Target:** ${assessment.targetName ?? assessment.target}`,
     `**Generated:** ${assessment.generatedAt}`,
     `**Verdict:** ${verdictLabel(assessment.verdict)}`,
+    `**Target Source:** ${config?.source ?? "n/a"}`,
+    `**Path Mode:** ${config?.pathMode ?? "n/a"}`,
+    `**Auth Header:** ${config?.auth.headerName ?? "none"}${config?.auth.hasToken ? " (configured)" : ""}`,
+    `**Resolved Endpoints:** ${config ? Object.entries(config.resolvedEndpoints).map(([key, value]) => `${key}=${value}`).join(", ") : "n/a"}`,
     `**Fingerprint Signature:** ${assessment.targetFingerprint?.signature ?? "n/a"}`,
     `**Integrity:** ${assessment.integrity?.status ?? "n/a"}${assessment.integrity?.warning ? ` (${assessment.integrity.warning})` : ""}`,
     `**Overall Verdict:** ${risk.overallVerdict}`,
@@ -177,6 +183,119 @@ function formatAssessmentSummary(assessment: DashboardAssessment): string {
     `**Child Safety Failures:** ${risk.childSafetyFailuresCount}`,
     `**Recommended First Fix:** ${risk.recommendedFirstFix}`,
   ].join("\n");
+}
+
+function renderSimpleVerdictMeaning(assessment: DashboardAssessment): string {
+  if (assessment.verdict === "critical") return "We found at least one very serious problem. Someone could get the system to do or reveal something it should not.";
+  if (assessment.verdict === "fail") return "We found problems that need fixing before you should trust this target.";
+  if (assessment.verdict === "concern") return "Nothing catastrophic showed up, but there are warning signs that deserve cleanup.";
+  if (assessment.verdict === "pass") return "The checks in this run looked safe. Keep monitoring because a new build can change that.";
+  if (assessment.verdict === "not_comparable") return "This run and the earlier run do not look like the same target setup, so changes may be misleading.";
+  return "The run did not produce a clear safety answer, so treat it as incomplete until you rerun it.";
+}
+
+export function renderPlainLanguageReportMarkdown(assessment: DashboardAssessment): string {
+  const lines = [
+    `# Krakzen Plain Language Report`,
+    ``,
+    `This report explains the latest scan in simple language.`,
+    ``,
+    `## Big Answer`,
+    ``,
+    `- Target: ${assessment.targetName ?? assessment.target}`,
+    `- When we checked it: ${assessment.generatedAt}`,
+    `- Final verdict: ${verdictLabel(assessment.verdict)}`,
+    `- What that means: ${renderSimpleVerdictMeaning(assessment)}`,
+    ``,
+    `## Simple Scoreboard`,
+    ``,
+    `- Tests checked: ${assessment.summary.total}`,
+    `- Looked safe: ${assessment.summary.pass}`,
+    `- Need attention: ${assessment.summary.fail}`,
+    `- Warning signs: ${assessment.summary.warn}`,
+    `- Very serious findings: ${assessment.metrics.criticalFindingsCount}`,
+    `- Regressions since the last run: ${assessment.metrics.newRegressionsCount}`,
+    `- Public exposure findings: ${assessment.metrics.publicExposureCount}`,
+    `- Child safety failures: ${assessment.metrics.childSafetyFailuresCount}`,
+    ``,
+    `## First Thing To Fix`,
+    ``,
+    `${assessment.riskSummary.recommendedFirstFix}`,
+    ``,
+  ];
+
+  if (!assessment.findings.length) {
+    lines.push(`## What We Found`);
+    lines.push(``);
+    lines.push(`No active findings were open in this run.`);
+  } else {
+    lines.push(`## What We Found`);
+    lines.push(``);
+    for (const finding of assessment.findings.slice(0, 5)) {
+      lines.push(`### ${finding.title}`);
+      lines.push(`- Why this matters: ${finding.evidence_snapshot.whyItMatters}`);
+      lines.push(`- What we saw: ${finding.evidence_snapshot.responseSummary}`);
+      lines.push(`- How sure we are: ${finding.confidence} (${finding.confidence_reason})`);
+      lines.push(`- What to change: ${finding.remediation_block.whatToChange}`);
+      lines.push(`- What could happen if you ignore it: ${finding.remediation_block.attackerBenefitIfUnfixed}`);
+      lines.push(`- How to check the fix: ${finding.remediation_block.retestSuggestion}`);
+      lines.push(``);
+    }
+  }
+
+  lines.push(`## What To Do Next`);
+  lines.push(``);
+  lines.push(`1. Fix the recommended first issue.`);
+  lines.push(`2. Rerun the affected suite or the full scan.`);
+  lines.push(`3. Confirm the finding moves to resolved or verified resolved.`);
+  if (assessment.comparison.comparabilityWarning) {
+    lines.push(`4. Recheck the target setup because this run is not directly comparable: ${assessment.comparison.comparabilityWarning}`);
+  }
+  return lines.join("\n");
+}
+
+export function renderAssistantShareMarkdown(assessment: DashboardAssessment): string {
+  const lines = [
+    `# Krakzen AI Share Package`,
+    ``,
+    `Paste this package into Codex, ChatGPT, or Claude if you want help understanding or fixing the latest Krakzen run.`,
+    ``,
+    `## Ask`,
+    ``,
+    `Please explain these deterministic findings clearly, prioritize the fixes, and suggest a retest plan.`,
+    ``,
+    `## Assessment Snapshot`,
+    ``,
+    formatAssessmentSummary(assessment),
+    ``,
+    `## Key Findings`,
+    ``,
+  ];
+
+  if (!assessment.findings.length) {
+    lines.push(`No active findings in the latest assessment.`);
+  } else {
+    for (const finding of assessment.findings.slice(0, 10)) {
+      lines.push(`### ${finding.title}`);
+      lines.push(`- Severity: ${finding.severity}`);
+      lines.push(`- Verdict: ${verdictLabel(finding.verdict ?? "concern")}`);
+      lines.push(`- Evidence snapshot: ${finding.evidence_snapshot.attackSummary} | ${finding.evidence_snapshot.responseSummary}`);
+      lines.push(`- Confidence: ${finding.confidence} (${finding.confidence_reason})`);
+      lines.push(`- Provenance: ${(finding.provenance || []).map((rule) => `${rule.id}@${rule.version} [${rule.family}]`).join("; ") || "none"}`);
+      lines.push(`- Remediation: ${finding.remediation_block.whatToChange}`);
+      lines.push(`- Retest: ${finding.remediation_block.retestSuggestion}`);
+      lines.push(``);
+    }
+  }
+
+  lines.push(`## Comparison`);
+  lines.push(``);
+  lines.push(`- New findings: ${assessment.comparison.newFindings.length}`);
+  lines.push(`- Recurring findings: ${assessment.comparison.recurringFindings.length}`);
+  lines.push(`- Regressed findings: ${assessment.comparison.regressedFindings.length}`);
+  lines.push(`- Resolved findings: ${assessment.comparison.resolvedFindings.length}`);
+  lines.push(`- Comparability warning: ${assessment.comparison.comparabilityWarning ?? "none"}`);
+  return lines.join("\n");
 }
 
 function renderExecutiveSummaryMarkdown(assessment: DashboardAssessment): string {
@@ -285,6 +404,7 @@ function renderEvidenceAppendixMarkdown(assessment: DashboardAssessment): string
     lines.push(`- Duration: ${test.durationMs}ms`);
     lines.push(`- Attempts: ${test.execution?.attemptCount ?? 1}`);
     lines.push(`- Fingerprint signature: ${test.targetFingerprint?.signature ?? assessment.targetFingerprint?.signature ?? "n/a"}`);
+    lines.push(`- Target config: ${assessment.targetConfigSnapshot ? `${assessment.targetConfigSnapshot.name} | source=${assessment.targetConfigSnapshot.source} | pathMode=${assessment.targetConfigSnapshot.pathMode} | authHeader=${assessment.targetConfigSnapshot.auth.headerName ?? "none"} | endpoints=${Object.entries(assessment.targetConfigSnapshot.resolvedEndpoints).map(([key, value]) => `${key}=${value}`).join("; ")}` : "n/a"}`);
     lines.push(`- Threat intent: ${test.threatProfile?.intent ?? test.purpose}`);
     lines.push(`- Expected safe behavior: ${test.threatProfile?.expectedSafeBehavior ?? test.expectedBehavior}`);
     lines.push(`- Failure criteria: ${(test.threatProfile?.failureCriteria ?? []).join(" | ") || "n/a"}`);
@@ -368,6 +488,10 @@ export function renderSecurityReviewMarkdown(assessment: DashboardAssessment): s
     ``,
     `- Base URL: ${assessment.targetFingerprint?.baseUrl ?? "n/a"}`,
     `- Signature: ${assessment.targetFingerprint?.signature ?? "n/a"}`,
+    `- Target source: ${assessment.targetConfigSnapshot?.source ?? "n/a"}`,
+    `- Path mode: ${assessment.targetConfigSnapshot?.pathMode ?? "n/a"}`,
+    `- Auth header configured: ${assessment.targetConfigSnapshot?.auth.headerName ?? "none"}${assessment.targetConfigSnapshot?.auth.hasToken ? " (token present)" : ""}`,
+    `- Resolved endpoints: ${assessment.targetConfigSnapshot ? Object.entries(assessment.targetConfigSnapshot.resolvedEndpoints).map(([key, value]) => `${key}=${value}`).join(", ") : "n/a"}`,
     `- Auth posture: ${assessment.targetFingerprint?.authPostureSummary ?? "n/a"}`,
     `- Version/build metadata: ${assessment.targetFingerprint?.versionMetadata ?? "n/a"}`,
     ``,
@@ -432,6 +556,7 @@ export async function writeAssessmentBundle(args: {
     targetName: args.targetName,
     results,
     previousFindings: previous?.findings,
+    targetConfigSnapshot: args.targetConfig ? snapshotTargetConfig(args.targetConfig as never) : undefined,
     targetFingerprint,
     previousFingerprint: previous?.targetFingerprint,
   });
@@ -441,6 +566,8 @@ export async function writeAssessmentBundle(args: {
   if (integrity) assessment.integrity = integrity;
 
   await fs.writeJson(path.join(latestDir, "ASSESSMENT.json"), assessment, { spaces: 2 });
+  await fs.writeFile(path.join(latestDir, "PLAIN_LANGUAGE_REPORT.md"), renderPlainLanguageReportMarkdown(assessment), "utf8");
+  await fs.writeFile(path.join(latestDir, "AI_SHARE_PACKAGE.md"), renderAssistantShareMarkdown(assessment), "utf8");
   await fs.writeFile(path.join(latestDir, "EXECUTIVE_SUMMARY.md"), renderExecutiveSummaryMarkdown(assessment), "utf8");
   await fs.writeFile(path.join(latestDir, "TECHNICAL_FINDINGS.md"), renderTechnicalFindingsMarkdown(assessment), "utf8");
   await fs.writeFile(path.join(latestDir, "EVIDENCE_APPENDIX.md"), renderEvidenceAppendixMarkdown(assessment), "utf8");

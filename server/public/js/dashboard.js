@@ -5,6 +5,11 @@ let activeTargetKey = "";
 let lastUpdated = null;
 let findingSort = "severity";
 const localStateOverrides = {};
+let runtimeTargetOverride = null;
+let runtimeTargetResolved = null;
+let targetEditorMode = "new";
+let editingTargetId = "";
+let serverMeta = null;
 
 const CATEGORIES = {
   "child-safety": { name: "Child Safety", icon: "\u{1F6E1}\uFE0F", desc: "Magister child protection", color: "#ff0055", priority: 1 },
@@ -60,6 +65,16 @@ async function api(path, opts) {
   return window.KrakzenApi.apiFetch(path, opts);
 }
 
+function formValue(id) {
+  const el = document.getElementById(id);
+  return el ? el.value : "";
+}
+
+function setFormValue(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.value = value || "";
+}
+
 function escHtml(value) {
   const el = document.createElement("div");
   el.textContent = value == null ? "" : String(value);
@@ -93,6 +108,10 @@ function updateTimestamp() {
   lastUpdated = new Date();
   const el = document.getElementById("last-updated");
   if (el) el.textContent = "Last updated: " + lastUpdated.toLocaleTimeString();
+  const metaEl = document.getElementById("server-meta");
+  if (metaEl && serverMeta) {
+    metaEl.textContent = "Server v" + serverMeta.version + " | started " + formatDateTime(serverMeta.serverStartedAt) + " | pid " + serverMeta.pid;
+  }
 }
 
 function formatDateTime(value) {
@@ -304,6 +323,182 @@ function buildLegacyAssessment(summaryData, latestData) {
   };
 }
 
+function updateRuntimeTargetNote() {
+  const el = document.getElementById("target-runtime-note");
+  if (!el) return;
+  if (runtimeTargetResolved) {
+    el.innerHTML = 'Temporary target armed: <strong>' + escHtml(runtimeTargetResolved.name) + "</strong> :: " + escHtml(runtimeTargetResolved.baseUrl) + " :: " + escHtml(runtimeTargetResolved.pathMode) + ' <button class="btn btn-sm" onclick="clearTemporaryTarget()">Use Saved Target</button>';
+    return;
+  }
+  const selected = targetData && targetData.targets && targetData.targets[activeTargetKey];
+  el.textContent = selected ? ("Saved target: " + selected.name + " :: " + selected.baseUrl) : "No active target selected.";
+}
+
+function collectTargetFormConfig() {
+  return window.KrakzenTargetForm.normalizeTargetPayload({
+    id: targetEditorMode === "edit" ? editingTargetId : formValue("target-form-id").trim(),
+    name: formValue("target-form-name").trim(),
+    baseUrl: formValue("target-form-base-url").trim(),
+    payloadFormat: formValue("target-form-payload-format") || "messages",
+    pathMode: formValue("target-form-path-mode") || "explicit_plus_defaults",
+    endpoints: {
+      chat: formValue("target-form-chat").trim(),
+      health: formValue("target-form-health").trim(),
+      search: formValue("target-form-search").trim(),
+      memory: formValue("target-form-memory").trim(),
+      receipts: formValue("target-form-receipts").trim(),
+      runs: formValue("target-form-runs").trim(),
+      sessions: formValue("target-form-sessions").trim(),
+      tools: formValue("target-form-tools").trim(),
+      version: formValue("target-form-version").trim(),
+    },
+    auth: {
+      headerName: formValue("target-form-auth-header").trim(),
+      token: formValue("target-form-auth-token"),
+    },
+    notes: formValue("target-form-notes").trim(),
+    enabled: true,
+  }, { includeId: true });
+}
+
+function openTargetEditor(mode) {
+  targetEditorMode = mode || "new";
+  editingTargetId = activeTargetKey || "";
+  const selected = targetData && targetData.targets && targetData.targets[activeTargetKey];
+  const source = mode === "quick" && runtimeTargetOverride ? runtimeTargetOverride : selected;
+  setFormValue("target-form-id", mode === "new" ? "" : (editingTargetId || ""));
+  setFormValue("target-form-name", source && source.name || "");
+  setFormValue("target-form-base-url", source && source.baseUrl || "");
+  setFormValue("target-form-payload-format", source && source.payloadFormat || "messages");
+  setFormValue("target-form-path-mode", source && source.pathMode || "explicit_plus_defaults");
+  setFormValue("target-form-chat", source && source.endpoints && source.endpoints.chat || source && source.chatPath || "");
+  setFormValue("target-form-health", source && source.endpoints && source.endpoints.health || "");
+  setFormValue("target-form-search", source && source.endpoints && source.endpoints.search || "");
+  setFormValue("target-form-memory", source && source.endpoints && source.endpoints.memory || "");
+  setFormValue("target-form-receipts", source && source.endpoints && source.endpoints.receipts || "");
+  setFormValue("target-form-runs", source && source.endpoints && source.endpoints.runs || "");
+  setFormValue("target-form-sessions", source && source.endpoints && source.endpoints.sessions || "");
+  setFormValue("target-form-tools", source && source.endpoints && source.endpoints.tools || "");
+  setFormValue("target-form-version", source && source.endpoints && source.endpoints.version || "");
+  setFormValue("target-form-auth-header", source && source.auth && source.auth.headerName || "");
+  setFormValue("target-form-auth-token", "");
+  setFormValue("target-form-notes", source && source.notes || "");
+  const help = document.getElementById("target-form-help");
+  if (help) {
+    help.textContent = mode === "edit"
+      ? "Leave auth token blank to keep the stored secret unchanged."
+      : "Temporary targets are visible in run metadata but are not saved unless you choose Save Target.";
+  }
+  const modal = document.getElementById("target-modal");
+  if (modal) modal.style.display = "flex";
+}
+
+function closeTargetEditor() {
+  const modal = document.getElementById("target-modal");
+  if (modal) modal.style.display = "none";
+}
+
+async function saveTargetConfig() {
+  try {
+    const isEdit = targetEditorMode === "edit";
+    const payload = collectTargetFormConfig();
+    const validationError = window.KrakzenTargetForm.validateTargetPayload(payload, { requireId: !isEdit });
+    if (validationError) {
+      toast("Error: " + validationError, "error");
+      return;
+    }
+    if (!isEdit && !payload.id) {
+      toast("Error: Target id is required.", "error");
+      return;
+    }
+    const path = isEdit ? "/targets/" + encodeURIComponent(editingTargetId) : "/targets";
+    await api(path, {
+      method: isEdit ? "PUT" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    closeTargetEditor();
+    await loadTargets();
+    if (!isEdit && payload.id) {
+      await switchTarget(payload.id);
+    }
+    toast("Target configuration saved.");
+  } catch (err) {
+    toast("Error: " + err.message, "error");
+  }
+}
+
+function renderProbeResults(data) {
+  const panel = document.getElementById("probe-panel");
+  if (!panel) return;
+  panel.innerHTML = [
+    '<div class="probe-results">',
+    '<span class="probe-title">' + escHtml(data.target) + " — " + data.reachable + "/" + data.total + " endpoints :: " + escHtml(data.pathMode || "explicit_plus_defaults") + "</span>",
+    '<span class="probe-endpoint probe-up">source ' + escHtml(data.source || "saved") + "</span>",
+    '<span class="probe-endpoint probe-up">auth header ' + escHtml(data.authHeaderConfigured || "none") + "</span>",
+    ...(data.endpoints || []).map((ep) => {
+      let cls = "probe-down";
+      if (ep.status >= 200 && ep.status < 300) cls = "probe-up";
+      else if (ep.status === 404) cls = "probe-404";
+      else if (ep.status > 0) cls = "probe-up";
+      return '<span class="probe-endpoint ' + cls + '"><span class="probe-status">' + escHtml(ep.status || "---") + "</span> " + escHtml(ep.label + " :: " + ep.path) + "</span>";
+    }),
+    '<span class="probe-close" onclick="document.getElementById(\'probe-panel\').style.display=\'none\'">&times;</span>',
+    "</div>",
+  ].join("");
+  panel.style.display = "block";
+}
+
+async function probeDraftTarget() {
+  try {
+    const payload = collectTargetFormConfig();
+    const validationError = window.KrakzenTargetForm.validateTargetPayload(payload, { requireId: false });
+    if (validationError) {
+      toast("Error: " + validationError, "error");
+      return;
+    }
+    const data = await api("/targets/probe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ target: payload }),
+    });
+    renderProbeResults(data);
+    toast("Probe complete");
+  } catch (err) {
+    toast("Error: " + err.message, "error");
+  }
+}
+
+async function useTemporaryTarget() {
+  try {
+    const payload = collectTargetFormConfig();
+    const validationError = window.KrakzenTargetForm.validateTargetPayload(payload, { requireId: false });
+    if (validationError) {
+      toast("Error: " + validationError, "error");
+      return;
+    }
+    payload.id = payload.id || "temporary-ui-target";
+    const resolved = await api("/targets/resolve", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ target: payload }),
+    });
+    runtimeTargetOverride = payload;
+    runtimeTargetResolved = resolved.target;
+    closeTargetEditor();
+    updateRuntimeTargetNote();
+    toast("Temporary target armed for the next run.");
+  } catch (err) {
+    toast("Error: " + err.message, "error");
+  }
+}
+
+function clearTemporaryTarget() {
+  runtimeTargetOverride = null;
+  runtimeTargetResolved = null;
+  updateRuntimeTargetNote();
+}
+
 function getRunsForBaseTest(testId) {
   if (!assessment || !assessment.tests) return [];
   return assessment.tests.filter((run) => run.testId === testId || run.testId.startsWith(testId + "-"));
@@ -427,6 +622,7 @@ function renderOperatorSummary() {
     return;
   }
   const summary = assessment.operatorSummary;
+  const targetConfig = assessment.targetConfigSnapshot;
   el.innerHTML = [
     '<div class="risk-grid">',
     '  <div class="risk-verdict">' + verdictBadge(summary.overallVerdict) + '<span class="risk-text">Critical findings ' + summary.criticalFindingsCount + ' | regressions ' + summary.newRegressionsCount + '</span></div>',
@@ -434,6 +630,8 @@ function renderOperatorSummary() {
     '  <div class="risk-item"><span class="risk-label">Public Exposure</span><span class="risk-value">' + escHtml(summary.publicExposureCount) + "</span></div>",
     '  <div class="risk-item"><span class="risk-label">Child Safety Failures</span><span class="risk-value critical-value">' + escHtml(summary.childSafetyFailuresCount) + "</span></div>",
     '  <div class="risk-item"><span class="risk-label">Run Duration</span><span class="risk-value">' + escHtml(formatDuration(assessment.metrics.totalRunDurationMs)) + "</span></div>",
+    '  <div class="risk-first-fix"><span class="risk-label">Target Config</span><span class="risk-text">' + escHtml(targetConfig ? (targetConfig.source + " | " + targetConfig.pathMode + " | auth header " + (targetConfig.auth.headerName || "none")) : "No target config snapshot.") + "</span></div>",
+    '  <div class="risk-first-fix"><span class="risk-label">Resolved Paths</span><span class="risk-text">' + escHtml(targetConfig ? Object.entries(targetConfig.resolvedEndpoints || {}).map(([key, value]) => key + "=" + value).join(" | ") : "No resolved endpoint map.") + "</span></div>",
     '  <div class="risk-first-fix"><span class="risk-label">Trust Signals</span><span class="risk-text">' + escHtml((summary.trustSignals || []).join(", ") || "none") + "</span></div>",
     '  <div class="risk-first-fix"><span class="risk-label">Recommended First Fix</span><span class="risk-text">' + escHtml(summary.recommendedFirstFix) + "</span></div>",
     '  <div class="risk-first-fix"><span class="risk-label">Key Evidence Highlights</span><span class="risk-text">' + escHtml((summary.keyEvidenceHighlights || []).join(" | ") || "No highlighted evidence.") + "</span></div>",
@@ -451,7 +649,7 @@ function renderScreenshotSummary() {
   }
   el.innerHTML = [
     '<div class="comparison-grid">',
-    '  <div class="comparison-item"><span class="risk-label">Target</span><span class="risk-text">' + escHtml((assessment.targetName || assessment.target) + " :: " + (assessment.targetFingerprint && assessment.targetFingerprint.baseUrl || "n/a")) + "</span></div>",
+    '  <div class="comparison-item"><span class="risk-label">Target</span><span class="risk-text">' + escHtml((assessment.targetName || assessment.target) + " :: " + (assessment.targetFingerprint && assessment.targetFingerprint.baseUrl || "n/a") + " :: " + ((assessment.targetConfigSnapshot && assessment.targetConfigSnapshot.source) || "saved")) + "</span></div>",
     '  <div class="comparison-item"><span class="risk-label">Overall Verdict</span><span class="risk-text">' + verdictBadge(assessment.verdict) + "</span></div>",
     '  <div class="comparison-item"><span class="risk-label">Critical Findings</span><span class="risk-value">' + assessment.metrics.criticalFindingsCount + "</span></div>",
     '  <div class="comparison-item"><span class="risk-label">Regressions</span><span class="risk-value critical-value">' + assessment.metrics.newRegressionsCount + "</span></div>",
@@ -573,6 +771,7 @@ function renderRunArtifact(run, index) {
   const remediation = run.remediationGuidance || run.suggestedImprovements || [];
   const comparison = run.priorRunComparison;
   const fingerprint = run.targetFingerprint || assessment.targetFingerprint;
+  const targetConfig = run.targetConfigSnapshot || assessment.targetConfigSnapshot;
 
   return [
     '<div class="detail-run">',
@@ -594,6 +793,7 @@ function renderRunArtifact(run, index) {
     '  <div class="detail-section"><div class="detail-section-title">Confidence Reasoning</div><div class="detail-explanation">' + escHtml((run.confidenceReason && run.confidenceReason.explanation) || "No confidence explanation recorded.") + "</div></div>",
     '  <div class="detail-section"><div class="detail-section-title">Evidence Snapshot</div><div class="detail-explanation">' + escHtml(run.evidenceSnapshot ? (run.evidenceSnapshot.attackSummary + " | " + run.evidenceSnapshot.responseSummary + " | " + run.evidenceSnapshot.evaluatorSummary + " | " + run.evidenceSnapshot.confidenceSummary + " | " + run.evidenceSnapshot.whyItMatters) : "No compact evidence snapshot recorded.") + "</div></div>",
     '  <div class="detail-section"><div class="detail-section-title">Target Fingerprint</div><div class="detail-explanation">' + escHtml(fingerprint ? (fingerprint.targetName + " :: " + fingerprint.baseUrl + " :: signature " + fingerprint.signature + " :: " + fingerprint.authPostureSummary) : "No target fingerprint captured.") + "</div></div>",
+    '  <div class="detail-section"><div class="detail-section-title">Target Configuration</div><div class="detail-explanation">' + escHtml(targetConfig ? (targetConfig.name + " :: " + targetConfig.source + " :: " + targetConfig.pathMode + " :: auth header " + (targetConfig.auth.headerName || "none") + " :: " + Object.entries(targetConfig.resolvedEndpoints || {}).map(([key, value]) => key + "=" + value).join(" | ")) : "No target configuration snapshot captured.") + "</div></div>",
     '  <div class="detail-section"><div class="detail-section-title">Threat Intent</div><div class="detail-explanation">' + escHtml(run.threatProfile?.intent || run.purpose) + "</div></div>",
     '  <div class="detail-section"><div class="detail-section-title">Why This Test Exists</div><div class="detail-explanation">' + escHtml(run.threatProfile?.whyThisExists || run.purpose) + "</div></div>",
     '  <div class="detail-section"><div class="detail-section-title">Expected Safe Behavior</div><div class="detail-explanation">' + escHtml(run.threatProfile?.expectedSafeBehavior || run.expectedBehavior) + "</div></div>",
@@ -704,15 +904,30 @@ async function loadTargets() {
   const select = document.getElementById("target-select");
   if (!select) return;
   const html = Object.entries(targetData.targets || {}).map(([key, target]) => {
-    const label = target.name + " (" + target.baseUrl + ")";
+    const label = target.name + " (" + target.baseUrl + ")" + (target.enabled === false ? " [disabled]" : "");
     return '<option value="' + escHtml(key) + '"' + (key === activeTargetKey ? " selected" : "") + ">" + escHtml(label) + "</option>";
   }).join("");
   select.innerHTML = html;
+  updateRuntimeTargetNote();
 }
 
 async function loadRegistry() {
   const data = await api("/tests");
   registryTests = data.tests || [];
+}
+
+async function loadServerMeta() {
+  try {
+    serverMeta = await api("/meta");
+  } catch (err) {
+    if (err && err.status === 404) {
+      serverMeta = null;
+      const metaEl = document.getElementById("server-meta");
+      if (metaEl) metaEl.textContent = "Server metadata unavailable on this running process.";
+      return;
+    }
+    throw err;
+  }
 }
 
 async function loadAssessment() {
@@ -733,7 +948,7 @@ async function loadAssessment() {
 
 async function loadDashboard() {
   await loadTargets();
-  await Promise.all([loadRegistry(), loadAssessment()]);
+  await Promise.all([loadRegistry(), loadAssessment(), loadServerMeta()]);
   updateStats(assessment ? assessment.summary : { total: 0, pass: 0, fail: 0, warn: 0 });
   renderScreenshotSummary();
   renderOperatorSummary();
@@ -759,10 +974,14 @@ async function runTest(id) {
   renderTests();
   toast("Running " + id + "...");
   try {
-    await api("/tests/" + id + "/run", { method: "POST" });
+    await api("/tests/" + id + "/run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(runtimeTargetOverride ? { targetConfig: runtimeTargetOverride } : { targetId: activeTargetKey }),
+    });
     delete localStateOverrides[id];
     await loadDashboard();
-    toast("Execution complete for " + id);
+    toast("Execution complete for " + id + ". Reports updated.");
   } catch (err) {
     localStateOverrides[id] = { state: "error", result: null, durationMs: null, lastRunAt: new Date().toISOString(), attemptCount: 0, runs: [] };
     renderTests();
@@ -784,10 +1003,14 @@ async function runSuite(category) {
   renderTests();
   toast("Running suite: " + category + "...");
   try {
-    await api("/suite/" + category, { method: "POST" });
+    await api("/suite/" + category, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(runtimeTargetOverride ? { targetConfig: runtimeTargetOverride } : { targetId: activeTargetKey }),
+    });
     Object.keys(localStateOverrides).forEach((key) => delete localStateOverrides[key]);
     await loadDashboard();
-    toast("Suite complete");
+    toast("Suite complete. Reports updated.");
   } catch (err) {
     toast("Error: " + err.message, "error");
   }
@@ -806,6 +1029,7 @@ async function switchTarget(key) {
       body: JSON.stringify({ key }),
     });
     activeTargetKey = key;
+    clearTemporaryTarget();
     await loadDashboard();
     toast("Target switched to " + key);
   } catch (err) {
@@ -823,23 +1047,14 @@ async function probeTarget() {
   }
   toast("Probing " + key + "...");
   try {
-    const data = await api("/targets/" + encodeURIComponent(key) + "/probe", { method: "POST" });
-    const panel = document.getElementById("probe-panel");
-    const html = [
-      '<div class="probe-results">',
-      '<span class="probe-title">' + escHtml(data.target) + " — " + data.reachable + "/" + data.total + " endpoints</span>",
-      ...(data.endpoints || []).map((ep) => {
-        let cls = "probe-down";
-        if (ep.status >= 200 && ep.status < 300) cls = "probe-up";
-        else if (ep.status === 404) cls = "probe-404";
-        else if (ep.status > 0) cls = "probe-up";
-        return '<span class="probe-endpoint ' + cls + '"><span class="probe-status">' + escHtml(ep.status || "---") + "</span> " + escHtml(ep.label) + "</span>";
-      }),
-      '<span class="probe-close" onclick="document.getElementById(\'probe-panel\').style.display=\'none\'">&times;</span>',
-      "</div>",
-    ].join("");
-    panel.innerHTML = html;
-    panel.style.display = "block";
+    const data = runtimeTargetOverride
+      ? await api("/targets/probe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ target: runtimeTargetOverride }),
+      })
+      : await api("/targets/" + encodeURIComponent(key) + "/probe", { method: "POST" });
+    renderProbeResults(data);
     toast("Probe complete");
   } catch (err) {
     toast("Error: " + err.message, "error");
@@ -859,6 +1074,12 @@ window.runTest = runTest;
 window.runSuite = runSuite;
 window.switchTarget = switchTarget;
 window.probeTarget = probeTarget;
+window.openTargetEditor = openTargetEditor;
+window.closeTargetEditor = closeTargetEditor;
+window.saveTargetConfig = saveTargetConfig;
+window.probeDraftTarget = probeDraftTarget;
+window.useTemporaryTarget = useTemporaryTarget;
+window.clearTemporaryTarget = clearTemporaryTarget;
 window.toggleDetail = toggleDetail;
 window.changeFindingSort = changeFindingSort;
 window.loadSummary = loadSummary;

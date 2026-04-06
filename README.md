@@ -273,6 +273,47 @@ Legacy engine outcomes such as `PASS`, `FAIL`, and `WARN` still exist internally
 
 The dashboard exposes this as an "Exposure Map" so operators can sort by severity, exploitability, or recency instead of scanning raw test rows.
 
+## Reports And AI Sharing
+
+Krakzen automatically writes the latest report bundle at the end of each test run and suite run. The dashboard now exposes these reports directly and adds copy-to-clipboard actions for sharing the latest results with Codex, ChatGPT, or Claude.
+
+New report artifacts include:
+
+- `PLAIN_LANGUAGE_REPORT.md`
+- `AI_SHARE_PACKAGE.md`
+- `EXECUTIVE_SUMMARY.md`
+- `TECHNICAL_FINDINGS.md`
+- `EVIDENCE_APPENDIX.md`
+- `EVIDENCE_APPENDIX.json`
+- `REMEDIATION_CHECKLIST.md`
+- `RETEST_COMPARISON.md`
+- `SECURITY_REVIEW.md`
+
+### Plain Language Report
+
+`PLAIN_LANGUAGE_REPORT.md` is deterministic and intentionally simple. It answers:
+
+- what was checked
+- whether the run looked safe or not
+- why the result matters in plain language
+- the first fix to make
+- how to retest
+
+This is designed for fast stakeholder review or for a user who needs the result explained without security jargon.
+
+### AI Share Package
+
+`AI_SHARE_PACKAGE.md` is a copy-ready deterministic package for external assistants. It includes:
+
+- assessment snapshot
+- key findings
+- confidence reasoning
+- evaluator provenance
+- remediation direction
+- comparison counts
+
+The dashboard copy actions wrap this package in a short deterministic prompt so you can paste it directly into Codex, ChatGPT, or Claude.
+
 ## Risk Summary And Gates
 
 The top of the dashboard now provides an executive-readable deterministic summary:
@@ -365,7 +406,26 @@ These signals are surfaced in operator summary, comparison, and review exports s
 
 ## Target Management
 
-Krakzen can test any HTTP-based AI product. Configure multiple targets and switch between them.
+Krakzen can test any HTTP-based AI product. Targets are now first-class operator-controlled configurations, not just preset base URLs.
+
+Each target can define:
+
+- `id`
+- `name`
+- `baseUrl`
+- `pathMode`
+- explicit endpoint overrides for `chat`, `health`, `search`, `memory`, `receipts`, `runs`, `sessions`, `tools`, and `version`
+- optional auth header name and token
+- notes, enabled flag, and timestamps
+
+### Path Modes
+
+- `explicit_only`
+  Only explicitly configured endpoint paths are used. Blank endpoint fields are skipped.
+- `explicit_plus_defaults`
+  Explicit paths override Krakzen defaults. Blank fields fall back to the built-in deterministic default path map.
+
+Resolved endpoint maps are captured into run metadata and exports so operators can see exactly which paths were used for a scan.
 
 ```bash
 krakzen target                              # show active target
@@ -381,6 +441,19 @@ Override target for a single command without switching:
 krakzen suite security --target staging
 ```
 
+### Saved Targets And Quick Probe Targets
+
+The web UI now supports both:
+
+- saved targets persisted in `config/targets.json`
+- one-off temporary targets for quick probe or one-off runs
+
+Temporary targets are not written to disk unless explicitly saved, but their resolved configuration is still captured in the run metadata so scans remain auditable.
+
+### Auth Handling
+
+Auth configuration is local and file-based. Krakzen shows auth header presence in the UI and exports, but does not render the stored token value in plaintext in operator-facing views.
+
 ## Web UI
 
 ```bash
@@ -389,8 +462,9 @@ npm run web
 
 Deep-sea Kraken-themed command center at `http://localhost:3000`:
 
-- Target selector dropdown with connectivity probe
+- Target selector with saved-target switching, target creation, target editing, and quick probe modal
 - Top-level risk summary and deterministic readiness gates
+- Resolved target configuration summary including source, path mode, auth header presence, and resolved endpoint map
 - Category-by-category suite state with last-run metadata
 - Severity-coded test rows with explicit execution state and one-click execution
 - Findings / Exposure Map with sorting by severity, exploitability, and recency
