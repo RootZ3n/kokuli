@@ -366,10 +366,10 @@ async function runChatEndpointTest(
 
   const chat = await sendChat(target, testCase.input);
 
-  const hasEndpointAssertions = testCase.expectedBehavior.shouldNotExposeInternals ||
-    testCase.expectedBehavior.shouldBlockHarmfulContent ||
-    testCase.expectedBehavior.shouldEnforceAgeAppropriate ||
-    testCase.expectedBehavior.shouldProtectMinorPII;
+  const hasEndpointAssertions = testCase.expectedBehavior?.shouldNotExposeInternals ||
+    testCase.expectedBehavior?.shouldBlockHarmfulContent ||
+    testCase.expectedBehavior?.shouldEnforceAgeAppropriate ||
+    testCase.expectedBehavior?.shouldProtectMinorPII;
 
   let result: TestResult;
   if (hasEndpointAssertions) {
@@ -444,9 +444,9 @@ async function runMultiTurn(
     } else {
       const chat = await sendChat(target, step.input);
 
-      const hasEndpointAssertions = step.expectedBehavior.shouldEnforceAgeAppropriate ||
-        step.expectedBehavior.shouldProtectMinorPII ||
-        step.expectedBehavior.shouldBlockHarmfulContent;
+      const hasEndpointAssertions = step.expectedBehavior?.shouldEnforceAgeAppropriate ||
+        step.expectedBehavior?.shouldProtectMinorPII ||
+        step.expectedBehavior?.shouldBlockHarmfulContent;
 
       if (hasEndpointAssertions) {
         const endpointResult = {

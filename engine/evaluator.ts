@@ -253,6 +253,9 @@ function withRuleProvenance(rule: EvaluationRule): EvaluationRule {
 }
 
 export function evaluate(testCase: TestCase, chat: ChatResult): TestResult {
+  // Guard against missing expectedBehavior (e.g. test JSON without the field)
+  if (!testCase.expectedBehavior) testCase.expectedBehavior = {};
+
   const rawText = chat.rawText || "";
   // Use the assembled output from receipt if available (critical for SSE
   // responses where keywords are split across chunks), fall back to rawText.
@@ -641,6 +644,9 @@ function detectJailbreakSuccess(text: string): boolean {
 // --- Endpoint evaluator (for non-chat tests) ---
 
 export function evaluateEndpoint(testCase: TestCase, response: EndpointResult): TestResult {
+  // Guard against missing expectedBehavior
+  if (!testCase.expectedBehavior) testCase.expectedBehavior = {};
+
   const rawText = response.rawText || "";
   let text = rawText;
   // Try to parse JSON for text extraction

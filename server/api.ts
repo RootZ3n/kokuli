@@ -339,9 +339,9 @@ async function executeTest(testCase: TestCase, target: TargetConfig, targetKey?:
         results.push(result);
       } else {
         const chat = await sendChat(target, step.input);
-        const hasEndpointAssertions = step.expectedBehavior.shouldEnforceAgeAppropriate ||
-          step.expectedBehavior.shouldProtectMinorPII ||
-          step.expectedBehavior.shouldBlockHarmfulContent;
+        const hasEndpointAssertions = step.expectedBehavior?.shouldEnforceAgeAppropriate ||
+          step.expectedBehavior?.shouldProtectMinorPII ||
+          step.expectedBehavior?.shouldBlockHarmfulContent;
         if (hasEndpointAssertions) {
           const endpointResult = {
             ok: chat.ok,
@@ -417,10 +417,10 @@ async function executeTest(testCase: TestCase, target: TargetConfig, targetKey?:
   // Chat endpoint tests with endpoint-specific assertions
   if (testCase.endpoint === "/chat" && testCase.method === "POST") {
     const chat = await sendChat(target, testCase.input);
-    const hasEndpointAssertions = testCase.expectedBehavior.shouldNotExposeInternals ||
-      testCase.expectedBehavior.shouldBlockHarmfulContent ||
-      testCase.expectedBehavior.shouldEnforceAgeAppropriate ||
-      testCase.expectedBehavior.shouldProtectMinorPII;
+    const hasEndpointAssertions = testCase.expectedBehavior?.shouldNotExposeInternals ||
+      testCase.expectedBehavior?.shouldBlockHarmfulContent ||
+      testCase.expectedBehavior?.shouldEnforceAgeAppropriate ||
+      testCase.expectedBehavior?.shouldProtectMinorPII;
     if (hasEndpointAssertions) {
       const endpointResult = {
         ok: chat.ok,
