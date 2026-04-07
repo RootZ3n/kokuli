@@ -54,8 +54,8 @@
     <!-- Header -->
     <div class="section-header">
       <div>
-        <div class="section-title">Threat Overview</div>
-        <div class="section-subtitle">Adversarial security validation &mdash; scanning the deep</div>
+        <div class="section-title">Krakzen</div>
+        <div class="section-subtitle">Security scanner for AI products. Point it at any AI API, run tests, get a report.</div>
         <div class="last-updated" id="last-updated"></div>
         <div class="last-updated" id="server-meta"></div>
       </div>
@@ -71,126 +71,40 @@
       </div>
     </div>
 
-    <!-- Stats / Depth Gauges -->
-    <div class="stats" id="stats">
-      <div class="stat-card stat-total">
-        <div class="stat-ring">
-          <div class="stat-value" id="stat-total">-</div>
-        </div>
-        <div class="stat-label">Total Scans</div>
-      </div>
-      <div class="stat-card stat-pass">
-        <div class="stat-ring ring-pass">
-          <div class="stat-value" id="stat-pass">-</div>
-        </div>
-        <div class="stat-label">Secure</div>
-      </div>
-      <div class="stat-card stat-fail">
-        <div class="stat-ring ring-fail">
-          <div class="stat-value" id="stat-fail">-</div>
-        </div>
-        <div class="stat-label">Breached</div>
-      </div>
-      <div class="stat-card stat-warn">
-        <div class="stat-ring ring-warn">
-          <div class="stat-value" id="stat-warn">-</div>
-        </div>
-        <div class="stat-label">Warnings</div>
-      </div>
+    <!-- Stats Strip -->
+    <div class="stats-strip" id="stats">
+      <div class="stat-item stat-total"><span class="stat-label">Total</span> <span class="stat-value" id="stat-total">-</span></div>
+      <div class="stat-item stat-pass"><span class="stat-label">Passed</span> <span class="stat-value" id="stat-pass">-</span></div>
+      <div class="stat-item stat-fail"><span class="stat-label">Failed</span> <span class="stat-value" id="stat-fail">-</span></div>
+      <div class="stat-item stat-warn"><span class="stat-label">Warnings</span> <span class="stat-value" id="stat-warn">-</span></div>
+    </div>
+
+    <!-- Reports Bar -->
+    <div class="reports-bar">
+      <span class="reports-label">Reports</span>
+      <button class="btn btn-sm" onclick="viewReport('PLAIN_LANGUAGE_REPORT')">Plain Language</button>
+      <button class="btn btn-sm" onclick="viewReport('EXECUTIVE_SUMMARY')">Executive Summary</button>
+      <button class="btn btn-sm" onclick="viewReport('AI_SHARE_PACKAGE')">AI Share Package</button>
+      <button class="btn btn-sm" onclick="viewReport('SECURITY_REVIEW')">Security Review</button>
+      <button class="btn btn-sm" onclick="viewReport('SUMMARY')">Summary</button>
+    </div>
+
+    <!-- Suite Controls -->
+    <div class="suite-controls-inline">
+      <span class="suite-controls-label">Suites</span>
+      <button class="btn btn-sm btn-mission btn-primary" onclick="runSuite('baseline')">Baseline</button>
+      <button class="btn btn-sm btn-mission" onclick="runSuite('security')">Security</button>
+      <button class="btn btn-sm btn-mission" onclick="runSuite('reliability')">Reliability</button>
+      <button class="btn btn-sm btn-mission" onclick="runSuite('architecture')">Architecture</button>
+      <button class="btn btn-sm btn-mission" onclick="runSuite('recon')">Recon</button>
+      <button class="btn btn-sm btn-mission" onclick="runSuite('auth')">Auth</button>
+      <button class="btn btn-sm btn-mission" onclick="runSuite('exfil')">Exfil</button>
+      <button class="btn btn-sm btn-mission btn-critical-mission" onclick="runSuite('child-safety')">Child Safety</button>
+      <button class="btn btn-sm btn-mission" onclick="runSuite('multi-turn')">Multi-Turn</button>
+      <button class="btn btn-sm btn-mission" onclick="runSuite('fuzzing')">Fuzzing</button>
     </div>
 
     <!-- Category Summary (injected by JS after stats) -->
-
-    <div class="card screenshot-card">
-      <div class="card-header">
-        <div class="card-title"><span class="card-title-icon">&#128247;</span> Review Snapshot</div>
-      </div>
-      <div id="screenshot-summary"></div>
-    </div>
-
-    <div class="dashboard-grid">
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title"><span class="card-title-icon">&#9873;</span> Operator Summary</div>
-        </div>
-        <div id="operator-summary"></div>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title"><span class="card-title-icon">&#9888;</span> Risk Summary</div>
-        </div>
-        <div id="risk-summary"></div>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title"><span class="card-title-icon">&#9876;</span> Readiness Gates</div>
-        </div>
-        <div id="gate-summary"></div>
-      </div>
-    </div>
-
-    <div class="dashboard-grid">
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title"><span class="card-title-icon">&#8644;</span> Run Comparison And Integrity</div>
-        </div>
-        <div id="run-comparison"></div>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title"><span class="card-title-icon">&#128202;</span> Exposure Map</div>
-          <div class="header-actions">
-            <label class="sort-label" for="finding-sort">Sort</label>
-            <select id="finding-sort" class="target-select" onchange="changeFindingSort(this.value)">
-              <option value="severity">Severity</option>
-              <option value="exploitability">Exploitability</option>
-              <option value="recency">Recency</option>
-            </select>
-          </div>
-        </div>
-        <div id="findings-panel"></div>
-      </div>
-    </div>
-
-    <!-- Suite Controls / Mission Launch -->
-    <div class="suite-controls">
-      <div class="suite-label">Mission Suites</div>
-      <div class="suite-buttons">
-        <button class="btn btn-sm btn-mission btn-primary" onclick="runSuite('baseline')">
-          <span class="suite-icon">&#9673;</span> Baseline Gate
-        </button>
-        <button class="btn btn-sm btn-mission" onclick="runSuite('security')">
-          <span class="suite-icon">&#9888;</span> Security
-        </button>
-        <button class="btn btn-sm btn-mission" onclick="runSuite('reliability')">
-          <span class="suite-icon">&#9881;</span> Reliability
-        </button>
-        <button class="btn btn-sm btn-mission" onclick="runSuite('architecture')">
-          <span class="suite-icon">&#9638;</span> Architecture
-        </button>
-        <button class="btn btn-sm btn-mission" onclick="runSuite('recon')">
-          <span class="suite-icon">&#128269;</span> Recon
-        </button>
-        <button class="btn btn-sm btn-mission" onclick="runSuite('auth')">
-          <span class="suite-icon">&#128274;</span> Auth
-        </button>
-        <button class="btn btn-sm btn-mission" onclick="runSuite('exfil')">
-          <span class="suite-icon">&#128232;</span> Exfil
-        </button>
-        <button class="btn btn-sm btn-mission btn-critical-mission" onclick="runSuite('child-safety')">
-          <span class="suite-icon">&#9888;</span> Child Safety
-        </button>
-        <button class="btn btn-sm btn-mission" onclick="runSuite('multi-turn')">
-          <span class="suite-icon">&#128260;</span> Multi-Turn
-        </button>
-        <button class="btn btn-sm btn-mission" onclick="runSuite('fuzzing')">
-          <span class="suite-icon">&#128163;</span> Fuzzing
-        </button>
-      </div>
-    </div>
 
     <!-- Test Registry -->
     <div class="card">
@@ -204,6 +118,74 @@
       <div id="test-list"></div>
     </div>
 
+    <!-- Collapsible Analysis Sections -->
+    <div class="section-toggle" onclick="toggleSection('analysis-row')">&#9662; Operator Summary / Risk Summary / Readiness Gates</div>
+    <div class="collapsible-section" id="analysis-row">
+      <div class="dashboard-grid dashboard-grid-3">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="card-title-icon">&#9873;</span> Operator Summary</div>
+          </div>
+          <div id="operator-summary"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="card-title-icon">&#9888;</span> Risk Summary</div>
+          </div>
+          <div id="risk-summary"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="card-title-icon">&#9876;</span> Readiness Gates</div>
+          </div>
+          <div id="gate-summary"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-toggle" onclick="toggleSection('comparison-row')">&#9662; Run Comparison / Exposure Map</div>
+    <div class="collapsible-section" id="comparison-row">
+      <div class="dashboard-grid">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="card-title-icon">&#8644;</span> Run Comparison And Integrity</div>
+          </div>
+          <div id="run-comparison"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="card-title-icon">&#128202;</span> Exposure Map</div>
+            <div class="header-actions">
+              <label class="sort-label" for="finding-sort">Sort</label>
+              <select id="finding-sort" class="target-select" onchange="changeFindingSort(this.value)">
+                <option value="severity">Severity</option>
+                <option value="exploitability">Exploitability</option>
+                <option value="recency">Recency</option>
+              </select>
+            </div>
+          </div>
+          <div id="findings-panel"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Report Viewer Modal -->
+  <div class="modal-overlay" id="report-modal" style="display:none;">
+    <div class="modal-card report-modal-card">
+      <div class="card-header">
+        <div class="card-title" id="report-modal-title">Report</div>
+        <div class="header-actions">
+          <button class="btn btn-sm btn-primary" onclick="copyReport()">Copy to Clipboard</button>
+          <button class="btn btn-sm" onclick="closeReport()">Close</button>
+        </div>
+      </div>
+      <pre class="report-content" id="report-modal-content"></pre>
+    </div>
   </div>
 
   <div class="toast" id="toast"></div>

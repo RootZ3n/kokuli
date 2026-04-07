@@ -469,7 +469,7 @@ a:hover { color: #66f0ff; text-decoration: none; }
   z-index: 1;
   max-width: 1400px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 1rem 2rem;
 }
 
 /* =============================================================
@@ -479,7 +479,7 @@ a:hover { color: #66f0ff; text-decoration: none; }
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
 }
 
 .section-title {
@@ -510,89 +510,29 @@ a:hover { color: #66f0ff; text-decoration: none; }
 }
 
 /* =============================================================
-   Stat Cards / Depth Gauges
+   Stats Strip (compact horizontal bar)
    ============================================================= */
-.stats {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1.25rem;
-  margin-bottom: 2rem;
-}
-
-.stat-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 1.5rem 1rem;
-  text-align: center;
-  position: relative;
-  overflow: hidden;
-  transition: border-color 0.3s, box-shadow 0.3s;
-}
-
-.stat-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--accent), transparent);
-  opacity: 0.5;
-}
-
-.stat-card:hover {
-  border-color: var(--accent-dim);
-  box-shadow: 0 0 20px rgba(0, 229, 255, 0.08);
-}
-
-.stat-ring {
-  width: 80px;
-  height: 80px;
-  margin: 0 auto 0.75rem;
-  border-radius: 50%;
-  border: 2px solid var(--border);
+.stats-strip {
   display: flex;
   align-items: center;
-  justify-content: center;
-  position: relative;
-  animation: ring-pulse 4s ease-in-out infinite;
+  gap: 1.5rem;
+  padding: 0.6rem 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-family: 'Orbitron', sans-serif;
 }
 
-.stat-ring::after {
-  content: '';
-  position: absolute;
-  inset: -4px;
-  border-radius: 50%;
-  border: 1px solid transparent;
-  border-top-color: var(--accent-dim);
-  animation: spin 8s linear infinite;
+.stat-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
 }
-
-/* Pass ring */
-.ring-pass {
-  border-color: rgba(0, 255, 136, 0.3);
-  animation-name: ring-pulse-pass;
-}
-.ring-pass::after { border-top-color: var(--pass); }
-
-/* Fail ring */
-.ring-fail {
-  border-color: rgba(255, 45, 45, 0.3);
-  animation-name: ring-pulse-fail;
-}
-.ring-fail::after { border-top-color: var(--fail); }
-
-/* Warn ring */
-.ring-warn {
-  border-color: rgba(255, 170, 0, 0.3);
-  animation-name: ring-pulse-warn;
-}
-.ring-warn::after { border-top-color: var(--warn); }
 
 .stat-value {
   font-family: 'Orbitron', sans-serif;
-  font-size: 1.8rem;
+  font-size: 1.4rem;
   font-weight: 700;
   line-height: 1;
   color: var(--accent);
@@ -604,11 +544,110 @@ a:hover { color: #66f0ff; text-decoration: none; }
 .stat-warn .stat-value { color: var(--warn); text-shadow: 0 0 12px rgba(255, 170, 0, 0.3); }
 
 .stat-label {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   color: var(--text-dim);
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   font-weight: 600;
+}
+
+/* =============================================================
+   Reports Bar
+   ============================================================= */
+.reports-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.reports-label {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  text-transform: uppercase;
+}
+
+/* =============================================================
+   Report Modal
+   ============================================================= */
+.report-modal-card {
+  max-width: 900px;
+  width: 95%;
+  max-height: 90vh;
+}
+
+.report-content {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1.25rem;
+  overflow: auto;
+  max-height: 70vh;
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+}
+
+/* =============================================================
+   Collapsible Sections
+   ============================================================= */
+.collapsible-section { display: none; }
+.collapsible-section.open { display: block; }
+
+.section-toggle {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.section-toggle:hover { border-color: var(--accent-dim); color: var(--text); }
+
+/* =============================================================
+   Suite Controls Inline
+   ============================================================= */
+.suite-controls-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.suite-controls-label {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+
+.dashboard-grid-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 /* =============================================================
@@ -739,7 +778,7 @@ a:hover { color: #66f0ff; text-decoration: none; }
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem 1.5rem;
+  padding: 0.6rem 1rem;
   border-bottom: 1px solid var(--border);
   background: rgba(15, 31, 58, 0.5);
 }
@@ -1313,9 +1352,7 @@ pre.raw-collapsed.open,
 }
 
 .screenshot-card {
-  margin-bottom: 1rem;
-  border-color: rgba(0, 229, 255, 0.25);
-  box-shadow: 0 0 24px rgba(0, 229, 255, 0.08);
+  display: none;
 }
 
 .risk-grid,
@@ -1332,7 +1369,7 @@ pre.raw-collapsed.open,
   background: rgba(5, 10, 18, 0.55);
   border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 0.85rem 1rem;
+  padding: 0.5rem 0.75rem;
 }
 
 .risk-first-fix,

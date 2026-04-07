@@ -559,7 +559,7 @@ function updateStats(summary) {
 function renderCategorySummary() {
   let container = document.getElementById("category-summary");
   if (!container) {
-    const statsEl = document.querySelector(".stats");
+    const statsEl = document.querySelector(".stats-strip");
     if (!statsEl) return;
     container = document.createElement("div");
     container.id = "category-summary";
@@ -1070,6 +1070,38 @@ function changeFindingSort(value) {
   renderFindings();
 }
 
+// --- Report viewer ---
+async function viewReport(name) {
+  try {
+    const res = await fetch('/reports/latest/' + name + '.md');
+    if (!res.ok) throw new Error('Report not found. Run a test suite first.');
+    const text = await res.text();
+    document.getElementById('report-modal-title').textContent = name.replace(/_/g, ' ');
+    document.getElementById('report-modal-content').textContent = text;
+    document.getElementById('report-modal').style.display = 'flex';
+  } catch (err) {
+    toast('Error: ' + err.message, 'error');
+  }
+}
+
+function copyReport() {
+  const content = document.getElementById('report-modal-content').textContent;
+  navigator.clipboard.writeText(content).then(function() {
+    toast('Report copied to clipboard');
+  }).catch(function() {
+    toast('Copy failed — select text manually', 'error');
+  });
+}
+
+function closeReport() {
+  document.getElementById('report-modal').style.display = 'none';
+}
+
+function toggleSection(id) {
+  var el = document.getElementById(id);
+  if (el) el.classList.toggle('open');
+}
+
 window.runTest = runTest;
 window.runSuite = runSuite;
 window.switchTarget = switchTarget;
@@ -1083,6 +1115,10 @@ window.clearTemporaryTarget = clearTemporaryTarget;
 window.toggleDetail = toggleDetail;
 window.changeFindingSort = changeFindingSort;
 window.loadSummary = loadSummary;
+window.viewReport = viewReport;
+window.copyReport = copyReport;
+window.closeReport = closeReport;
+window.toggleSection = toggleSection;
 
 document.addEventListener("DOMContentLoaded", () => {
   loadDashboard().catch((err) => toast("Dashboard load error: " + err.message, "error"));
