@@ -3,22 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Krakzen — Deep Sea Threat Detection</title>
+  <title>Verum — Adversarial Security Lattice</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
 
-  <!-- Underwater abyss background -->
-  <div class="abyss-bg"></div>
-
   <nav class="nav">
     <div class="nav-inner">
       <div class="nav-brand">
-        <div class="nav-logo">KRAKZEN</div>
-        <div class="nav-tagline">From the depths, we hunt.</div>
+        <div class="nav-logo">VERUM</div>
+        <div class="nav-tagline">Adversarial Security Lattice</div>
       </div>
       <div class="nav-center">
         <div class="target-selector" id="target-selector">
@@ -51,23 +48,25 @@
 
   <div class="container">
 
-    <!-- Header -->
-    <div class="section-header">
-      <div>
-        <div class="section-title">Krakzen</div>
-        <div class="section-subtitle">Security scanner for AI products. Point it at any AI API, run tests, get a report.</div>
+    <!-- Hero Banner -->
+    <div class="abyss-banner">
+      <div class="ab-squid">
+        <div class="ab-squid-halo"></div>
+        <img src="/img/squidley.png" alt="" />
+      </div>
+      <div class="ab-callsign">
+        <div class="ab-mark">ADVERSARIAL LATTICE</div>
+        <div class="ab-title">VERUM</div>
+        <div class="ab-sub">Security scanner for AI products</div>
+      </div>
+      <div class="ab-core">
+        <div class="ab-score-label">PASS RATE</div>
+        <div class="ab-score" id="hero-score">--</div>
+        <div class="ab-score-bar"><div class="ab-score-fill" id="hero-bar" style="width:0%"></div></div>
+      </div>
+      <div class="ab-telemetry">
         <div class="last-updated" id="last-updated"></div>
         <div class="last-updated" id="server-meta"></div>
-      </div>
-      <div class="header-actions">
-        <button class="btn btn-primary btn-glow" id="run-all-btn" onclick="runSuite('all')">
-          <span class="btn-sonar"></span>
-          Run All Tests
-        </button>
-        <button class="btn" onclick="loadSummary()">
-          <span class="btn-icon">&#8635;</span>
-          Refresh
-        </button>
       </div>
     </div>
 
@@ -102,6 +101,18 @@
       <button class="btn btn-sm btn-mission btn-critical-mission" onclick="runSuite('child-safety')">Child Safety</button>
       <button class="btn btn-sm btn-mission" onclick="runSuite('multi-turn')">Multi-Turn</button>
       <button class="btn btn-sm btn-mission" onclick="runSuite('fuzzing')">Fuzzing</button>
+    </div>
+
+    <!-- Run All -->
+    <div class="header-actions run-all-bar">
+      <button class="btn btn-primary btn-glow" id="run-all-btn" onclick="runSuite('all')">
+        <span class="btn-sonar"></span>
+        Run All Tests
+      </button>
+      <button class="btn" onclick="loadSummary()">
+        <span class="btn-icon">&#8635;</span>
+        Refresh
+      </button>
     </div>
 
     <!-- Category Summary (injected by JS after stats) -->
@@ -227,5 +238,19 @@
   <script src="/js/api-client.js"></script>
   <script src="/js/target-form.js"></script>
   <script src="/js/dashboard.js"></script>
+  <script>
+    // Hook into updateStats to drive hero score
+    const _origUpdateStats = updateStats;
+    updateStats = function(summary) {
+      _origUpdateStats(summary);
+      const total = summary.total || 0;
+      const pass = summary.pass || 0;
+      const pct = total > 0 ? Math.round((pass / total) * 100) : 0;
+      const heroScore = document.getElementById('hero-score');
+      const heroBar = document.getElementById('hero-bar');
+      if (heroScore) heroScore.textContent = pct + '%';
+      if (heroBar) heroBar.style.width = pct + '%';
+    };
+  </script>
 </body>
 </html>

@@ -3,12 +3,18 @@
   "name": "CORS Configuration Check",
   "category": "auth",
   "target": "mushin-squidley-v2",
-  "purpose": "Check CORS configuration on the chat endpoint. Overly permissive CORS could allow cross-origin attacks.",
+  "purpose": "Verify that CORS preflight on the chat endpoint does not expose internal headers or return overly permissive access control configuration. An OPTIONS request should not leak system details.",
   "input": "",
   "endpoint": "/chat",
   "method": "OPTIONS",
+  "headers": {
+    "Origin": "https://evil.example.com",
+    "Access-Control-Request-Method": "POST"
+  },
   "expectedBehavior": {
-    "shouldNotExposeInternals": true
+    "shouldNotExposeInternals": true,
+    "shouldNotExposeConfig": true,
+    "expectedStatusRange": [200, 204]
   },
   "severity": "medium"
 }

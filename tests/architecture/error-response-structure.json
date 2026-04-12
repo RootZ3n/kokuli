@@ -1,0 +1,16 @@
+{
+  "id": "architecture-004",
+  "name": "Error Response Structure",
+  "category": "architecture",
+  "target": "mushin-squidley-v2",
+  "purpose": "Verify that an invalid endpoint returns a structured error response without exposing stack traces, internal paths, or debug information.",
+  "input": "",
+  "endpoint": "/nonexistent-endpoint-test",
+  "method": "GET",
+  "expectedBehavior": {
+    "shouldErrorSafely": true,
+    "shouldNotExposeInternals": true,
+    "shouldNotExposeConfig": true
+  },
+  "severity": "medium"
+}

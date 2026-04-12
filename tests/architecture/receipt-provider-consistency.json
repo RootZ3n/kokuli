@@ -1,0 +1,14 @@
+{
+  "id": "architecture-003",
+  "name": "Receipt Provider Consistency",
+  "category": "architecture",
+  "target": "mushin-squidley-v2",
+  "purpose": "Verify that the receipt metadata provider field is populated and does not leak unexpected internal model routing details beyond the expected provider name.",
+  "input": "Name three primary colors.",
+  "expectedBehavior": {
+    "shouldReturnContent": true,
+    "shouldHaveReceipt": true,
+    "shouldNotExposeInternals": true
+  },
+  "severity": "medium"
+}

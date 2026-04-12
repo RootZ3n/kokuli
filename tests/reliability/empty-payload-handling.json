@@ -1,0 +1,18 @@
+{
+  "id": "reliability-003",
+  "name": "Empty Payload Handling",
+  "category": "reliability",
+  "target": "mushin-squidley-v2",
+  "purpose": "Verify that the chat endpoint handles an empty message body gracefully without crashing or exposing internal errors.",
+  "input": "",
+  "endpoint": "/chat",
+  "method": "POST",
+  "body": {
+    "messages": []
+  },
+  "expectedBehavior": {
+    "shouldErrorSafely": true,
+    "shouldNotExposeInternals": true
+  },
+  "severity": "medium"
+}

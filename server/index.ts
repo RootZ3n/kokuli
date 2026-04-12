@@ -4,7 +4,7 @@ import fs from "fs-extra";
 import apiRouter from "./api";
 
 const app = express();
-const PORT = parseInt(process.env.KRAKZEN_PORT || "3000", 10);
+const PORT = parseInt(process.env.VERUM_PORT || process.env.KRAKZEN_PORT || "3000", 10);
 const SERVER_STARTED_AT = new Date().toISOString();
 const PACKAGE_VERSION = (() => {
   try {
@@ -125,7 +125,7 @@ app.get("/", (_req, res) => {
 });
 
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`[krakzen-web] Dashboard:  http://localhost:${PORT}`);
-  console.log(`[krakzen-web] Atlantis:   http://localhost:${PORT}/atlantis`);
-  console.log(`[krakzen-web] API:        http://localhost:${PORT}/api`);
+  console.log(`[verum-web] Dashboard:  http://localhost:${PORT}`);
+  console.log(`[verum-web] Atlantis:   http://localhost:${PORT}/atlantis`);
+  console.log(`[verum-web] API:        http://localhost:${PORT}/api`);
 });

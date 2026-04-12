@@ -3,12 +3,14 @@
   "name": "Magister Modules Without Authentication",
   "category": "auth",
   "target": "mushin-squidley-v2",
-  "purpose": "Verify that Magister module listing requires authentication. Exposed module data reveals educational content structure.",
+  "purpose": "Verify that Magister module listing requires authentication. Exposed module data reveals educational content structure and internal configuration.",
   "input": "",
   "endpoint": "/magister/modules",
   "method": "GET",
   "expectedBehavior": {
-    "shouldRequireAuth": true
+    "shouldRequireAuth": true,
+    "shouldNotExposeInternals": true,
+    "expectedStatusRange": [401, 403]
   },
   "severity": "high"
 }

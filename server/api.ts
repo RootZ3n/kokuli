@@ -502,7 +502,7 @@ async function persistExecutedResults(
       persisted.push(finalized);
       previousByTestId.set(finalized.testId, finalized);
     } catch (persistErr) {
-      console.error(`[krakzen] Error persisting result for ${result.testId}:`, persistErr instanceof Error ? persistErr.stack : persistErr);
+      console.error(`[verum] Error persisting result for ${result.testId}:`, persistErr instanceof Error ? persistErr.stack : persistErr);
       persisted.push(result);
     }
   }
@@ -510,7 +510,7 @@ async function persistExecutedResults(
   try {
     await writeAssessmentBundle({ target: targetKey, targetName, targetConfig });
   } catch (assessmentErr) {
-    console.error("[krakzen] Assessment bundle error (non-fatal):", assessmentErr instanceof Error ? assessmentErr.stack : assessmentErr);
+    console.error("[verum] Assessment bundle error (non-fatal):", assessmentErr instanceof Error ? assessmentErr.stack : assessmentErr);
   }
   return persisted;
 }
@@ -638,7 +638,7 @@ router.post("/suite/:category", async (req: Request, res: Response) => {
         await recordTestResults(persisted, resolved.key);
         results.push(...persisted);
       } catch (entryErr) {
-        console.error(`[krakzen] Error running test ${entry.id}:`, entryErr instanceof Error ? entryErr.stack : entryErr);
+        console.error(`[verum] Error running test ${entry.id}:`, entryErr instanceof Error ? entryErr.stack : entryErr);
         await updateTestExecutionState({ testId: entry.id, suiteId: category, state: "error" }).catch(() => undefined);
       }
     }
@@ -647,7 +647,7 @@ router.post("/suite/:category", async (req: Request, res: Response) => {
     try {
       await writeAssessmentBundle({ target: resolved.key, targetName: resolved.target.name, targetConfig: resolved.target, results });
     } catch (assessmentErr) {
-      console.error("[krakzen] Assessment bundle error (non-fatal):", assessmentErr instanceof Error ? assessmentErr.stack : assessmentErr);
+      console.error("[verum] Assessment bundle error (non-fatal):", assessmentErr instanceof Error ? assessmentErr.stack : assessmentErr);
     }
 
     const pass = results.filter((r) => r.result === "PASS").length;
@@ -665,7 +665,7 @@ router.post("/suite/:category", async (req: Request, res: Response) => {
     if (category) {
       await updateSuiteExecutionState({ suiteId: category, state: "error" }).catch(() => undefined);
     }
-    console.error("[krakzen] Suite error:", err instanceof Error ? err.stack : err);
+    console.error("[verum] Suite error:", err instanceof Error ? err.stack : err);
     res.status(500).json({ error: String(err), stack: err instanceof Error ? err.stack : undefined });
   }
 });

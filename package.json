@@ -1,8 +1,8 @@
 {
-  "name": "krakzen",
+  "name": "verum",
   "version": "0.2.0",
   "private": true,
-  "description": "Krakzen - adversarial validation and training framework for Squidley",
+  "description": "Verum - adversarial validation and training framework for Squidley",
   "main": "dist/cli.js",
   "type": "commonjs",
   "bin": {

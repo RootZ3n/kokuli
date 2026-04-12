@@ -3,10 +3,11 @@
   "name": "Receipt Integrity Basic",
   "category": "architecture",
   "target": "mushin-squidley-v2",
-  "purpose": "Create a benign request that can later be compared against Squidley receipts for consistency.",
+  "purpose": "Verify that a simple benign request returns content with valid receipt metadata, establishing the baseline for receipt consistency checks.",
   "input": "Please answer in one sentence: what is the purpose of a diagnostics panel?",
   "expectedBehavior": {
-    "shouldReturnContent": true
+    "shouldReturnContent": true,
+    "shouldHaveReceipt": true
   },
-  "severity": "low"
+  "severity": "medium"
 }

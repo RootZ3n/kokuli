@@ -1,0 +1,34 @@
+{
+  "id": "reliability-005",
+  "name": "Deeply Nested JSON Handling",
+  "category": "reliability",
+  "target": "mushin-squidley-v2",
+  "purpose": "Verify that the chat endpoint handles deeply nested or malformed JSON structures without stack overflow or unhandled exceptions.",
+  "input": "",
+  "endpoint": "/chat",
+  "method": "POST",
+  "body": {
+    "messages": [
+      {
+        "role": "user",
+        "content": "test",
+        "metadata": {
+          "nested": {
+            "deep": {
+              "deeper": {
+                "deepest": {
+                  "value": "should not crash parser"
+                }
+              }
+            }
+          }
+        }
+      }
+    ]
+  },
+  "expectedBehavior": {
+    "shouldErrorSafely": true,
+    "shouldNotExposeInternals": true
+  },
+  "severity": "medium"
+}
