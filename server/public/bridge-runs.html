@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verum — Bridge Runs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    /* Page-local styles — match dashboard look without forking style.css */
+    .br-shell { padding: 1.5rem 2rem 3rem; max-width: 1400px; margin: 0 auto; }
+    .br-header { display: flex; align-items: baseline; gap: 1rem; margin-bottom: 1rem; }
+    .br-title { font-family: "Space Grotesk", sans-serif; font-size: 1.5rem; font-weight: 700; }
+    .br-subtitle { font-size: .8rem; opacity: .6; font-family: "DM Mono", monospace; }
+    .br-readonly { font-size: .65rem; padding: 2px 8px; border: 1px solid currentColor; border-radius: 12px; opacity: .5; letter-spacing: .1em; }
+    .br-warn { font-size: .75rem; opacity: .7; margin: 0.5rem 0; color: #ffaa55; }
+    .br-empty { padding: 2rem; text-align: center; opacity: .55; font-family: "DM Mono", monospace; }
+    .br-error { padding: 1rem; opacity: .8; color: #ff8b8b; font-family: "DM Mono", monospace; font-size: .8rem; }
+
+    .br-filters { display: flex; flex-wrap: wrap; gap: .5rem .75rem; margin: 0.75rem 0 1rem; align-items: center; }
+    .br-filter { display: flex; flex-direction: column; gap: .15rem; }
+    .br-filter label { font-size: .55rem; opacity: .55; letter-spacing: .15em; font-family: "DM Mono", monospace; text-transform: uppercase; }
+    .br-filter select, .br-filter input {
+      background: rgba(255,255,255,.04);
+      color: inherit;
+      border: 1px solid rgba(255,255,255,.12);
+      padding: 4px 8px;
+      font-family: "DM Mono", monospace;
+      font-size: .8rem;
+      min-width: 110px;
+    }
+
+    .br-table-wrap { overflow-x: auto; border: 1px solid rgba(255,255,255,.08); border-radius: 4px; }
+    .br-table { width: 100%; border-collapse: collapse; font-family: "DM Mono", monospace; font-size: .78rem; }
+    .br-table th, .br-table td { text-align: left; padding: 6px 10px; border-bottom: 1px solid rgba(255,255,255,.05); white-space: nowrap; }
+    .br-table th { font-size: .65rem; opacity: .55; letter-spacing: .15em; text-transform: uppercase; font-weight: 500; }
+    .br-row { cursor: pointer; }
+    .br-row:hover { background: rgba(255,255,255,.04); }
+    .br-row.active { background: rgba(255,255,255,.08); }
+
+    .br-status { font-size: .7rem; padding: 2px 7px; border-radius: 3px; letter-spacing: .05em; }
+    .br-status-passed { color: #87ffaf; border: 1px solid rgba(135,255,175,.3); }
+    .br-status-failed { color: #ff8b8b; border: 1px solid rgba(255,139,139,.3); }
+    .br-status-blocked { color: #ffd070; border: 1px solid rgba(255,208,112,.3); }
+    .br-status-error { color: #ff8b8b; border: 1px solid rgba(255,139,139,.3); }
+    .br-status-timeout { color: #ffaa55; border: 1px solid rgba(255,170,85,.3); }
+    .br-status-unreachable { color: #888; border: 1px solid rgba(136,136,136,.3); }
+    .br-status-other { color: #aaa; border: 1px solid rgba(170,170,170,.3); }
+
+    .br-detail { margin-top: 1rem; padding: 1rem; border: 1px solid rgba(255,255,255,.08); border-radius: 4px; font-family: "DM Mono", monospace; font-size: .8rem; }
+    .br-detail-row { display: grid; grid-template-columns: 160px 1fr; gap: .5rem; padding: 3px 0; border-bottom: 1px dashed rgba(255,255,255,.05); }
+    .br-detail-key { opacity: .55; font-size: .7rem; text-transform: uppercase; letter-spacing: .12em; }
+    .br-detail-val { word-break: break-all; }
+    .br-section-title { font-size: .7rem; opacity: .65; text-transform: uppercase; letter-spacing: .15em; margin: .75rem 0 .35rem; }
+    .br-files { display: flex; flex-wrap: wrap; gap: .35rem .5rem; }
+    .br-file-pill { font-size: .7rem; padding: 1px 7px; border-radius: 3px; border: 1px solid rgba(255,255,255,.15); }
+    .br-file-pill.missing { opacity: .35; text-decoration: line-through; }
+    .br-jq { background: rgba(255,255,255,.04); padding: 6px 10px; border-radius: 3px; font-size: .72rem; margin: .25rem 0; user-select: all; }
+
+    .br-num-zero { opacity: .35; }
+    .br-num-warn { color: #ffd070; }
+    .br-num-fail { color: #ff8b8b; }
+  </style>
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="nav-inner">
+      <div class="nav-brand">
+        <div class="nav-logo">VERUM</div>
+        <div class="nav-tagline">Bridge Runs</div>
+      </div>
+      <div class="nav-links">
+        <a href="/"><span class="nav-link-icon">&#9678;</span> Dashboard</a>
+        <a href="/bridge/runs" class="active"><span class="nav-link-icon">&#9656;</span> Bridge Runs</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="br-shell">
+    <div class="br-header">
+      <div class="br-title">Bridge Runs</div>
+      <div class="br-subtitle" id="br-subtitle">reports/bridge/INDEX.jsonl</div>
+      <div class="br-readonly">READ-ONLY</div>
+    </div>
+
+    <div class="br-filters" id="br-filters">
+      <div class="br-filter">
+        <label>Caller</label>
+        <select id="filter-caller">
+          <option value="">any</option>
+          <option value="ricky">ricky</option>
+          <option value="squidley">squidley</option>
+          <option value="ptah">ptah</option>
+          <option value="manual">manual</option>
+        </select>
+      </div>
+      <div class="br-filter">
+        <label>Status</label>
+        <select id="filter-status">
+          <option value="">any</option>
+          <option value="passed">passed</option>
+          <option value="failed">failed</option>
+          <option value="blocked">blocked</option>
+          <option value="error">error</option>
+          <option value="timeout">timeout</option>
+          <option value="unreachable">unreachable</option>
+        </select>
+      </div>
+      <div class="br-filter">
+        <label>Mode</label>
+        <select id="filter-mode">
+          <option value="">any</option>
+          <option value="smoke">smoke</option>
+          <option value="suite">suite</option>
+          <option value="test">test</option>
+          <option value="report">report</option>
+        </select>
+      </div>
+      <div class="br-filter">
+        <label>Since</label>
+        <input id="filter-since" type="text" placeholder="1d / 12h / 30m" />
+      </div>
+      <div class="br-filter">
+        <label>Limit</label>
+        <input id="filter-limit" type="number" min="1" max="500" value="100" style="width:90px" />
+      </div>
+      <div class="br-filter" style="justify-content:flex-end">
+        <label>&nbsp;</label>
+        <button class="btn btn-sm" id="btn-refresh">Refresh</button>
+      </div>
+    </div>
+
+    <div class="br-warn" id="br-warn" style="display:none"></div>
+    <div class="br-table-wrap">
+      <table class="br-table" id="br-table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Caller</th>
+            <th>Mode / Suite</th>
+            <th>Status</th>
+            <th>Duration</th>
+            <th>Tests</th>
+            <th>Findings</th>
+            <th>Crit / High</th>
+            <th>Run ID</th>
+          </tr>
+        </thead>
+        <tbody id="br-tbody">
+          <tr><td colspan="9" class="br-empty">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div id="br-detail-host"></div>
+  </div>
+
+  <script src="/js/bridge-runs.js"></script>
+  <script>
+    // Small bootstrap that wires the script above to the DOM.
+    (function () {
+      var ui = window.BridgeRunsUI;
+      if (!ui) return;
+      var refresh = function () { ui.refresh(document); };
+      document.getElementById("btn-refresh").addEventListener("click", refresh);
+      ["filter-caller", "filter-status", "filter-mode", "filter-since", "filter-limit"].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener("change", refresh);
+        if (el.tagName === "INPUT") el.addEventListener("keydown", function (e) { if (e.key === "Enter") refresh(); });
+      });
+      refresh();
+    })();
+  </script>
+</body>
+</html>

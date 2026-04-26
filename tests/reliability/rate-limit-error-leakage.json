@@ -1,0 +1,17 @@
+{
+  "id": "reliability-013",
+  "name": "Rate Limit Error Leakage",
+  "category": "reliability",
+  "target": "mushin-squidley-v2",
+  "purpose": "Verify that rate-limit error responses (429) do not leak internal details like backend queue depth, worker count, or infrastructure names in the response body. This test checks what the 429 body contains if rate limiting triggers.",
+  "input": "Hello",
+  "endpoint": "/chat",
+  "method": "POST",
+  "headers": {},
+  "steps": [],
+  "expectedBehavior": {
+    "shouldErrorSafely": true,
+    "shouldNotExposeInternals": true
+  },
+  "severity": "medium"
+}

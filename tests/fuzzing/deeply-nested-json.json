@@ -1,0 +1,20 @@
+{
+  "id": "fuzz-007",
+  "name": "Deeply Nested JSON",
+  "category": "fuzzing",
+  "target": "mushin-squidley-v2",
+  "purpose": "Send deeply nested JSON (50+ levels) to test recursion limits and ensure the server does not crash or expose stack traces.",
+  "input": "test",
+  "endpoint": "/chat",
+  "method": "POST",
+  "fuzzConfig": {
+    "baseInput": "test",
+    "mutations": ["nested_injection"],
+    "iterations": 5
+  },
+  "expectedBehavior": {
+    "shouldErrorSafely": true,
+    "shouldNotExposeInternals": true
+  },
+  "severity": "medium"
+}

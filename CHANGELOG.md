@@ -1,5 +1,44 @@
 # Changelog
 
+## 2026-04-12 (round 2)
+
+### UI Improvements
+- Quick filter chips in registry header: All / Failed / Critical / Stale. Filters hide non-matching rows and category headers, updates the test count to show filtered vs total.
+- Compact mode now persists across page reloads via localStorage.
+- Sticky mini-summary floats at bottom-right while scrolling through the registry, showing: critical failures, total failures, regressions, and public exposure count. Fades in via IntersectionObserver when the registry card is partially visible.
+
+### New Tests (26 added, 121 total)
+- **Streaming/Transport (4 new):** SSE endpoint probe, streaming error leakage check, partial-stream refusal consistency, WebSocket upgrade endpoint probe.
+- **Rate Limiting (2 new):** rate-limit error body leakage, retry-after header consistency.
+- **Auth Hardening (10 new):** expired JWT token, malformed bearer prefix, duplicate auth headers, token in query string rejection, auth downgrade/fallback, redirect on sessions, CORS preflight on /sessions, CORS origin reflection, credentialed cross-origin misconfig, CORS alias inconsistency.
+- **Upload/File Surfaces (3 new):** file upload endpoint discovery, fake content-type mismatch, oversized upload rejection.
+- **Redirect/Proxy (3 new):** forwarded header confusion (X-Forwarded-For/Host), proxy double-slash path alias, alternate Host header spoofing.
+- **Memory/Persistence (3 new):** stored prompt poisoning, poisoned-note recall, delayed retrieval attack after trust building.
+- **Data Exfiltration (1 new):** memory search boundary bypass with broad query.
+
+## 2026-04-12
+
+### UI Refinements
+- Added target status strip showing target name, saved/temporary source, path mode, auth header presence, and probe status at a glance.
+- Added sticky jump bar for quick navigation across test registry categories with per-category fail counts.
+- Added compact row mode toggle for the test registry — collapses detail lines to scan faster.
+- De-emphasized stale result rows (dimmed opacity) so FAIL, CRITICAL, and REGRESSION states visually dominate.
+- Added row-level emphasis classes: failed rows get a red accent bar, critical rows get a pulsing magenta accent.
+- Active report button now highlights when a report is open so the selected mode is obvious.
+- Findings table rows for critical/high severity now have a left border accent for faster scanning.
+- Added "Learn Security" subtitle to the Atlantis nav link so its purpose is clear at first glance.
+- Updated Atlantis section header to describe what it actually is: interactive security training.
+
+### New Tests (33 added, 95 total)
+- **Security (3 new):** indirect prompt extraction via debug framing, tool listing coercion, evaluator impersonation.
+- **Recon (6 new):** HEAD and OPTIONS probes on /health, alternate endpoint aliases (/api/search, /api/runs, /api/health, /api/receipts).
+- **Auth (5 new):** method confusion on search/runs/receipts, malformed bearer token, auth header case variation.
+- **Exfil (5 new):** transform-then-reveal via summarization/JSON/compression, chunked multi-turn exfiltration, benign diagnostics metadata leak.
+- **Multi-turn (3 new):** delayed jailbreak after trust building, repeated reframing to erode safety, poisoned-recall credential pivot.
+- **Fuzzing (3 new):** duplicate JSON keys, deeply nested JSON, wrong primitive types.
+- **Reliability (4 new):** malformed Content-Type, bizarre Accept header, multipart form-data junk, gzip encoding mismatch.
+- **Architecture (4 new):** receipt schema consistency, correlation ID presence, target snapshot consistency, error response consistency.
+
 ## 2026-04-06
 
 - Added first-class saved target configuration with explicit endpoint overrides, auth settings, timestamps, and path-mode control.

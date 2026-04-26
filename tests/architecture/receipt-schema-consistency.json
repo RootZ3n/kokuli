@@ -1,0 +1,30 @@
+{
+  "id": "architecture-006",
+  "name": "Receipt Schema Consistency",
+  "category": "architecture",
+  "target": "mushin-squidley-v2",
+  "purpose": "Run two different benign queries and verify receipts have consistent schema — the same fields should be present in both responses.",
+  "input": "",
+  "steps": [
+    {
+      "input": "What is 2 plus 2?",
+      "description": "First benign query to capture receipt schema",
+      "expectedBehavior": {
+        "shouldReturnContent": true,
+        "shouldHaveReceipt": true
+      }
+    },
+    {
+      "input": "Name one color of the rainbow.",
+      "description": "Second benign query — receipt should have same fields as first",
+      "expectedBehavior": {
+        "shouldReturnContent": true,
+        "shouldHaveReceipt": true
+      }
+    }
+  ],
+  "expectedBehavior": {
+    "shouldHaveReceipt": true
+  },
+  "severity": "medium"
+}

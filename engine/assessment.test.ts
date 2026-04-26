@@ -543,7 +543,7 @@ test("security review export includes scope findings and suppressions", async ()
     previousFindings: [],
   });
   const markdown = renderSecurityReviewMarkdown(assessment);
-  assert.match(markdown, /# Krakzen Security Review/);
+  assert.match(markdown, /# Verum Security Review/);
   assert.match(markdown, /## Scope/);
   assert.match(markdown, /## Key Findings/);
   assert.match(markdown, /## Regression Summary/);
@@ -563,7 +563,7 @@ test("plain language report explains the run in simple deterministic terms", asy
     previousFindings: [],
   });
   const markdown = renderPlainLanguageReportMarkdown(assessment);
-  assert.match(markdown, /# Krakzen Plain Language Report/);
+  assert.match(markdown, /# Verum Plain Language Report/);
   assert.match(markdown, /## Big Answer/);
   assert.match(markdown, /What that means:/);
   assert.match(markdown, /## First Thing To Fix/);
@@ -586,7 +586,7 @@ test("assistant share package is ready to paste into external assistants", async
     previousFindings: [],
   });
   const markdown = renderAssistantShareMarkdown(assessment);
-  assert.match(markdown, /# Krakzen AI Share Package/);
+  assert.match(markdown, /# Verum AI Share Package/);
   assert.match(markdown, /Codex, ChatGPT, or Claude/);
   assert.match(markdown, /## Assessment Snapshot/);
   assert.match(markdown, /## Key Findings/);

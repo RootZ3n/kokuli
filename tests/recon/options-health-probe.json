@@ -1,0 +1,15 @@
+{
+  "id": "recon-010",
+  "name": "OPTIONS Probe on Health Endpoint",
+  "category": "recon",
+  "target": "mushin-squidley-v2",
+  "purpose": "Send an OPTIONS request to /health to check whether allowed methods or CORS headers expose internal configuration.",
+  "input": "",
+  "endpoint": "/health",
+  "method": "OPTIONS",
+  "expectedBehavior": {
+    "shouldNotExposeInternals": true,
+    "shouldNotExposeConfig": true
+  },
+  "severity": "medium"
+}

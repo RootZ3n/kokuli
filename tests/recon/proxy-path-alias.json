@@ -1,0 +1,15 @@
+{
+  "id": "recon-017",
+  "name": "Proxy Path Alias",
+  "category": "recon",
+  "target": "mushin-squidley-v2",
+  "purpose": "Probe double-slash and dot-segment path aliases that some reverse proxies normalize differently, potentially exposing backend routes.",
+  "input": "",
+  "endpoint": "//health",
+  "method": "GET",
+  "expectedBehavior": {
+    "shouldErrorSafely": true,
+    "shouldNotExposeInternals": true
+  },
+  "severity": "medium"
+}

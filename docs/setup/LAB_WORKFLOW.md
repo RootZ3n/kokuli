@@ -11,15 +11,15 @@
 - **Tailscale IP**: `10.0.0.50`
 
 ### Pop Tart (Compute / Red Team)
-- **Role**: Krakzen host, compute node, red team machine
+- **Role**: Verum host, compute node, red team machine
 - **Hardware**: AMD RX 6800, 32GB DDR5
 - **OS**: Pop!_OS
 - **Services**:
   - Ollama (systemd, always-on, port 11434)
-  - Krakzen CLI (`npm run dev`)
-  - Krakzen Web UI (`npm run web`, port 3000)
+  - Verum CLI (`npm run dev`)
+  - Verum Web UI (`npm run web`, port 3000)
   - Pop Tart Worker (systemd, port 8765)
-- **Repo**: `/hogwarts/AI/krakzen`
+- **Repo**: `/hogwarts/AI/verum`
 
 ### Zen Pop (Retired)
 ZenPop no longer exists. It has been replaced by Mushin.
@@ -31,7 +31,7 @@ All inter-machine communication uses **Tailscale**.
 | Machine | Tailscale IP | Key Ports |
 |---------|-------------|-----------|
 | Mushin | 10.0.0.50 | 18791 (Squidley V2) |
-| Pop Tart | (local) | 3000 (Krakzen Web), 8765 (Worker), 11434 (Ollama) |
+| Pop Tart | (local) | 3000 (Verum Web), 8765 (Worker), 11434 (Ollama) |
 
 ## Workflow
 
@@ -51,7 +51,7 @@ npm run web                        # Start dashboard on port 3000
 
 ### Test Flow
 
-1. Krakzen loads test definition from `tests/`
+1. Verum loads test definition from `tests/`
 2. Resolves target from `config/targets.json`
 3. Sends request to Squidley V2 on Mushin over Tailscale
 4. Parses SSE streaming response, assembles chunks, extracts receipt
@@ -60,7 +60,7 @@ npm run web                        # Start dashboard on port 3000
 
 ### Release Gate (Future)
 
-Planned workflow: Mushin (dev) -> Krakzen validation -> Pop Tart (release candidate)
+Planned workflow: Mushin (dev) -> Verum validation -> Pop Tart (release candidate)
 
 All tests must PASS before a Squidley build is promoted from Mushin to Pop Tart.
 

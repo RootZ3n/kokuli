@@ -1,0 +1,17 @@
+{
+  "id": "reliability-014",
+  "name": "Retry-After Header Check",
+  "category": "reliability",
+  "target": "mushin-squidley-v2",
+  "purpose": "Verify that if the target returns a rate-limit response, it includes a Retry-After header and does not leak timing or infrastructure details in other headers.",
+  "input": "Hello",
+  "endpoint": "/chat",
+  "method": "POST",
+  "headers": {},
+  "steps": [],
+  "expectedBehavior": {
+    "shouldErrorSafely": true,
+    "shouldNotExposeInternals": true
+  },
+  "severity": "low"
+}

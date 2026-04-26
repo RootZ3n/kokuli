@@ -10,6 +10,9 @@ let runtimeTargetResolved = null;
 let targetEditorMode = "new";
 let editingTargetId = "";
 let serverMeta = null;
+let armoryStatus = null;
+let armoryPollTimer = null;
+let armoryLastResult = null;
 
 const CATEGORIES = {
   "child-safety": { name: "Child Safety", icon: "\u{1F6E1}\uFE0F", desc: "Magister child protection", color: "#ff0055", priority: 1 },
@@ -62,7 +65,7 @@ const SEVERITY_ORDER = { critical: 4, high: 3, medium: 2, low: 1 };
 const EXPLOITABILITY_ORDER = { high: 3, medium: 2, low: 1 };
 
 async function api(path, opts) {
-  return window.KrakzenApi.apiFetch(path, opts);
+  return window.VerumApi.apiFetch(path, opts);
 }
 
 function formValue(id) {
@@ -138,6 +141,10 @@ function stateBadge(state) {
 function severityBadge(severity) {
   if (!severity) return "";
   return '<span class="severity-badge severity-' + escHtml(severity) + '">' + escHtml(severity) + "</span>";
+}
+
+function armoryUi() {
+  return window.VerumArmoryUi;
 }
 
 function resultBadge(result) {
@@ -335,7 +342,7 @@ function updateRuntimeTargetNote() {
 }
 
 function collectTargetFormConfig() {
-  return window.KrakzenTargetForm.normalizeTargetPayload({
+  return window.VerumTargetForm.normalizeTargetPayload({
     id: targetEditorMode === "edit" ? editingTargetId : formValue("target-form-id").trim(),
     name: formValue("target-form-name").trim(),
     baseUrl: formValue("target-form-base-url").trim(),
@@ -402,7 +409,7 @@ async function saveTargetConfig() {
   try {
     const isEdit = targetEditorMode === "edit";
     const payload = collectTargetFormConfig();
-    const validationError = window.KrakzenTargetForm.validateTargetPayload(payload, { requireId: !isEdit });
+    const validationError = window.VerumTargetForm.validateTargetPayload(payload, { requireId: !isEdit });
     if (validationError) {
       toast("Error: " + validationError, "error");
       return;
@@ -452,7 +459,7 @@ function renderProbeResults(data) {
 async function probeDraftTarget() {
   try {
     const payload = collectTargetFormConfig();
-    const validationError = window.KrakzenTargetForm.validateTargetPayload(payload, { requireId: false });
+    const validationError = window.VerumTargetForm.validateTargetPayload(payload, { requireId: false });
     if (validationError) {
       toast("Error: " + validationError, "error");
       return;
@@ -472,7 +479,7 @@ async function probeDraftTarget() {
 async function useTemporaryTarget() {
   try {
     const payload = collectTargetFormConfig();
-    const validationError = window.KrakzenTargetForm.validateTargetPayload(payload, { requireId: false });
+    const validationError = window.VerumTargetForm.validateTargetPayload(payload, { requireId: false });
     if (validationError) {
       toast("Error: " + validationError, "error");
       return;
@@ -705,17 +712,20 @@ function renderFindings() {
     return;
   }
 
-  const rows = findings.map((finding) => [
-    "<tr>",
-    "  <td>" + severityBadge(finding.severity) + " " + escHtml(finding.title) + "</td>",
-    "  <td>" + verdictBadge(finding.verdict || "concern") + '<div class="finding-confidence">' + escHtml("lifecycle " + finding.lifecycle + " | workflow " + (finding.workflow_state || "detected")) + "</div></td>",
-    "  <td>" + escHtml(getCategoryMeta(finding.category).name) + "</td>",
-    "  <td>" + escHtml(finding.exploitability) + "</td>",
-    "  <td>" + escHtml(finding.target) + "</td>",
-    "  <td>" + escHtml(formatDateTime(finding.last_seen_at)) + "</td>",
-    "  <td>" + escHtml(finding.evidence_snapshot.attackSummary + " | " + finding.evidence_snapshot.responseSummary) + "<div class=\"finding-confidence\">confidence " + escHtml(finding.confidence + " :: " + finding.confidence_reason) + "</div></td>",
-    "</tr>",
-  ].join("")).join("");
+  const rows = findings.map((finding) => {
+    const rowCls = finding.severity === "critical" ? " finding-row-critical" : finding.severity === "high" ? " finding-row-high" : "";
+    return [
+      "<tr class=\"" + rowCls + "\">",
+      "  <td>" + severityBadge(finding.severity) + " " + escHtml(finding.title) + "</td>",
+      "  <td>" + verdictBadge(finding.verdict || "concern") + '<div class="finding-confidence">' + escHtml("lifecycle " + finding.lifecycle + " | workflow " + (finding.workflow_state || "detected")) + "</div></td>",
+      "  <td>" + escHtml(getCategoryMeta(finding.category).name) + "</td>",
+      "  <td>" + escHtml(finding.exploitability) + "</td>",
+      "  <td>" + escHtml(finding.target) + "</td>",
+      "  <td>" + escHtml(formatDateTime(finding.last_seen_at)) + "</td>",
+      "  <td>" + escHtml(finding.evidence_snapshot.attackSummary + " | " + finding.evidence_snapshot.responseSummary) + "<div class=\"finding-confidence\">confidence " + escHtml(finding.confidence + " :: " + finding.confidence_reason) + "</div></td>",
+      "</tr>",
+    ].join("");
+  }).join("");
 
   el.innerHTML = [
     '<table class="fields-table findings-table">',
@@ -856,8 +866,14 @@ function renderTests() {
           ? '<div class="result-panel" id="detail-' + test.id + '">' + aggregate.runs.map(renderRunArtifact).join("") + "</div>"
           : "";
 
+        // Row emphasis classes: de-emphasize stale, amplify fail/critical
+        let rowCls = "";
+        if (aggregate.state === "stale") rowCls = " row-stale";
+        else if (aggregate.result === "FAIL" && test.severity === "critical") rowCls = " row-critical";
+        else if (aggregate.result === "FAIL") rowCls = " row-failed";
+
         return [
-          '<div class="test-row" id="row-' + test.id + '">',
+          '<div class="test-row' + rowCls + '" id="row-' + test.id + '">',
           '  <div class="test-info">',
           '    <div class="test-name">' + severityBadge(test.severity) + " " + escHtml(test.name) + "</div>",
           '    <div class="test-meta">' + escHtml(test.purpose) + "</div>",
@@ -878,6 +894,8 @@ function renderTests() {
     }).join("");
 
   list.innerHTML = html;
+  applyCompactMode();
+  if (activeFilter !== 'all') applyFilter();
 }
 
 function toggleDetail(id) {
@@ -948,8 +966,10 @@ async function loadAssessment() {
 
 async function loadDashboard() {
   await loadTargets();
-  await Promise.all([loadRegistry(), loadAssessment(), loadServerMeta()]);
+  await Promise.all([loadRegistry(), loadAssessment(), loadServerMeta(), loadArmoryStatus()]);
   updateStats(assessment ? assessment.summary : { total: 0, pass: 0, fail: 0, warn: 0 });
+  renderTargetStatusStrip();
+  seedArmoryTarget();
   renderScreenshotSummary();
   renderOperatorSummary();
   renderRiskSummary();
@@ -958,6 +978,12 @@ async function loadDashboard() {
   renderFindings();
   renderCategorySummary();
   renderTests();
+  renderJumpBar();
+  renderMiniSummary();
+  renderArmoryStatus();
+  if (armoryStatus && armoryStatus.state === "running") startArmoryPolling();
+  else stopArmoryPolling();
+  if (activeFilter !== 'all') applyFilter();
 }
 
 function loadSummary() {
@@ -1031,6 +1057,7 @@ async function switchTarget(key) {
     activeTargetKey = key;
     clearTemporaryTarget();
     await loadDashboard();
+    seedArmoryTarget();
     toast("Target switched to " + key);
   } catch (err) {
     toast("Error: " + err.message, "error");
@@ -1079,6 +1106,10 @@ async function viewReport(name) {
     document.getElementById('report-modal-title').textContent = name.replace(/_/g, ' ');
     document.getElementById('report-modal-content').textContent = text;
     document.getElementById('report-modal').style.display = 'flex';
+    // Highlight the active report button
+    document.querySelectorAll('.btn-report').forEach(function(b) {
+      b.classList.toggle('btn-report-active', b.getAttribute('data-report') === name);
+    });
   } catch (err) {
     toast('Error: ' + err.message, 'error');
   }
@@ -1095,11 +1126,427 @@ function copyReport() {
 
 function closeReport() {
   document.getElementById('report-modal').style.display = 'none';
+  document.querySelectorAll('.btn-report').forEach(function(b) { b.classList.remove('btn-report-active'); });
 }
 
 function toggleSection(id) {
   var el = document.getElementById(id);
   if (el) el.classList.toggle('open');
+}
+
+// --- Target status strip ---
+function renderTargetStatusStrip() {
+  var nameEl = document.getElementById('tss-name');
+  var sourceEl = document.getElementById('tss-source');
+  var pathEl = document.getElementById('tss-path-mode');
+  var authEl = document.getElementById('tss-auth');
+  var probeEl = document.getElementById('tss-probe');
+  if (!nameEl) return;
+
+  var config = assessment && assessment.targetConfigSnapshot;
+  var selected = targetData && targetData.targets && targetData.targets[activeTargetKey];
+  var isTemp = !!runtimeTargetResolved;
+
+  nameEl.textContent = (config && config.name) || (selected && selected.name) || activeTargetKey || 'No target';
+  sourceEl.textContent = isTemp ? 'temporary' : 'saved';
+  sourceEl.className = 'tss-chip ' + (isTemp ? 'tss-warn' : 'tss-dim');
+  pathEl.textContent = (config && config.pathMode) || (selected && selected.pathMode) || 'default';
+  pathEl.className = 'tss-chip tss-dim';
+
+  var hasAuth = (config && config.auth && config.auth.headerName) || (selected && selected.auth && selected.auth.headerName);
+  authEl.textContent = hasAuth ? 'auth present' : 'no auth header';
+  authEl.className = 'tss-chip ' + (hasAuth ? 'tss-ok' : 'tss-warn');
+
+  var fp = assessment && assessment.targetFingerprint;
+  if (fp) {
+    probeEl.textContent = fp.reachableCount + '/' + fp.totalEndpoints + ' endpoints';
+    probeEl.className = 'tss-chip ' + (fp.reachableCount === fp.totalEndpoints ? 'tss-ok' : fp.reachableCount > 0 ? 'tss-warn' : 'tss-bad');
+  } else {
+    probeEl.textContent = 'not probed';
+    probeEl.className = 'tss-chip tss-dim';
+  }
+}
+
+// --- Jump bar ---
+function renderJumpBar() {
+  var bar = document.getElementById('jump-bar');
+  if (!bar) return;
+
+  var testsByCategory = {};
+  registryTests.forEach(function(test) {
+    if (!testsByCategory[test.category]) testsByCategory[test.category] = [];
+    testsByCategory[test.category].push(test);
+  });
+
+  var html = Object.keys(testsByCategory)
+    .sort(function(a, b) { return getCategoryMeta(a).priority - getCategoryMeta(b).priority; })
+    .map(function(category) {
+      var meta = getCategoryMeta(category);
+      var count = testsByCategory[category].length;
+      var failCount = 0;
+      testsByCategory[category].forEach(function(t) {
+        var agg = aggregateBaseState(t);
+        if (agg.result === 'FAIL') failCount++;
+      });
+      var countLabel = failCount > 0 ? (failCount + ' fail') : (count + '');
+      var extraCls = failCount > 0 ? ' tss-bad' : '';
+      return '<span class="jump-chip' + extraCls + '" onclick="scrollToCategory(\'' + category + '\')">' +
+        '<span class="jump-chip-icon">' + meta.icon + '</span>' +
+        escHtml(meta.name) +
+        ' <span class="jump-chip-count">' + countLabel + '</span></span>';
+    }).join('');
+
+  bar.innerHTML = html;
+}
+
+function scrollToCategory(category) {
+  var headers = document.querySelectorAll('.category-header');
+  for (var i = 0; i < headers.length; i++) {
+    if (headers[i].textContent.indexOf(getCategoryMeta(category).name) !== -1) {
+      headers[i].scrollIntoView({ behavior: 'smooth', block: 'start' });
+      break;
+    }
+  }
+}
+
+// --- Compact mode (persisted in localStorage) ---
+var compactMode = false;
+try { compactMode = localStorage.getItem('verum-compact') === '1'; } catch (e) {}
+
+function toggleCompactMode() {
+  compactMode = !compactMode;
+  try { localStorage.setItem('verum-compact', compactMode ? '1' : '0'); } catch (e) {}
+  applyCompactMode();
+}
+
+function applyCompactMode() {
+  var list = document.getElementById('test-list');
+  var btn = document.getElementById('compact-toggle');
+  if (list) {
+    if (compactMode) list.classList.add('compact');
+    else list.classList.remove('compact');
+  }
+  if (btn) btn.textContent = compactMode ? 'Expand' : 'Compact';
+}
+
+// --- Quick filters ---
+var activeFilter = 'all';
+
+function setFilter(filter) {
+  activeFilter = filter;
+  document.querySelectorAll('.btn-filter').forEach(function(b) {
+    b.classList.toggle('filter-active', b.getAttribute('data-filter') === filter);
+  });
+  applyFilter();
+}
+
+function applyFilter() {
+  var rows = document.querySelectorAll('.test-row');
+  var visibleCategories = {};
+
+  rows.forEach(function(row) {
+    var id = row.id.replace('row-', '');
+    var test = registryTests.find(function(t) { return t.id === id; });
+    if (!test) { row.classList.remove('filter-hidden'); return; }
+
+    var agg = aggregateBaseState(test);
+    var show = true;
+
+    if (activeFilter === 'failed') {
+      show = agg.result === 'FAIL';
+    } else if (activeFilter === 'critical') {
+      show = agg.result === 'FAIL' && test.severity === 'critical';
+    } else if (activeFilter === 'stale') {
+      show = agg.state === 'stale';
+    }
+
+    if (show) {
+      row.classList.remove('filter-hidden');
+      visibleCategories[test.category] = true;
+    } else {
+      row.classList.add('filter-hidden');
+    }
+  });
+
+  // Hide category headers that have no visible rows
+  document.querySelectorAll('.category-header').forEach(function(hdr) {
+    var hasVisible = false;
+    Object.keys(CATEGORIES).forEach(function(cat) {
+      if (hdr.textContent.indexOf(getCategoryMeta(cat).name) !== -1 && visibleCategories[cat]) {
+        hasVisible = true;
+      }
+    });
+    if (activeFilter === 'all') {
+      hdr.classList.remove('filter-hidden');
+    } else {
+      hdr.classList.toggle('filter-hidden', !hasVisible);
+    }
+  });
+
+  // Update test count to show filtered count
+  var countEl = document.getElementById('test-count');
+  if (countEl) {
+    if (activeFilter === 'all') {
+      countEl.textContent = registryTests.length + ' tests';
+    } else {
+      var shown = document.querySelectorAll('.test-row:not(.filter-hidden)').length;
+      countEl.textContent = shown + ' / ' + registryTests.length + ' tests';
+    }
+  }
+}
+
+// --- Sticky mini-summary ---
+function renderMiniSummary() {
+  var criticalEl = document.getElementById('ms-critical');
+  var failEl = document.getElementById('ms-fail');
+  var regressionEl = document.getElementById('ms-regression');
+  var exposureEl = document.getElementById('ms-exposure');
+  if (!criticalEl) return;
+
+  var criticalCount = 0;
+  var failCount = 0;
+  var regressionCount = 0;
+  var exposureCount = 0;
+
+  if (assessment) {
+    var findings = assessment.findings || [];
+    findings.forEach(function(f) {
+      if (f.severity === 'critical') criticalCount++;
+      if (f.verdict === 'fail' || f.verdict === 'critical') failCount++;
+      if (f.lifecycle === 'regressed') regressionCount++;
+      if (['recon', 'auth', 'exfil'].indexOf(f.category) !== -1) exposureCount++;
+    });
+    // Fallback to summary counts if no findings yet
+    if (!findings.length && assessment.summary) {
+      failCount = assessment.summary.fail || 0;
+    }
+  }
+
+  criticalEl.textContent = criticalCount + ' critical';
+  criticalEl.classList.toggle('ms-zero', criticalCount === 0);
+  failEl.textContent = failCount + ' fail';
+  failEl.classList.toggle('ms-zero', failCount === 0);
+  regressionEl.textContent = regressionCount + ' regressed';
+  regressionEl.classList.toggle('ms-zero', regressionCount === 0);
+  exposureEl.textContent = exposureCount + ' exposed';
+  exposureEl.classList.toggle('ms-zero', exposureCount === 0);
+}
+
+function getArmoryFormState() {
+  return {
+    target: formValue("armory-target").trim(),
+    profile: formValue("armory-profile") || "break_me",
+    advancedMode: !!document.getElementById("armory-advanced-mode")?.checked,
+    dryRun: !!document.getElementById("armory-dry-run")?.checked,
+  };
+}
+
+function armoryResultForDisplay() {
+  return (armoryStatus && armoryStatus.activeRun) || armoryLastResult || (armoryStatus && armoryStatus.lastRun) || null;
+}
+
+function renderArmorySteps(steps) {
+  var panel = document.getElementById("armory-steps-panel");
+  if (!panel) return;
+  if (!steps || !steps.length) {
+    panel.innerHTML = '<div class="empty-state">Armory will explain each step here, including what is being checked, why it matters, and what the result means.</div>';
+    return;
+  }
+
+  panel.innerHTML = steps.map(function(step) {
+    var badgeState = step.status === "cancelled" ? "stale"
+      : step.status === "failed" ? "error"
+        : step.status === "blocked" ? "blocked"
+          : step.status === "completed" ? "passed"
+            : step.status === "running" ? "running"
+              : "idle";
+    return [
+      '<div class="armory-step-card">',
+      '  <div class="armory-step-head">',
+      '    <div class="armory-step-title">' + escHtml(step.title || step.id || "Step") + '</div>',
+      '    <span class="state-badge state-' + escHtml(badgeState) + '">' + escHtml(step.status || "pending") + '</span>',
+      '  </div>',
+      '  <div class="armory-step-body">',
+      '    <div class="armory-step-line"><strong>What:</strong> ' + escHtml(step.whatIAmDoing || "") + '</div>',
+      '    <div class="armory-step-line"><strong>Why:</strong> ' + escHtml(step.whyIAmDoing || "") + '</div>',
+      '    <div class="armory-step-line"><strong>Found:</strong> ' + escHtml(step.whatIFound || "") + '</div>',
+      '    <div class="armory-step-line"><strong>What it means:</strong> ' + escHtml(step.whatItMeans || "") + '</div>',
+      '  </div>',
+      '  <div class="armory-step-risk">' + escHtml(step.riskNote || "Armory keeps this check limited and beginner-safe.") + '</div>',
+      '</div>',
+    ].join("");
+  }).join("");
+}
+
+function renderArmoryFindingsPanel(findings) {
+  var panel = document.getElementById("armory-findings-panel");
+  if (!panel) return;
+  panel.innerHTML = armoryUi().renderArmoryFindings(findings || []);
+}
+
+function syncArmoryControls() {
+  var runBtn = document.getElementById("armory-run-btn");
+  var killBtn = document.getElementById("armory-kill-btn");
+  var resetBtn = document.getElementById("armory-reset-btn");
+  var dryRun = document.getElementById("armory-dry-run") && document.getElementById("armory-dry-run").checked;
+  var isRunning = armoryStatus && armoryStatus.state === "running";
+  var isBlocked = armoryStatus && armoryStatus.state === "blocked_by_kill_switch";
+
+  if (runBtn) {
+    runBtn.disabled = !!isRunning || !!isBlocked;
+    runBtn.innerHTML = isRunning ? '<span class="spinner"></span> Running...' : 'Run Scan';
+  }
+  if (killBtn) killBtn.disabled = !isRunning;
+  if (resetBtn) resetBtn.disabled = !isBlocked;
+
+  var modeBadge = document.getElementById("armory-mode-badge");
+  if (modeBadge) {
+    modeBadge.style.display = dryRun ? "inline-flex" : "none";
+  }
+}
+
+function renderArmoryStatus() {
+  var pill = document.getElementById("armory-status-pill");
+  var copy = document.getElementById("armory-status-copy");
+  var notice = document.getElementById("armory-notice");
+  var result = armoryResultForDisplay();
+  var state = armoryStatus && armoryStatus.state || result && result.state || "idle";
+  var displayState = result && result.simulated ? "simulated" : state;
+  var noticeText = armoryUi().armoryNoticeText(armoryStatus, result);
+
+  if (pill) {
+    pill.textContent = armoryUi().armoryStatusLabel(displayState);
+    pill.className = "armory-status-pill " + armoryUi().armoryStatusClass(displayState);
+  }
+  if (copy) {
+    copy.textContent = result && result.humanExplanation || armoryStatus && armoryStatus.message || "Armory is ready.";
+  }
+  if (notice) {
+    if (noticeText) {
+      notice.textContent = noticeText;
+      notice.classList.add("show");
+    } else {
+      notice.textContent = "";
+      notice.classList.remove("show");
+    }
+  }
+
+  renderArmorySteps(result && result.steps);
+  renderArmoryFindingsPanel(result && result.findings);
+  syncArmoryControls();
+}
+
+function stopArmoryPolling() {
+  if (armoryPollTimer) {
+    clearInterval(armoryPollTimer);
+    armoryPollTimer = null;
+  }
+}
+
+function startArmoryPolling() {
+  stopArmoryPolling();
+  armoryPollTimer = setInterval(async function() {
+    try {
+      await loadArmoryStatus();
+      if (!armoryStatus || armoryStatus.state !== "running") stopArmoryPolling();
+    } catch (_err) {
+      stopArmoryPolling();
+    }
+  }, 2500);
+}
+
+async function loadArmoryStatus() {
+  armoryStatus = await api("/ops/status");
+  if (armoryStatus && armoryStatus.lastRun) armoryLastResult = armoryStatus.lastRun;
+  renderArmoryStatus();
+}
+
+function seedArmoryTarget() {
+  var input = document.getElementById("armory-target");
+  if (!input || input.value) return;
+  if (runtimeTargetResolved && runtimeTargetResolved.baseUrl) {
+    input.value = runtimeTargetResolved.baseUrl;
+    return;
+  }
+  var selected = targetData && targetData.targets && targetData.targets[activeTargetKey];
+  if (!selected || !selected.baseUrl) return;
+  try {
+    var url = new URL(selected.baseUrl);
+    input.value = (url.hostname === "localhost" || url.hostname === "127.0.0.1")
+      ? (url.port ? url.hostname + ":" + url.port : url.hostname)
+      : selected.baseUrl;
+  } catch (_err) {
+    input.value = "";
+  }
+}
+
+async function runArmoryScan() {
+  var form = getArmoryFormState();
+  if (!form.target) {
+    toast("Enter a localhost or private-network target first.", "error");
+    return;
+  }
+  try {
+    syncArmoryControls();
+    var result = await api("/ops/run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    armoryLastResult = result;
+    await loadArmoryStatus();
+    if (armoryStatus && armoryStatus.state === "running") startArmoryPolling();
+    else stopArmoryPolling();
+    toast(result && result.state === "error" ? "Armory stopped safely with guidance." : form.dryRun ? "Simulation ready." : "Armory run complete.");
+  } catch (err) {
+    if (/Beginner guardrails block non-local targets/i.test(err.message)) {
+      armoryLastResult = {
+        state: "error",
+        simulated: false,
+        findings: [],
+        steps: [],
+        humanExplanation: "This target is outside your local network. Armory blocks this by default for safety.",
+      };
+      renderArmoryStatus();
+    }
+    toast("Error: " + err.message, "error");
+  }
+}
+
+async function killArmoryRun() {
+  try {
+    await api("/ops/kill", { method: "POST" });
+    await loadArmoryStatus();
+    stopArmoryPolling();
+    toast("Armory kill switch triggered.");
+  } catch (err) {
+    toast("Error: " + err.message, "error");
+  }
+}
+
+async function resetArmoryState() {
+  try {
+    await api("/ops/reset", { method: "POST" });
+    await loadArmoryStatus();
+    stopArmoryPolling();
+    toast("Armory reset and unblocked.");
+  } catch (err) {
+    toast("Error: " + err.message, "error");
+  }
+}
+
+function initMiniSummaryScroll() {
+  var msEl = document.getElementById('mini-summary');
+  var registryCard = document.getElementById('registry-card');
+  if (!msEl || !registryCard) return;
+
+  var observer = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      // Show mini-summary when registry card is in view (operator is scrolling through tests)
+      msEl.classList.toggle('ms-visible', entry.isIntersecting && entry.intersectionRatio < 0.9);
+    });
+  }, { threshold: [0, 0.1, 0.5, 0.9, 1.0] });
+  observer.observe(registryCard);
 }
 
 window.runTest = runTest;
@@ -1119,7 +1566,26 @@ window.viewReport = viewReport;
 window.copyReport = copyReport;
 window.closeReport = closeReport;
 window.toggleSection = toggleSection;
+window.scrollToCategory = scrollToCategory;
+window.toggleCompactMode = toggleCompactMode;
+window.setFilter = setFilter;
+window.runArmoryScan = runArmoryScan;
+window.killArmoryRun = killArmoryRun;
+window.resetArmoryState = resetArmoryState;
 
 document.addEventListener("DOMContentLoaded", () => {
+  var dryRunToggle = document.getElementById("armory-dry-run");
+  if (dryRunToggle) {
+    dryRunToggle.addEventListener("change", function() {
+      syncArmoryControls();
+    });
+  }
+  // Restore persisted compact mode
+  applyCompactMode();
+  // Set default filter chip
+  setFilter('all');
+  // Load dashboard
   loadDashboard().catch((err) => toast("Dashboard load error: " + err.message, "error"));
+  // Init scroll-triggered mini-summary
+  initMiniSummaryScroll();
 });

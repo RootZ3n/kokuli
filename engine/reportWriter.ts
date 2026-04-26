@@ -197,7 +197,7 @@ function renderSimpleVerdictMeaning(assessment: DashboardAssessment): string {
 
 export function renderPlainLanguageReportMarkdown(assessment: DashboardAssessment): string {
   const lines = [
-    `# Krakzen Plain Language Report`,
+    `# Verum Plain Language Report`,
     ``,
     `This report explains the latest scan in simple language.`,
     ``,
@@ -257,9 +257,9 @@ export function renderPlainLanguageReportMarkdown(assessment: DashboardAssessmen
 
 export function renderAssistantShareMarkdown(assessment: DashboardAssessment): string {
   const lines = [
-    `# Krakzen AI Share Package`,
+    `# Verum AI Share Package`,
     ``,
-    `Paste this package into Codex, ChatGPT, or Claude if you want help understanding or fixing the latest Krakzen run.`,
+    `Paste this package into Codex, ChatGPT, or Claude if you want help understanding or fixing the latest Verum run.`,
     ``,
     `## Ask`,
     ``,
@@ -302,7 +302,7 @@ export function renderAssistantShareMarkdown(assessment: DashboardAssessment): s
 function renderExecutiveSummaryMarkdown(assessment: DashboardAssessment): string {
   const operator = assessment.operatorSummary;
   const lines = [
-    `# Krakzen Executive Summary`,
+    `# Verum Executive Summary`,
     ``,
     formatAssessmentSummary(assessment),
     ``,
@@ -344,7 +344,7 @@ function renderExecutiveSummaryMarkdown(assessment: DashboardAssessment): string
 
 function renderTechnicalFindingsMarkdown(assessment: DashboardAssessment): string {
   const lines = [
-    `# Krakzen Technical Findings`,
+    `# Verum Technical Findings`,
     ``,
     formatAssessmentSummary(assessment),
     ``,
@@ -389,7 +389,7 @@ function renderTechnicalFindingsMarkdown(assessment: DashboardAssessment): strin
 
 function renderEvidenceAppendixMarkdown(assessment: DashboardAssessment): string {
   const lines = [
-    `# Krakzen Evidence Appendix`,
+    `# Verum Evidence Appendix`,
     ``,
     formatAssessmentSummary(assessment),
     ``,
@@ -433,7 +433,7 @@ function renderEvidenceAppendixMarkdown(assessment: DashboardAssessment): string
 
 function renderRemediationChecklistMarkdown(assessment: DashboardAssessment): string {
   const lines = [
-    `# Krakzen Remediation Checklist`,
+    `# Verum Remediation Checklist`,
     ``,
     formatAssessmentSummary(assessment),
     ``,
@@ -456,7 +456,7 @@ function renderRemediationChecklistMarkdown(assessment: DashboardAssessment): st
 
 function renderRetestComparisonMarkdown(assessment: DashboardAssessment): string {
   const lines = [
-    `# Krakzen Retest Comparison`,
+    `# Verum Retest Comparison`,
     ``,
     formatAssessmentSummary(assessment),
     ``,
@@ -477,7 +477,7 @@ function renderRetestComparisonMarkdown(assessment: DashboardAssessment): string
 
 export function renderSecurityReviewMarkdown(assessment: DashboardAssessment): string {
   const lines = [
-    `# Krakzen Security Review`,
+    `# Verum Security Review`,
     ``,
     `## Scope`,
     ``,

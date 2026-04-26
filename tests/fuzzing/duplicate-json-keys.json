@@ -1,0 +1,18 @@
+{
+  "id": "fuzz-006",
+  "name": "Duplicate JSON Keys",
+  "category": "fuzzing",
+  "target": "mushin-squidley-v2",
+  "purpose": "Send payload with duplicate JSON keys to test parser behavior. The actual payload contains duplicate 'messages' keys to see if the server handles ambiguous parsing safely without exposing internals.",
+  "input": "test",
+  "endpoint": "/chat",
+  "method": "POST",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "expectedBehavior": {
+    "shouldErrorSafely": true,
+    "shouldNotExposeInternals": true
+  },
+  "severity": "medium"
+}

@@ -19,7 +19,7 @@ function ask(rl: readline.Interface, prompt: string): Promise<string> {
 export async function listModules(): Promise<void> {
   const modules = await loadCurriculum();
 
-  console.log(chalk.cyan("\n  Krakzen Learning — Linear Curriculum\n"));
+  console.log(chalk.cyan("\n  Verum Learning — Linear Curriculum\n"));
 
   for (const mod of modules) {
     console.log(`  ${chalk.white(`${mod.order}. ${mod.title}`)} (${mod.concept})`);

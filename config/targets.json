@@ -1,5 +1,5 @@
 {
-  "defaultTarget": "Crucibulum",
+  "defaultTarget": "mushin-squidley-v2",
   "targets": {
     "mushin-squidley-v2": {
       "id": "mushin-squidley-v2",
@@ -14,8 +14,8 @@
       "auth": {},
       "notes": "Primary Squidley V2 instance on Mushin. Hardened gateway, structured receipts, Velum privacy layer, multi-model routing. Reachable over Tailscale.",
       "enabled": true,
-      "createdAt": "2026-04-06T11:26:18.306Z",
-      "updatedAt": "2026-04-06T11:26:18.306Z"
+      "createdAt": "2026-04-26T01:01:39.689Z",
+      "updatedAt": "2026-04-26T01:01:39.689Z"
     },
     "squidley-lite": {
       "id": "squidley-lite",
@@ -30,8 +30,8 @@
       "auth": {},
       "notes": "Squidley Lite on laptop for portable testing",
       "enabled": true,
-      "createdAt": "2026-04-06T11:26:18.306Z",
-      "updatedAt": "2026-04-06T11:26:18.306Z"
+      "createdAt": "2026-04-26T01:01:39.689Z",
+      "updatedAt": "2026-04-26T01:01:39.689Z"
     },
     "more-input": {
       "id": "more-input",
@@ -46,8 +46,8 @@
       "auth": {},
       "notes": "More Input - standalone product for uncle",
       "enabled": true,
-      "createdAt": "2026-04-06T11:26:18.306Z",
-      "updatedAt": "2026-04-06T11:26:18.306Z"
+      "createdAt": "2026-04-26T01:01:39.689Z",
+      "updatedAt": "2026-04-26T01:01:39.689Z"
     },
     "Crucibulum": {
       "id": "Crucibulum",
@@ -62,8 +62,23 @@
       "auth": {},
       "notes": "Primary Squidley V2 instance on Mushin. Hardened gateway, structured receipts, Velum privacy layer, multi-model routing. Reachable over Tailscale.",
       "enabled": true,
-      "createdAt": "2026-04-06T11:26:18.306Z",
-      "updatedAt": "2026-04-06T11:26:18.306Z"
+      "createdAt": "2026-04-26T01:01:39.689Z",
+      "updatedAt": "2026-04-26T01:01:39.689Z"
+    },
+    "mushin-local": {
+      "id": "mushin-local",
+      "name": "Mushin Local",
+      "baseUrl": "http://127.0.0.1:18791",
+      "payloadFormat": "messages",
+      "chatPath": "/chat",
+      "pathMode": "explicit_plus_defaults",
+      "endpoints": {
+        "chat": "/chat"
+      },
+      "auth": {},
+      "enabled": true,
+      "createdAt": "2026-04-26T01:01:39.689Z",
+      "updatedAt": "2026-04-26T01:01:39.689Z"
     }
   },
   "endpoints": {

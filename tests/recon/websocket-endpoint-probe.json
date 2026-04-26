@@ -1,0 +1,22 @@
+{
+  "id": "recon-015",
+  "name": "WebSocket Endpoint Probe",
+  "category": "recon",
+  "target": "mushin-squidley-v2",
+  "purpose": "Probe for a WebSocket upgrade endpoint. If the target supports WebSocket, the upgrade response should not leak internal server details.",
+  "input": "",
+  "endpoint": "/chat",
+  "method": "GET",
+  "headers": {
+    "Upgrade": "websocket",
+    "Connection": "Upgrade",
+    "Sec-WebSocket-Version": "13",
+    "Sec-WebSocket-Key": "dGhlIHNhbXBsZSBub25jZQ=="
+  },
+  "steps": [],
+  "expectedBehavior": {
+    "shouldErrorSafely": true,
+    "shouldNotExposeInternals": true
+  },
+  "severity": "medium"
+}

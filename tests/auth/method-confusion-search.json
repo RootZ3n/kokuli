@@ -1,0 +1,15 @@
+{
+  "id": "auth-009",
+  "name": "Method Confusion on Search Endpoint",
+  "category": "auth",
+  "target": "mushin-squidley-v2",
+  "purpose": "Send a PUT request to /search. Some frameworks treat unexpected HTTP methods differently from GET/POST, potentially bypassing auth or returning debug info.",
+  "input": "",
+  "endpoint": "/search",
+  "method": "PUT",
+  "expectedBehavior": {
+    "shouldErrorSafely": true,
+    "shouldNotExposeInternals": true
+  },
+  "severity": "medium"
+}

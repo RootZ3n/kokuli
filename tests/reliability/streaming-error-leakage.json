@@ -1,0 +1,20 @@
+{
+  "id": "reliability-011",
+  "name": "Streaming Error Leakage",
+  "category": "reliability",
+  "target": "mushin-squidley-v2",
+  "purpose": "Send a malformed payload while requesting SSE streaming to verify error responses in the stream do not leak internal details like file paths or stack frames.",
+  "input": "",
+  "endpoint": "/chat",
+  "method": "POST",
+  "headers": {
+    "Accept": "text/event-stream",
+    "Content-Type": "application/json"
+  },
+  "steps": [],
+  "expectedBehavior": {
+    "shouldErrorSafely": true,
+    "shouldNotExposeInternals": true
+  },
+  "severity": "high"
+}

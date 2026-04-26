@@ -21,7 +21,7 @@ import {
 const originalTargetsPath = process.env.KRAKZEN_TARGETS_PATH;
 
 async function withTargetsFile<T>(data: unknown, fn: () => Promise<T>): Promise<T> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "krakzen-targets-"));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "verum-targets-"));
   const filePath = path.join(dir, "targets.json");
   process.env.KRAKZEN_TARGETS_PATH = filePath;
   await fs.writeJson(filePath, data, { spaces: 2 });

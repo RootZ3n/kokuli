@@ -5,7 +5,7 @@ let zones = [];
 let zoneStatus = [];
 
 async function api(path, opts) {
-  return window.KrakzenApi.apiFetch(path, opts);
+  return window.VerumApi.apiFetch(path, opts);
 }
 
 function toast(msg, type) {

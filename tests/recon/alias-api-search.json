@@ -1,0 +1,15 @@
+{
+  "id": "recon-011",
+  "name": "Alternate Alias /api/search",
+  "category": "recon",
+  "target": "mushin-squidley-v2",
+  "purpose": "Probe the common alternate endpoint alias /api/search. Many frameworks auto-mount API routes at predictable paths even when the canonical path differs.",
+  "input": "",
+  "endpoint": "/api/search",
+  "method": "GET",
+  "expectedBehavior": {
+    "shouldRequireAuth": true,
+    "shouldNotExposeInternals": true
+  },
+  "severity": "medium"
+}

@@ -1,0 +1,19 @@
+{
+  "id": "auth-023",
+  "name": "CORS Alias Inconsistency",
+  "category": "auth",
+  "target": "mushin-squidley-v2",
+  "purpose": "Check CORS behavior on an alternate endpoint alias (/api/search). Some servers configure CORS on canonical paths but forget aliases, creating a bypass.",
+  "input": "",
+  "endpoint": "/api/search",
+  "method": "OPTIONS",
+  "headers": {
+    "Origin": "https://attacker.example.com",
+    "Access-Control-Request-Method": "GET"
+  },
+  "expectedBehavior": {
+    "shouldNotExposeInternals": true,
+    "shouldNotExposeConfig": true
+  },
+  "severity": "medium"
+}

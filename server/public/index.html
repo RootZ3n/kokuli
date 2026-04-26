@@ -35,9 +35,20 @@
           <span class="nav-link-icon">&#9678;</span>
           Dashboard
         </a>
+        <a href="#armory-panel">
+          <span class="nav-link-icon">&#128737;</span>
+          Armory
+          <span class="nav-link-sub">Break Me Mode</span>
+        </a>
         <a href="/atlantis">
           <span class="nav-link-icon">&#9670;</span>
           Atlantis
+          <span class="nav-link-sub">Learn Security</span>
+        </a>
+        <a href="/bridge/runs">
+          <span class="nav-link-icon">&#9656;</span>
+          Bridge Runs
+          <span class="nav-link-sub">Read-only</span>
         </a>
       </div>
     </div>
@@ -45,6 +56,16 @@
 
   <!-- Probe results panel (hidden by default) -->
   <div class="probe-panel" id="probe-panel" style="display:none;"></div>
+
+  <!-- Target Status Strip -->
+  <div class="target-status-strip" id="target-status-strip">
+    <span class="tss-label">Target</span>
+    <span class="tss-chip" id="tss-name">--</span>
+    <span class="tss-chip tss-dim" id="tss-source">--</span>
+    <span class="tss-chip tss-dim" id="tss-path-mode">--</span>
+    <span class="tss-chip" id="tss-auth">--</span>
+    <span class="tss-chip" id="tss-probe">--</span>
+  </div>
 
   <div class="container">
 
@@ -79,13 +100,13 @@
     </div>
 
     <!-- Reports Bar -->
-    <div class="reports-bar">
+    <div class="reports-bar" id="reports-bar">
       <span class="reports-label">Reports</span>
-      <button class="btn btn-sm" onclick="viewReport('PLAIN_LANGUAGE_REPORT')">Plain Language</button>
-      <button class="btn btn-sm" onclick="viewReport('EXECUTIVE_SUMMARY')">Executive Summary</button>
-      <button class="btn btn-sm" onclick="viewReport('AI_SHARE_PACKAGE')">AI Share Package</button>
-      <button class="btn btn-sm" onclick="viewReport('SECURITY_REVIEW')">Security Review</button>
-      <button class="btn btn-sm" onclick="viewReport('SUMMARY')">Summary</button>
+      <button class="btn btn-sm btn-report" data-report="PLAIN_LANGUAGE_REPORT" onclick="viewReport('PLAIN_LANGUAGE_REPORT')">Plain Language</button>
+      <button class="btn btn-sm btn-report" data-report="EXECUTIVE_SUMMARY" onclick="viewReport('EXECUTIVE_SUMMARY')">Executive Summary</button>
+      <button class="btn btn-sm btn-report" data-report="AI_SHARE_PACKAGE" onclick="viewReport('AI_SHARE_PACKAGE')">AI Share Package</button>
+      <button class="btn btn-sm btn-report" data-report="SECURITY_REVIEW" onclick="viewReport('SECURITY_REVIEW')">Security Review</button>
+      <button class="btn btn-sm btn-report" data-report="SUMMARY" onclick="viewReport('SUMMARY')">Summary</button>
     </div>
 
     <!-- Suite Controls -->
@@ -115,18 +136,105 @@
       </button>
     </div>
 
+    <div class="card armory-card" id="armory-panel">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="card-title-icon">&#128737;</span>
+          Armory
+        </div>
+        <div class="armory-header-meta">
+          <span class="badge badge-category">Guided Adversarial Tool</span>
+          <span class="armory-mode-badge" id="armory-mode-badge" style="display:none;">Simulation Mode (Safe Preview)</span>
+        </div>
+      </div>
+      <div class="armory-layout">
+        <div class="armory-control-card">
+          <div class="armory-section-label">Target Input</div>
+          <label class="target-form-field target-form-field-wide">
+            <span>Target</span>
+            <input id="armory-target" class="target-select armory-input" placeholder="localhost, 127.0.0.1, or local IP" />
+          </label>
+          <label class="armory-toggle">
+            <input type="checkbox" id="armory-advanced-mode" />
+            <span>Advanced Mode</span>
+          </label>
+
+          <div class="armory-section-label">Profile Selection</div>
+          <label class="target-form-field target-form-field-wide">
+            <span>Profile</span>
+            <select id="armory-profile" class="target-select armory-input">
+              <option value="break_me" selected>Break Me (Beginner)</option>
+              <option value="quick_scan">Quick Scan</option>
+            </select>
+          </label>
+          <label class="armory-toggle">
+            <input type="checkbox" id="armory-dry-run" checked />
+            <span>Simulation Mode</span>
+          </label>
+
+          <div class="armory-controls">
+            <button class="btn btn-primary btn-glow" id="armory-run-btn" onclick="runArmoryScan()">Run Scan</button>
+            <button class="btn armory-btn-kill" id="armory-kill-btn" onclick="killArmoryRun()">Kill</button>
+            <button class="btn" id="armory-reset-btn" onclick="resetArmoryState()">Reset</button>
+          </div>
+          <div class="armory-help-copy">Armory is a guided teacher. It explains what it is checking, why it matters, and what to fix next.</div>
+        </div>
+
+        <div class="armory-output-card">
+          <div class="armory-status-strip">
+            <div>
+              <div class="armory-section-label">Status</div>
+              <div class="armory-status-pill" id="armory-status-pill">Idle</div>
+            </div>
+            <div class="armory-status-copy" id="armory-status-copy">Armory is idle and ready for a beginner-safe run.</div>
+          </div>
+          <div class="armory-notice" id="armory-notice"></div>
+          <div class="armory-results-grid">
+            <div class="armory-panel-block">
+              <div class="armory-panel-title">Guided Steps</div>
+              <div id="armory-steps-panel" class="armory-scroll-panel"></div>
+            </div>
+            <div class="armory-panel-block">
+              <div class="armory-panel-title">Findings</div>
+              <div id="armory-findings-panel" class="armory-scroll-panel"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Category Summary (injected by JS after stats) -->
 
+    <!-- Jump Bar — sticky navigation for registry categories -->
+    <div class="jump-bar" id="jump-bar"></div>
+
     <!-- Test Registry -->
-    <div class="card">
+    <div class="card" id="registry-card">
       <div class="card-header">
         <div class="card-title">
           <span class="card-title-icon">&#9878;</span>
           Test Registry
         </div>
-        <div id="test-count" class="test-count"></div>
+        <div class="registry-controls">
+          <div class="filter-chips" id="filter-chips">
+            <button class="btn btn-sm btn-filter" data-filter="all" onclick="setFilter('all')">All</button>
+            <button class="btn btn-sm btn-filter" data-filter="failed" onclick="setFilter('failed')">Failed</button>
+            <button class="btn btn-sm btn-filter" data-filter="critical" onclick="setFilter('critical')">Critical</button>
+            <button class="btn btn-sm btn-filter" data-filter="stale" onclick="setFilter('stale')">Stale</button>
+          </div>
+          <button class="btn btn-sm" id="compact-toggle" onclick="toggleCompactMode()" title="Toggle compact rows">Compact</button>
+          <div id="test-count" class="test-count"></div>
+        </div>
       </div>
       <div id="test-list"></div>
+    </div>
+
+    <!-- Sticky mini-summary — visible while scrolling -->
+    <div class="mini-summary" id="mini-summary">
+      <span class="ms-chip ms-critical" id="ms-critical" title="Critical failures">0 critical</span>
+      <span class="ms-chip ms-fail" id="ms-fail" title="Total failures">0 fail</span>
+      <span class="ms-chip ms-regression" id="ms-regression" title="Regressions">0 regressed</span>
+      <span class="ms-chip ms-exposure" id="ms-exposure" title="Public exposure findings">0 exposed</span>
     </div>
 
     <!-- Collapsible Analysis Sections -->
@@ -236,6 +344,7 @@
   </div>
 
   <script src="/js/api-client.js"></script>
+  <script src="/js/armory-ui.js"></script>
   <script src="/js/target-form.js"></script>
   <script src="/js/dashboard.js"></script>
   <script>

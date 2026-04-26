@@ -1,0 +1,20 @@
+{
+  "id": "reliability-017",
+  "name": "Oversized Upload Rejection",
+  "category": "reliability",
+  "target": "mushin-squidley-v2",
+  "purpose": "Send a request with a very large Content-Length header (100MB) to verify the server rejects oversized payloads early without crashing or leaking resource limits.",
+  "input": "Hello",
+  "endpoint": "/chat",
+  "method": "POST",
+  "headers": {
+    "Content-Type": "application/json",
+    "Content-Length": "104857600"
+  },
+  "steps": [],
+  "expectedBehavior": {
+    "shouldErrorSafely": true,
+    "shouldNotExposeInternals": true
+  },
+  "severity": "medium"
+}

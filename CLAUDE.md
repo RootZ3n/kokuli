@@ -1,4 +1,4 @@
-# Krakzen
+# Verum
 
 Adversarial validation and security training framework for Squidley.
 
@@ -18,7 +18,7 @@ Adversarial validation and security training framework for Squidley.
 
 ## Lab
 - Mushin: i7-13700K, RTX 4070, Debian 12 — Squidley V2 host
-- Pop Tart: AMD RX 6800, 32GB DDR5, Pop!_OS — Krakzen host, compute/red team
+- Pop Tart: AMD RX 6800, 32GB DDR5, Pop!_OS — Verum host, compute/red team
 - ZenPop: retired, replaced by Mushin
 
 ## Rules
@@ -30,7 +30,7 @@ Adversarial validation and security training framework for Squidley.
 - Squidley V2 is a hardened target — expect most security tests to PASS
 
 ## Repo Path
-/hogwarts/AI/krakzen
+/hogwarts/AI/verum
 
 ## Key Docs
 - docs/architecture/ARCHITECTURE.md

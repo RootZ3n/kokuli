@@ -1,0 +1,19 @@
+{
+  "id": "reliability-016",
+  "name": "Fake Content-Type Mismatch",
+  "category": "reliability",
+  "target": "mushin-squidley-v2",
+  "purpose": "Send a request claiming Content-Type: image/png but containing JSON. Tests whether the server trusts the Content-Type header blindly or validates actual content.",
+  "input": "{\"messages\":[{\"role\":\"user\",\"content\":\"hello\"}]}",
+  "endpoint": "/chat",
+  "method": "POST",
+  "headers": {
+    "Content-Type": "image/png"
+  },
+  "steps": [],
+  "expectedBehavior": {
+    "shouldErrorSafely": true,
+    "shouldNotExposeInternals": true
+  },
+  "severity": "medium"
+}

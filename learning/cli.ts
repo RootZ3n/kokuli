@@ -3,7 +3,7 @@ import { realmStatus, enterZone } from "./realm";
 import { listModules, runModule } from "./curriculum-runner";
 
 const USAGE = `
-${chalk.bold("Krakzen Learning Module")} — The Lost City of Atlantis
+${chalk.bold("Verum Learning Module")} — The Lost City of Atlantis
 
 ${chalk.cyan("Realm (Atlantis):")}
 

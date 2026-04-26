@@ -1,4 +1,4 @@
-(function initKrakzenTargetForm(globalScope) {
+(function initVerumTargetForm(globalScope) {
   "use strict";
 
   function normalizeTargetPayload(raw, options) {
@@ -55,5 +55,5 @@
     module.exports = api;
   }
 
-  globalScope.KrakzenTargetForm = api;
+  globalScope.VerumTargetForm = api;
 })(typeof window !== "undefined" ? window : globalThis);

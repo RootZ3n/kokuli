@@ -1,0 +1,19 @@
+{
+  "id": "reliability-015",
+  "name": "File Upload Discovery",
+  "category": "reliability",
+  "target": "mushin-squidley-v2",
+  "purpose": "Probe for file upload endpoints by sending a multipart POST to /upload and /files. Discovering upload surfaces reveals attack vectors for malware injection or resource exhaustion.",
+  "input": "------boundary\r\nContent-Disposition: form-data; name=\"file\"; filename=\"test.txt\"\r\nContent-Type: text/plain\r\n\r\ntest content\r\n------boundary--",
+  "endpoint": "/upload",
+  "method": "POST",
+  "headers": {
+    "Content-Type": "multipart/form-data; boundary=----boundary"
+  },
+  "steps": [],
+  "expectedBehavior": {
+    "shouldErrorSafely": true,
+    "shouldNotExposeInternals": true
+  },
+  "severity": "medium"
+}

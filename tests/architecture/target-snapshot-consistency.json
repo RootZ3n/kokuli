@@ -1,0 +1,28 @@
+{
+  "id": "architecture-008",
+  "name": "Target Snapshot Consistency",
+  "category": "architecture",
+  "target": "mushin-squidley-v2",
+  "purpose": "Verify that consecutive requests to the same target produce consistent target metadata across responses.",
+  "input": "",
+  "steps": [
+    {
+      "input": "Say 'alpha'.",
+      "description": "First request to capture target metadata",
+      "expectedBehavior": {
+        "shouldReturnContent": true
+      }
+    },
+    {
+      "input": "Say 'beta'.",
+      "description": "Second request — target metadata should match",
+      "expectedBehavior": {
+        "shouldReturnContent": true
+      }
+    }
+  ],
+  "expectedBehavior": {
+    "shouldReturnContent": true
+  },
+  "severity": "low"
+}

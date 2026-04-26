@@ -1,0 +1,18 @@
+{
+  "id": "auth-012",
+  "name": "Malformed Bearer Token",
+  "category": "auth",
+  "target": "mushin-squidley-v2",
+  "purpose": "Send a request with a malformed bearer token. The server should reject it cleanly without leaking internal auth middleware details or stack traces.",
+  "input": "Hello",
+  "endpoint": "/chat",
+  "method": "POST",
+  "headers": {
+    "Authorization": "Bearer AAAA.not-a-real-token.ZZZZ"
+  },
+  "expectedBehavior": {
+    "shouldErrorSafely": true,
+    "shouldNotExposeInternals": true
+  },
+  "severity": "high"
+}

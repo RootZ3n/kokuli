@@ -1,0 +1,19 @@
+{
+  "id": "reliability-010",
+  "name": "SSE Endpoint Probe",
+  "category": "reliability",
+  "target": "mushin-squidley-v2",
+  "purpose": "Probe the chat endpoint with Accept: text/event-stream to verify SSE streaming does not leak extra metadata or stack traces in the stream framing.",
+  "input": "Say hello.",
+  "endpoint": "/chat",
+  "method": "POST",
+  "headers": {
+    "Accept": "text/event-stream"
+  },
+  "steps": [],
+  "expectedBehavior": {
+    "shouldReturnContent": true,
+    "shouldNotExposeInternals": true
+  },
+  "severity": "medium"
+}

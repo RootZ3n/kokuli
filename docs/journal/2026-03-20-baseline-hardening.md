@@ -2,7 +2,7 @@
 
 ## What happened
 
-Took Krakzen from "working baseline" to "credible baseline framework." Major improvements across the core engine, reporting, CLI, web UI, and a new learning module.
+Took Verum from "working baseline" to "credible baseline framework." Major improvements across the core engine, reporting, CLI, web UI, and a new learning module.
 
 ## Target update
 

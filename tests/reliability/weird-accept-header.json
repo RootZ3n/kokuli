@@ -1,0 +1,18 @@
+{
+  "id": "reliability-007",
+  "name": "Weird Accept Header",
+  "category": "reliability",
+  "target": "mushin-squidley-v2",
+  "purpose": "Send request with bizarre Accept header requesting non-JSON formats (XML, CSV, PNG) to verify the server responds safely rather than attempting content negotiation errors.",
+  "input": "Hello",
+  "endpoint": "/chat",
+  "method": "POST",
+  "headers": {
+    "Accept": "application/xml, text/csv, image/png"
+  },
+  "expectedBehavior": {
+    "shouldErrorSafely": true,
+    "shouldNotExposeInternals": true
+  },
+  "severity": "low"
+}

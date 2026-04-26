@@ -13,6 +13,14 @@ import { upgradeLegacyResult } from "../engine/assessment";
 import { loadExecutionStore, updateSuiteExecutionState, updateTestExecutionState } from "../engine/executionStore";
 import { Zone, Creature, CurriculumModule } from "../learning/types";
 import { loadPlayerState, savePlayerState, xpToNextLevel } from "../learning/state";
+import { getArmoryStatus, killArmory, resetArmory, runArmory } from "./ops/armory";
+import {
+  runBridge,
+  getAllowlist as getBridgeAllowlist,
+  getHealth as getBridgeHealth,
+  type BridgeRequest,
+} from "../engine/bridge/verumBridge";
+import { listBridgeRuns, readBridgeRunDetail } from "./bridge-runs";
 import {
   createTarget,
   deleteTarget,
@@ -732,6 +740,49 @@ router.get("/reports/latest", async (_req: Request, res: Response) => {
 // TRANSPARENCY API
 // ============================================================
 
+// ============================================================
+// ARMORY OPS API
+// ============================================================
+
+router.post("/ops/run", async (req: Request, res: Response) => {
+  try {
+    const result = await runArmory(req.body as {
+      profile?: "quick_scan" | "break_me";
+      target?: string;
+      safetyLevel?: number;
+      advancedMode?: boolean;
+      unlockAggressive?: boolean;
+    });
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: String(err) });
+  }
+});
+
+router.get("/ops/status", async (_req: Request, res: Response) => {
+  try {
+    res.json(await getArmoryStatus());
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
+});
+
+router.post("/ops/kill", async (_req: Request, res: Response) => {
+  try {
+    res.json({ ok: true, status: await killArmory() });
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
+});
+
+router.post("/ops/reset", async (_req: Request, res: Response) => {
+  try {
+    res.json({ ok: true, status: await resetArmory() });
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
+});
+
 // GET /api/transparency — current session transparency summary
 router.get("/transparency", async (_req: Request, res: Response) => {
   try {
@@ -997,6 +1048,73 @@ router.post("/learn/:id/quiz", async (req: Request, res: Response) => {
     });
   } catch (err) {
     res.status(500).json({ error: String(err) });
+  }
+});
+
+// --- Verum Bridge routes ---
+//
+// Stable, allowlisted entry point for Ptah / Squidley / Ricky.
+// All validation lives in engine/bridge/verumBridge.ts; this just adapts HTTP <-> bridge.
+
+router.get("/bridge/verum/health", (_req: Request, res: Response) => {
+  res.json(getBridgeHealth());
+});
+
+router.get("/bridge/verum/allowlist", (_req: Request, res: Response) => {
+  res.json(getBridgeAllowlist());
+});
+
+router.post("/bridge/verum/run", async (req: Request, res: Response) => {
+  try {
+    const body = (req.body && typeof req.body === "object" ? req.body : {}) as BridgeRequest;
+    const result = await runBridge(body);
+    const httpStatus =
+      result.status === "blocked" ? 403 :
+      result.status === "error" && !result.ok ? 400 :
+      200;
+    res.status(httpStatus).json(result);
+  } catch (err) {
+    res.status(500).json({
+      ok: false,
+      status: "error",
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+});
+
+// --- Bridge Runs (read-only) ---
+//
+// GET /api/bridge/runs              — list rows from reports/bridge/INDEX.jsonl
+// GET /api/bridge/runs/:runId       — sanitized detail for a single run
+
+router.get("/bridge/runs", async (req: Request, res: Response) => {
+  try {
+    const q = req.query as Record<string, string | undefined>;
+    const result = await listBridgeRuns(process.cwd(), {
+      caller: typeof q.caller === "string" ? q.caller : undefined,
+      status: typeof q.status === "string" ? q.status : undefined,
+      mode: typeof q.mode === "string" ? q.mode : undefined,
+      suite: typeof q.suite === "string" ? q.suite : undefined,
+      since: typeof q.since === "string" ? q.since : undefined,
+      limit: q.limit !== undefined ? Number.parseInt(q.limit, 10) : undefined,
+    });
+    res.json(result);
+  } catch {
+    res.status(500).json({ error: "internal_error", rows: [], malformedCount: 0, totalRows: 0, empty: true });
+  }
+});
+
+router.get("/bridge/runs/:runId", async (req: Request, res: Response) => {
+  try {
+    const runId = param(req, "runId");
+    const detail = await readBridgeRunDetail(process.cwd(), runId);
+    if (!detail) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    res.json(detail);
+  } catch {
+    res.status(500).json({ error: "internal_error" });
   }
 });
 

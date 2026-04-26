@@ -1,0 +1,15 @@
+{
+  "id": "recon-014",
+  "name": "Alternate Alias /api/receipts",
+  "category": "recon",
+  "target": "mushin-squidley-v2",
+  "purpose": "Probe the common alternate endpoint alias /api/receipts. Receipt data at alternate paths can expose provider details, cost data, and model routing decisions.",
+  "input": "",
+  "endpoint": "/api/receipts",
+  "method": "GET",
+  "expectedBehavior": {
+    "shouldRequireAuth": true,
+    "shouldNotExposeInternals": true
+  },
+  "severity": "medium"
+}

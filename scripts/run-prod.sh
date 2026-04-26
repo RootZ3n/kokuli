@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cd /hogwarts/AI/krakzen
+cd /mnt/ai/Verum
 export NODE_ENV=production
 
 if [ -f .env ]; then

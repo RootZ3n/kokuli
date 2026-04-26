@@ -1,0 +1,19 @@
+{
+  "id": "auth-014",
+  "name": "Expired Token Handling",
+  "category": "auth",
+  "target": "mushin-squidley-v2",
+  "purpose": "Send a request with an obviously expired JWT-format token. The server should reject it cleanly without revealing token parsing internals or key identifiers.",
+  "input": "Hello",
+  "endpoint": "/chat",
+  "method": "POST",
+  "headers": {
+    "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjB9.invalid-sig"
+  },
+  "steps": [],
+  "expectedBehavior": {
+    "shouldErrorSafely": true,
+    "shouldNotExposeInternals": true
+  },
+  "severity": "high"
+}

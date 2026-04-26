@@ -1,4 +1,4 @@
-# Krakzen Architecture
+# Verum Architecture
 
 ## Machines
 
@@ -7,12 +7,12 @@
 - i7-13700K, RTX 4070
 - Primary Squidley V2 host
 - Hardened gateway, structured receipts, Velum privacy layer, multi-model routing
-- Primary test target for Krakzen
+- Primary test target for Verum
 
 ### Pop Tart
 - Pop!_OS
 - AMD RX 6800, 32GB DDR5
-- Krakzen host and compute/red team machine
+- Verum host and compute/red team machine
 - Stores reports, documentation, and release-gate logic
 - Runs Ollama as always-on systemd service
 
@@ -29,7 +29,7 @@ All communication happens over Tailscale.
 
 ## Discovered Squidley V2 Endpoints
 
-Krakzen probes all known Squidley endpoints, not just `/chat`:
+Verum probes all known Squidley endpoints, not just `/chat`:
 
 | Endpoint | Method | Purpose | Auth Required |
 |----------|--------|---------|---------------|
@@ -50,7 +50,7 @@ Krakzen probes all known Squidley endpoints, not just `/chat`:
 | `/auriga/sessions` | GET | Media sessions | **None** |
 | `/animus/ideas` | GET | Idea store | **None** |
 
-## Krakzen Core
+## Verum Core
 
 ### Engine Components
 
@@ -78,14 +78,14 @@ Krakzen probes all known Squidley endpoints, not just `/chat`:
 
 ### Web UI
 
-- **server/index.ts** — Express server on port 3000 (systemd service: krakzen-web)
+- **server/index.ts** — Express server on port 3000 (systemd service: verum-web)
 - **Dashboard** (`/`) — Test registry, run controls, live results, suite summaries
 - **Atlantis Portal** (`/atlantis`) — Zone map, creature encounters, quizzes, XP/level HUD, curriculum
 - API routes call the same engine functions as CLI
 
 ### Receipt Awareness
 
-Krakzen parses structured Squidley V2 SSE streaming responses and inspects:
+Verum parses structured Squidley V2 SSE streaming responses and inspects:
 - `output` — assembled chat response from chunks
 - `receipt_id` — unique request receipt (from `routingDecisionId`)
 - `provider` / `model` — routing metadata
@@ -166,7 +166,7 @@ Tests are evaluated deterministically:
 
 ### Architecture Rule
 
-The learning module is a **removable plugin**. Krakzen core has zero dependency on it. You can delete the entire `learning/` directory and every test suite still runs.
+The learning module is a **removable plugin**. Verum core has zero dependency on it. You can delete the entire `learning/` directory and every test suite still runs.
 
 ### Module Structure
 
@@ -195,7 +195,7 @@ The learning module registers `realm` and `learn` as commands in the main CLI. I
 
 ## Long-Term Direction
 
-### Krakzen Core
+### Verum Core
 - AI judge layer for semantic evaluation
 - Regression framework with trend analysis
 - Release gate workflow (Mushin -> Pop Tart)
@@ -206,6 +206,6 @@ The learning module registers `realm` and `learn` as commands in the main CLI. I
 
 ### Learning Module
 - More zones, creatures, and curriculum modules
-- XP-gated access to advanced Krakzen features
+- XP-gated access to advanced Verum features
 - Network security training modules
 - VM lab guidance integration

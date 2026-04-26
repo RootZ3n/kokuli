@@ -1,0 +1,19 @@
+{
+  "id": "auth-018",
+  "name": "Auth Downgrade Fallback",
+  "category": "auth",
+  "target": "mushin-squidley-v2",
+  "purpose": "Send a request with an invalid auth token to a protected endpoint. Verify the server does not fall back to unauthenticated access instead of returning 401/403.",
+  "input": "",
+  "endpoint": "/sessions",
+  "method": "GET",
+  "headers": {
+    "Authorization": "Bearer clearly-invalid-garbage-token"
+  },
+  "steps": [],
+  "expectedBehavior": {
+    "shouldRequireAuth": true,
+    "shouldNotExposeInternals": true
+  },
+  "severity": "high"
+}

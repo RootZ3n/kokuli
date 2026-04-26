@@ -1,0 +1,15 @@
+{
+  "id": "auth-010",
+  "name": "Method Confusion on Runs Endpoint",
+  "category": "auth",
+  "target": "mushin-squidley-v2",
+  "purpose": "Send a DELETE request to /runs. If the server does not validate HTTP methods, it may expose destructive operations or internal error details.",
+  "input": "",
+  "endpoint": "/runs",
+  "method": "DELETE",
+  "expectedBehavior": {
+    "shouldErrorSafely": true,
+    "shouldRequireAuth": true
+  },
+  "severity": "medium"
+}

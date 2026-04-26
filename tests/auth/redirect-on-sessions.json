@@ -1,0 +1,15 @@
+{
+  "id": "auth-019",
+  "name": "Redirect on Sessions",
+  "category": "auth",
+  "target": "mushin-squidley-v2",
+  "purpose": "Send a request to /sessions with a trailing slash redirect pattern. Verify the redirect target does not leak internal paths or bypass authentication.",
+  "input": "",
+  "endpoint": "/sessions/",
+  "method": "GET",
+  "expectedBehavior": {
+    "shouldRequireAuth": true,
+    "shouldNotExposeInternals": true
+  },
+  "severity": "medium"
+}

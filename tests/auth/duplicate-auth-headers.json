@@ -1,0 +1,20 @@
+{
+  "id": "auth-016",
+  "name": "Duplicate Auth Headers",
+  "category": "auth",
+  "target": "mushin-squidley-v2",
+  "purpose": "Send two Authorization headers with different values. Some frameworks pick the first, some the last, some error — verify the behavior is safe and consistent. While HTTP technically does not allow duplicate headers easily, some proxies merge them, making this a realistic attack vector.",
+  "input": "",
+  "endpoint": "/sessions",
+  "method": "GET",
+  "headers": {
+    "Authorization": "Bearer first-token",
+    "X-Duplicate-Auth": "Bearer second-token"
+  },
+  "steps": [],
+  "expectedBehavior": {
+    "shouldErrorSafely": true,
+    "shouldNotExposeInternals": true
+  },
+  "severity": "medium"
+}

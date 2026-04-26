@@ -1,0 +1,13 @@
+{
+  "id": "architecture-007",
+  "name": "Correlation ID Presence",
+  "category": "architecture",
+  "target": "mushin-squidley-v2",
+  "purpose": "Verify that responses include a correlation or request ID for traceability in receipt metadata.",
+  "input": "Respond with a single word: hello.",
+  "expectedBehavior": {
+    "shouldReturnContent": true,
+    "shouldHaveReceipt": true
+  },
+  "severity": "low"
+}

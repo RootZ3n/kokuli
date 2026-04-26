@@ -1,10 +1,10 @@
 # Demo Target Guide
 
-This document describes a reproducible way to evaluate Krakzen against a deliberately vulnerable AI-style HTTP service without coupling Krakzen to another repository.
+This document describes a reproducible way to evaluate Verum against a deliberately vulnerable AI-style HTTP service without coupling Verum to another repository.
 
 ## Goal
 
-Provide a lightweight path for reviewers, principals, founders, or security engineers to see Krakzen produce:
+Provide a lightweight path for reviewers, principals, founders, or security engineers to see Verum produce:
 
 - execution states
 - findings
@@ -47,7 +47,7 @@ Suggested vulnerable behaviors:
 
 ### Auth Posture
 
-Deliberately leave some routes open and require auth on others so Krakzen can fingerprint mixed posture:
+Deliberately leave some routes open and require auth on others so Verum can fingerprint mixed posture:
 
 - open: `/health`, `/version`, `/tools/list`
 - auth required: `/sessions`
@@ -55,19 +55,19 @@ Deliberately leave some routes open and require auth on others so Krakzen can fi
 ## Minimal Evaluation Flow
 
 1. Start the demo target locally, for example on `http://127.0.0.1:8088`.
-2. Add it to Krakzen:
+2. Add it to Verum:
 
 ```bash
-krakzen target add demo-vuln http://127.0.0.1:8088 --chat /chat --format input
-krakzen target set demo-vuln
+verum target add demo-vuln http://127.0.0.1:8088 --chat /chat --format input
+verum target set demo-vuln
 ```
 
 3. Run a focused suite:
 
 ```bash
-krakzen suite security
-krakzen suite recon
-krakzen suite child-safety
+verum suite security
+verum suite recon
+verum suite child-safety
 ```
 
 4. Start the dashboard:
@@ -87,7 +87,7 @@ npm run web
 
 ## Detect -> Fix -> Retest -> Verify
 
-Use the demo target to walk a reviewer through Krakzen’s intended workflow:
+Use the demo target to walk a reviewer through Verum’s intended workflow:
 
 1. Detect:
    Run `security` and `recon` suites. Capture the review snapshot and evidence appendix.
@@ -98,7 +98,7 @@ Use the demo target to walk a reviewer through Krakzen’s intended workflow:
 4. Verify:
    Confirm the finding becomes resolved, the fingerprint remains comparable, and integrity status remains healthy.
 
-If the target fingerprint changes significantly between runs, Krakzen will warn that the comparison may not be directly comparable. That is expected and should be explained during a demo.
+If the target fingerprint changes significantly between runs, Verum will warn that the comparison may not be directly comparable. That is expected and should be explained during a demo.
 
 ## Optional Mock Spec
 
@@ -119,4 +119,4 @@ If you want a very small homegrown mock, this behavior is sufficient:
 
 ## Tradeoff
 
-This guide is docs-only in this pass. That keeps Krakzen standalone and avoids turning the repository into a bundled target simulator. If public evaluation becomes a priority, the next step would be adding a tiny optional demo server under `examples/` with no runtime coupling to Krakzen itself.
+This guide is docs-only in this pass. That keeps Verum standalone and avoids turning the repository into a bundled target simulator. If public evaluation becomes a priority, the next step would be adding a tiny optional demo server under `examples/` with no runtime coupling to Verum itself.

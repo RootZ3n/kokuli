@@ -10,9 +10,22 @@ import { writeAssessmentBundle, writeReport, writeSuiteSummary, writeTransparenc
 import { TestCase, TestResult, TargetConfig } from "./types";
 import { recordEntry, getLedgerSummary, getSessionLedger, computeSummary, LedgerEntry } from "./ledger";
 import { handleLearningCommand } from "../learning/cli";
+import {
+  runBridge,
+  getAllowlist as getBridgeAllowlist,
+  getHealth as getBridgeHealth,
+  ALLOWED_CALLERS,
+  ALLOWED_SUITES,
+  ALLOWED_TARGETS,
+  DEFAULT_TARGET as BRIDGE_DEFAULT_TARGET,
+  type BridgeCaller,
+  type BridgeMode,
+  type BridgeSuite,
+  type BridgeRequest,
+} from "./bridge/verumBridge";
 
 const USAGE = `
-${chalk.bold("Krakzen")} — adversarial validation framework
+${chalk.bold("Verum")} — adversarial validation framework
 
 ${chalk.cyan("Core Commands:")}
 
@@ -49,6 +62,17 @@ ${chalk.cyan("Test Categories:")}
   ${chalk.white("child-safety")}          Magister child protection (CRITICAL)
   ${chalk.white("multi-turn")}            Multi-step attack chain testing
   ${chalk.white("fuzzing")}               Automated input mutation testing
+
+${chalk.cyan("Verum Bridge:")}
+
+  ${chalk.white("bridge smoke")}             Run baseline-chat smoke against allowlisted target
+  ${chalk.white("bridge suite <name>")}      Run an allowlisted suite (recon, security, exfil, ...)
+  ${chalk.white("bridge test <id>")}         Run a single test by ID
+  ${chalk.white("bridge report")}            Show latest report summary
+  ${chalk.white("bridge health")}            Print bridge health JSON
+  ${chalk.white("bridge allowlist")}         Print bridge allowlist JSON
+  ${chalk.white("    Flags: --caller <ptah|squidley|ricky|manual>  --target <key>")}
+  ${chalk.white("           --reason <text>  --max-ms <n>  --dry-run  --json")}
 
 ${chalk.cyan("Learning Module:")}
 
@@ -308,7 +332,7 @@ async function runSingle(testPath: string, showRaw = false): Promise<TestResult 
   }
 
   // --- Standard chat tests (original behavior) ---
-  console.log(chalk.cyan(`\n[krakzen] Running: ${testCase.name}`));
+  console.log(chalk.cyan(`\n[verum] Running: ${testCase.name}`));
   console.log(chalk.gray(`  target: ${target.name} -> ${target.baseUrl}${target.chatPath || "/chat"}`));
 
   const chat = await sendChat(target, testCase.input);
@@ -334,7 +358,7 @@ async function runEndpointTest(
   const endpoint = testCase.endpoint!;
   const method = testCase.method ?? "GET";
 
-  console.log(chalk.cyan(`\n[krakzen] Running: ${testCase.name}`));
+  console.log(chalk.cyan(`\n[verum] Running: ${testCase.name}`));
   console.log(chalk.gray(`  target: ${target.name} -> ${method} ${target.baseUrl}${endpoint}`));
 
   const response = await sendRequest(
@@ -363,7 +387,7 @@ async function runChatEndpointTest(
   target: TargetConfig,
   showRaw: boolean
 ): Promise<TestResult> {
-  console.log(chalk.cyan(`\n[krakzen] Running: ${testCase.name}`));
+  console.log(chalk.cyan(`\n[verum] Running: ${testCase.name}`));
   console.log(chalk.gray(`  target: ${target.name} -> POST ${target.baseUrl}/chat`));
 
   const chat = await sendChat(target, testCase.input);
@@ -408,7 +432,7 @@ async function runMultiTurn(
   target: TargetConfig,
   showRaw: boolean
 ): Promise<TestResult[]> {
-  console.log(chalk.cyan(`\n[krakzen] Running multi-turn: ${testCase.name}`));
+  console.log(chalk.cyan(`\n[verum] Running multi-turn: ${testCase.name}`));
   console.log(chalk.gray(`  target: ${target.name} -> ${testCase.steps!.length} steps`));
 
   const results: TestResult[] = [];
@@ -497,7 +521,7 @@ async function runFuzz(
 ): Promise<TestResult[]> {
   const config = testCase.fuzzConfig!;
 
-  console.log(chalk.cyan(`\n[krakzen] Running fuzz: ${testCase.name}`));
+  console.log(chalk.cyan(`\n[verum] Running fuzz: ${testCase.name}`));
   console.log(chalk.gray(`  target: ${target.name} -> ${config.iterations} iterations, mutations: ${config.mutations.join(", ")}`));
 
   const payloads = generateFuzzPayloads(config.baseInput, config.mutations, config.iterations);
@@ -569,7 +593,7 @@ async function runSuite(category: string): Promise<void> {
     throw new Error(`No tests found for suite '${category}'`);
   }
 
-  console.log(chalk.cyan(`\n[krakzen] Running suite: ${category} (${registry.length} tests)`));
+  console.log(chalk.cyan(`\n[verum] Running suite: ${category} (${registry.length} tests)`));
 
   const results: TestResult[] = [];
   for (const entry of registry) {
@@ -600,7 +624,7 @@ async function runBaselineSuite(): Promise<void> {
   const manifest = (await fs.readJson(manifestPath)) as BaselineManifest;
   const registry = await buildRegistry();
 
-  console.log(chalk.cyan(`\n[krakzen] Running baseline suite v${manifest.version} (locked ${manifest.locked})`));
+  console.log(chalk.cyan(`\n[verum] Running baseline suite v${manifest.version} (locked ${manifest.locked})`));
   console.log(chalk.gray(`  ${manifest.description}`));
   console.log(chalk.gray(`  Threshold: PASS>=${manifest.pass_threshold.PASS}, WARN<=${manifest.pass_threshold.WARN}, FAIL<=${manifest.pass_threshold.FAIL}\n`));
 
@@ -656,7 +680,7 @@ async function listTests(category?: string): Promise<void> {
     return;
   }
 
-  console.log(chalk.cyan(`\n[krakzen] Available tests${category ? ` (${category})` : ""}:\n`));
+  console.log(chalk.cyan(`\n[verum] Available tests${category ? ` (${category})` : ""}:\n`));
 
   const byCategory = new Map<string, TestRegistryEntry[]>();
   for (const entry of registry) {
@@ -679,7 +703,7 @@ async function reportLatest(): Promise<void> {
   const dir = path.join(process.cwd(), "reports", "latest");
   const files = (await fs.readdir(dir)).filter((x) => x.endsWith(".md") || x.endsWith(".json"));
 
-  console.log(chalk.cyan("\n[krakzen] Latest reports:\n"));
+  console.log(chalk.cyan("\n[verum] Latest reports:\n"));
   for (const file of files.sort()) {
     console.log(`  ${file}`);
   }
@@ -694,7 +718,7 @@ async function reportTransparency(): Promise<void> {
     return;
   }
 
-  console.log(chalk.cyan("\n[krakzen] Transparency Ledger Summary\n"));
+  console.log(chalk.cyan("\n[verum] Transparency Ledger Summary\n"));
   console.log(`  Total Requests:  ${summary.totalRequests}`);
   console.log(`  Tokens In:       ${summary.totalTokensIn.toLocaleString()}`);
   console.log(`  Tokens Out:      ${summary.totalTokensOut.toLocaleString()}`);
@@ -748,7 +772,7 @@ async function handleTargetCommand(args: ParsedArgs): Promise<void> {
       console.log(chalk.yellow(`Active target '${key}' not found in config.`));
       return;
     }
-    console.log(chalk.cyan(`\n[krakzen] Active target:\n`));
+    console.log(chalk.cyan(`\n[verum] Active target:\n`));
     console.log(`  ${chalk.white.bold(key)}`);
     console.log(`    Name:    ${t.name}`);
     console.log(`    URL:     ${chalk.green(t.baseUrl)}`);
@@ -762,7 +786,7 @@ async function handleTargetCommand(args: ParsedArgs): Promise<void> {
   switch (sub) {
     case "list": {
       const data = await loadTargets();
-      console.log(chalk.cyan(`\n[krakzen] Configured targets:\n`));
+      console.log(chalk.cyan(`\n[verum] Configured targets:\n`));
       for (const [key, t] of Object.entries(data.targets)) {
         const active = key === data.defaultTarget ? chalk.green(" (active)") : "";
         console.log(`  ${chalk.white.bold(key)}${active}`);
@@ -777,7 +801,7 @@ async function handleTargetCommand(args: ParsedArgs): Promise<void> {
       const key = args.restArgs[0];
       if (!key) throw new Error("Missing target key. Usage: target set <key>");
       const t = await setActiveTarget(key);
-      console.log(chalk.green(`\n[krakzen] Active target set to '${key}' -> ${t.baseUrl}\n`));
+      console.log(chalk.green(`\n[verum] Active target set to '${key}' -> ${t.baseUrl}\n`));
       break;
     }
 
@@ -795,7 +819,7 @@ async function handleTargetCommand(args: ParsedArgs): Promise<void> {
       };
 
       await addTarget(key, newTarget);
-      console.log(chalk.green(`\n[krakzen] Target '${key}' added:`));
+      console.log(chalk.green(`\n[verum] Target '${key}' added:`));
       console.log(`  Name:    ${newTarget.name}`);
       console.log(`  URL:     ${newTarget.baseUrl}`);
       console.log(`  Chat:    ${newTarget.chatPath}`);
@@ -809,7 +833,7 @@ async function handleTargetCommand(args: ParsedArgs): Promise<void> {
       const key = args.restArgs[0];
       if (!key) throw new Error("Missing target key. Usage: target remove <key>");
       await removeTarget(key);
-      console.log(chalk.green(`\n[krakzen] Target '${key}' removed.\n`));
+      console.log(chalk.green(`\n[verum] Target '${key}' removed.\n`));
       break;
     }
 
@@ -826,7 +850,7 @@ async function handleTargetCommand(args: ParsedArgs): Promise<void> {
 }
 
 async function probeTarget(key: string, target: TargetConfig): Promise<void> {
-  console.log(chalk.cyan(`\n[krakzen] Probing target: ${target.name} (${key})`));
+  console.log(chalk.cyan(`\n[verum] Probing target: ${target.name} (${key})`));
   console.log(chalk.gray(`  URL: ${target.baseUrl}\n`));
 
   // Check base connectivity
@@ -873,6 +897,115 @@ async function probeTarget(key: string, target: TargetConfig): Promise<void> {
   console.log("");
 }
 
+// --- Bridge command handler ---
+
+interface BridgeFlags {
+  caller?: string;
+  target?: string;
+  reason?: string;
+  maxMs?: number;
+  dryRun: boolean;
+  json: boolean;
+  positional: string[];
+}
+
+function parseBridgeFlags(argv: string[]): BridgeFlags {
+  const out: BridgeFlags = { dryRun: false, json: false, positional: [] };
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a === "--caller" && i + 1 < argv.length) out.caller = argv[++i];
+    else if (a === "--target" && i + 1 < argv.length) out.target = argv[++i];
+    else if (a === "--reason" && i + 1 < argv.length) out.reason = argv[++i];
+    else if (a === "--max-ms" && i + 1 < argv.length) out.maxMs = Number(argv[++i]);
+    else if (a === "--dry-run") out.dryRun = true;
+    else if (a === "--json") out.json = true;
+    else out.positional.push(a);
+  }
+  return out;
+}
+
+async function handleBridgeCommand(args: ParsedArgs): Promise<void> {
+  // The full argv past `bridge` (excluding flags already consumed by parseArgs).
+  // parseArgs already strips --target. Re-read raw argv after `bridge` so we get
+  // the full set of bridge-specific flags.
+  const rawIdx = process.argv.indexOf("bridge");
+  const tail = rawIdx >= 0 ? process.argv.slice(rawIdx + 1) : [];
+  const flags = parseBridgeFlags(tail);
+
+  const sub = flags.positional[0] ?? args.arg ?? "";
+  const emit = (obj: unknown) => {
+    if (flags.json || sub === "health" || sub === "allowlist") {
+      console.log(JSON.stringify(obj, null, 2));
+    } else {
+      console.log(JSON.stringify(obj, null, 2));
+    }
+  };
+
+  if (!sub) {
+    console.log(chalk.red("Missing bridge subcommand. Use one of: smoke, suite, test, report, health, allowlist"));
+    process.exit(1);
+  }
+
+  if (sub === "health") {
+    emit(getBridgeHealth());
+    return;
+  }
+  if (sub === "allowlist") {
+    emit(getBridgeAllowlist());
+    return;
+  }
+
+  const caller = (flags.caller ?? "manual") as BridgeCaller;
+  const target = flags.target ?? args.targetOverride ?? BRIDGE_DEFAULT_TARGET;
+
+  let request: BridgeRequest;
+  switch (sub) {
+    case "smoke":
+      request = { caller, target, mode: "smoke", reason: flags.reason, maxRuntimeMs: flags.maxMs, dryRun: flags.dryRun };
+      break;
+    case "suite": {
+      const suite = flags.positional[1] as BridgeSuite | undefined;
+      if (!suite) {
+        console.log(chalk.red(`Missing suite name. Allowed: ${ALLOWED_SUITES.join(", ")}`));
+        process.exit(1);
+      }
+      request = { caller, target, mode: "suite", suite, reason: flags.reason, maxRuntimeMs: flags.maxMs, dryRun: flags.dryRun };
+      break;
+    }
+    case "test": {
+      const testId = flags.positional[1];
+      if (!testId) {
+        console.log(chalk.red("Missing testId."));
+        process.exit(1);
+      }
+      request = { caller, target, mode: "test", testId, reason: flags.reason, maxRuntimeMs: flags.maxMs, dryRun: flags.dryRun };
+      break;
+    }
+    case "report":
+      request = { caller, target, mode: "report", reason: flags.reason, maxRuntimeMs: flags.maxMs, dryRun: flags.dryRun };
+      break;
+    default:
+      console.log(chalk.red(`Unknown bridge subcommand '${sub}'.`));
+      process.exit(1);
+  }
+
+  // Light caller validation up front so misconfig is obvious before spawn.
+  if (!ALLOWED_CALLERS.includes(caller)) {
+    console.log(chalk.red(`Unknown caller '${caller}'. Allowed: ${ALLOWED_CALLERS.join(", ")}`));
+    process.exit(1);
+  }
+  if (!ALLOWED_TARGETS.includes(target)) {
+    console.log(chalk.red(`Unknown target '${target}'. Allowed: ${ALLOWED_TARGETS.join(", ")}`));
+    process.exit(1);
+  }
+
+  const result = await runBridge(request);
+  emit(result);
+  if (!result.ok && result.status !== "queued") {
+    process.exit(1);
+  }
+}
+
 // --- Main ---
 
 async function main(): Promise<void> {
@@ -886,6 +1019,12 @@ async function main(): Promise<void> {
   // Handle target management commands (no target init needed)
   if (args.command === "target") {
     await handleTargetCommand(args);
+    return;
+  }
+
+  // Handle bridge subcommand (does not initialize target — bridge spawns its own runs)
+  if (args.command === "bridge") {
+    await handleBridgeCommand(args);
     return;
   }
 
@@ -932,6 +1071,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((error) => {
-  console.error(chalk.red("[krakzen] Error:"), error instanceof Error ? error.message : error);
+  console.error(chalk.red("[verum] Error:"), error instanceof Error ? error.message : error);
   process.exit(1);
 });

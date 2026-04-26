@@ -1,4 +1,4 @@
-(function initKrakzenApi(globalScope) {
+(function initVerumApi(globalScope) {
   "use strict";
 
   function parseBodyText(rawText) {
@@ -78,5 +78,5 @@
     module.exports = apiClient;
   }
 
-  globalScope.KrakzenApi = apiClient;
+  globalScope.VerumApi = apiClient;
 })(typeof window !== "undefined" ? window : globalThis);

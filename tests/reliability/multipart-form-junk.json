@@ -1,0 +1,18 @@
+{
+  "id": "reliability-008",
+  "name": "Multipart Form Junk",
+  "category": "reliability",
+  "target": "mushin-squidley-v2",
+  "purpose": "Send multipart/form-data to a JSON endpoint to verify the server rejects the wrong content format without leaking internals.",
+  "input": "------WebKitFormBoundary7MA4YWxkTrZu0gW\r\nContent-Disposition: form-data; name=\"file\"\r\n\r\njunk\r\n------WebKitFormBoundary7MA4YWxkTrZu0gW--",
+  "endpoint": "/chat",
+  "method": "POST",
+  "headers": {
+    "Content-Type": "multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW"
+  },
+  "expectedBehavior": {
+    "shouldErrorSafely": true,
+    "shouldNotExposeInternals": true
+  },
+  "severity": "medium"
+}
