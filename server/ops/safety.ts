@@ -140,6 +140,12 @@ export function parseTargetInput(input: unknown): ArmoryTarget {
 }
 
 export function assertRunIsSafe(request: ArmoryRunRequest, target: ArmoryTarget, tier: ArmoryExecutionTier): void {
+  const isLiveRun = request.dryRun === false;
+
+  if (isLiveRun && !target.beginnerSafe) {
+    throw new Error("Live network operations are limited to localhost or private lab targets for this public RC.");
+  }
+
   if (!target.beginnerSafe && !request.advancedMode) {
     throw new Error("Beginner guardrails block non-local targets. Enable Advanced Mode to continue.");
   }

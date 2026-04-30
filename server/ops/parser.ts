@@ -94,14 +94,17 @@ export function parseNmapOutput(output: string): ParsedNmapResult {
 
 export function buildPortFindings(parsed: ParsedNmapResult, target: ArmoryTarget): ArmoryFinding[] {
   const findings: ArmoryFinding[] = [];
+  const targetLabel = target.beginnerSafe
+    ? (target.host === "localhost" || target.host === "127.0.0.1" || target.host === "::1" ? "localhost" : "private lab target")
+    : "target";
 
   if (!parsed.openPorts.length) {
     findings.push({
-      title: "No Open Ports Detected",
+      title: "No Open Port Signal Observed",
       category: "network_exposure",
       severity: "low",
       confidence: parsed.degraded ? "low" : "medium",
-      explanation: `The top-100 safe scan did not detect exposed services on ${target.display}.`,
+      explanation: `The top-100 safe probe did not observe exposed services on the ${targetLabel}.`,
       fix: "If this is unexpected, confirm the app is running, listening on the expected interface, and reachable from this machine.",
       evidence: parsed.warnings.length ? parsed.warnings : ["No open services were parsed from the safe scan output."],
     });
@@ -109,11 +112,11 @@ export function buildPortFindings(parsed: ParsedNmapResult, target: ArmoryTarget
 
   for (const port of parsed.openPorts) {
     findings.push({
-      title: `Open Port ${port.port}/${port.protocol}`,
+      title: `Open Port Signal ${port.port}/${port.protocol}`,
       category: port.service.match(/http|https/i) ? "service_detection" : "network_exposure",
       severity: port.port === 22 || port.port === 3389 ? "medium" : "low",
       confidence: "high",
-      explanation: `The scan found ${port.service} listening on port ${port.port}. Exposed services increase the number of places an app can be reached.`,
+      explanation: `The safe probe observed ${port.service} listening on port ${port.port}. Exposed services increase the number of places an app can be reached and should be verified by the operator.`,
       fix: "Close unused listeners, bind local-only services to localhost, and restrict access with a firewall when possible.",
       evidence: [port.evidence],
     });

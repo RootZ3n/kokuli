@@ -1338,6 +1338,7 @@ function getArmoryFormState() {
     profile: formValue("armory-profile") || "break_me",
     advancedMode: !!document.getElementById("armory-advanced-mode")?.checked,
     dryRun: !!document.getElementById("armory-dry-run")?.checked,
+    confirmedOwnedTarget: !!document.getElementById("armory-confirm-owned")?.checked,
   };
 }
 
@@ -1388,13 +1389,39 @@ function syncArmoryControls() {
   var runBtn = document.getElementById("armory-run-btn");
   var killBtn = document.getElementById("armory-kill-btn");
   var resetBtn = document.getElementById("armory-reset-btn");
-  var dryRun = document.getElementById("armory-dry-run") && document.getElementById("armory-dry-run").checked;
+  var dryRunToggle = document.getElementById("armory-dry-run");
+  var advancedToggle = document.getElementById("armory-advanced-mode");
+  var confirmToggle = document.getElementById("armory-confirm-owned");
+  var dryRun = dryRunToggle && dryRunToggle.checked;
+  var networkOpsEnabled = !!(armoryStatus && armoryStatus.networkOpsEnabled);
   var isRunning = armoryStatus && armoryStatus.state === "running";
   var isBlocked = armoryStatus && armoryStatus.state === "blocked_by_kill_switch";
+  var liveMode = !dryRun;
+  var liveReady = networkOpsEnabled && (!confirmToggle || confirmToggle.checked);
+
+  if (dryRunToggle && !networkOpsEnabled) {
+    dryRunToggle.checked = true;
+    dryRunToggle.disabled = true;
+    dryRun = true;
+    liveMode = false;
+  } else if (dryRunToggle) {
+    dryRunToggle.disabled = false;
+  }
+
+  if (advancedToggle) advancedToggle.disabled = !networkOpsEnabled || dryRun;
+  if (confirmToggle) confirmToggle.disabled = !networkOpsEnabled || dryRun;
+
+  document.querySelectorAll(".armory-live-option").forEach(function(el) {
+    el.style.display = networkOpsEnabled ? "" : "none";
+  });
 
   if (runBtn) {
-    runBtn.disabled = !!isRunning || !!isBlocked;
-    runBtn.innerHTML = isRunning ? '<span class="spinner"></span> Running...' : 'Run Scan';
+    runBtn.disabled = !!isRunning || !!isBlocked || (liveMode && !liveReady);
+    runBtn.innerHTML = isRunning
+      ? '<span class="spinner"></span> Running...'
+      : dryRun
+        ? 'Run Simulation'
+        : 'Run Live Lab Check';
   }
   if (killBtn) killBtn.disabled = !isRunning;
   if (resetBtn) resetBtn.disabled = !isBlocked;
@@ -1402,6 +1429,14 @@ function syncArmoryControls() {
   var modeBadge = document.getElementById("armory-mode-badge");
   if (modeBadge) {
     modeBadge.style.display = dryRun ? "inline-flex" : "none";
+    modeBadge.textContent = dryRun ? "Simulation Mode (Safe Preview)" : "Live Lab Mode";
+  }
+
+  var help = document.getElementById("armory-help-copy");
+  if (help) {
+    help.textContent = networkOpsEnabled
+      ? "Simulation is the default. Live lab checks require a localhost/private target and ownership confirmation."
+      : "Simulation is available. Live network checks are disabled until VERUM_ENABLE_NETWORK_OPS=1 is set on the server.";
   }
 }
 
@@ -1497,15 +1532,15 @@ async function runArmoryScan() {
     await loadArmoryStatus();
     if (armoryStatus && armoryStatus.state === "running") startArmoryPolling();
     else stopArmoryPolling();
-    toast(result && result.state === "error" ? "Armory stopped safely with guidance." : form.dryRun ? "Simulation ready." : "Armory run complete.");
+    toast(result && result.state === "error" ? "Armory stopped safely with guidance." : form.dryRun ? "Simulation ready." : "Live lab check complete.");
   } catch (err) {
-    if (/Beginner guardrails block non-local targets/i.test(err.message)) {
+    if (/Beginner guardrails block non-local targets|Live network operations/i.test(err.message)) {
       armoryLastResult = {
         state: "error",
         simulated: false,
         findings: [],
         steps: [],
-        humanExplanation: "This target is outside your local network. Armory blocks this by default for safety.",
+        humanExplanation: err.message,
       };
       renderArmoryStatus();
     }
@@ -1577,6 +1612,12 @@ document.addEventListener("DOMContentLoaded", () => {
   var dryRunToggle = document.getElementById("armory-dry-run");
   if (dryRunToggle) {
     dryRunToggle.addEventListener("change", function() {
+      syncArmoryControls();
+    });
+  }
+  var confirmToggle = document.getElementById("armory-confirm-owned");
+  if (confirmToggle) {
+    confirmToggle.addEventListener("change", function() {
       syncArmoryControls();
     });
   }

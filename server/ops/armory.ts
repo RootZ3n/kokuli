@@ -4,6 +4,7 @@ import axios from "axios";
 import { recordEntry } from "../../engine/ledger";
 import { buildPortFindings, hasHttpCandidate, parseNmapOutput, summarizeSteps } from "./parser";
 import { getProfileDefinition } from "./profiles";
+import { sanitizeArmoryRawOutput, sanitizeReceiptArgs, targetClass, redactSensitiveText } from "./redaction";
 import { DEFAULT_EXECUTION_TIER, assertRunIsSafe, explainSafetyLevel, normalizeExecutionTier, parseTargetInput } from "./safety";
 import { checkToolAvailability, getActiveProcessCount, isKillSwitchEnabled, resetKillSwitch, runAllowedTool, ToolAvailabilityResult, ToolExecutionResult, triggerKillSwitch } from "./toolRunner";
 
@@ -32,6 +33,7 @@ export type ArmoryRunRequest = {
   advancedMode?: boolean;
   unlockAggressive?: boolean;
   dryRun?: boolean;
+  confirmedOwnedTarget?: boolean;
 };
 
 export type ArmoryFinding = {
@@ -92,6 +94,7 @@ export type ArmoryStatus = {
   updatedAt: string;
   killSwitch: boolean;
   locked: boolean;
+  networkOpsEnabled: boolean;
   activeProcesses: number;
   state: ArmoryRunState;
   message: string;
@@ -146,6 +149,26 @@ let runtime: ArmoryRuntime = {
 
 let currentRunContext: ActiveArmoryRunContext | null = null;
 let lastRun: ArmoryRunResult | null = null;
+
+export function isNetworkOpsEnabled(): boolean {
+  return process.env.VERUM_ENABLE_NETWORK_OPS === "1";
+}
+
+function wantsDryRun(request: ArmoryRunRequest): boolean {
+  return request.dryRun !== false;
+}
+
+function assertLiveNetworkOpsAllowed(request: ArmoryRunRequest, target: ArmoryTarget): void {
+  if (!isNetworkOpsEnabled()) {
+    throw new Error("Live network operations are disabled. Set VERUM_ENABLE_NETWORK_OPS=1 to enable live localhost/private-lab checks.");
+  }
+  if (request.confirmedOwnedTarget !== true) {
+    throw new Error("Live network operations require confirmedOwnedTarget:true.");
+  }
+  if (!target.beginnerSafe) {
+    throw new Error("Live network operations are limited to localhost or private lab targets for this public RC.");
+  }
+}
 
 function reportsDir(): string {
   return path.join(process.cwd(), "reports");
@@ -230,6 +253,7 @@ async function saveStatus(): Promise<void> {
     updatedAt: new Date().toISOString(),
     killSwitch: isKillSwitchEnabled(),
     locked: isKillSwitchEnabled(),
+    networkOpsEnabled: isNetworkOpsEnabled(),
     activeProcesses: getActiveProcessCount(),
     state: deriveStatusState(),
     message: deriveStatusMessage(),
@@ -337,11 +361,12 @@ async function recordToolReceipt(params: {
   result: "PASS" | "WARN" | "FAIL";
   httpStatus?: number;
 }): Promise<ArmoryReceipt> {
-  const rawOutputRef = await storeRawOutput(params.runId, params.stepId, params.rawOutput);
+  const sanitizedOutput = sanitizeArmoryRawOutput(params.tool, params.rawOutput, params.target);
+  const rawOutputRef = await storeRawOutput(params.runId, params.stepId, sanitizedOutput);
   const receipt: ArmoryReceipt = {
     tool: params.tool,
-    args: params.args,
-    target: params.target.display,
+    args: sanitizeReceiptArgs(params.tool, params.args, params.target),
+    target: targetClass(params.target),
     timestamp: new Date().toISOString(),
     result_summary: params.summary,
     raw_output_ref: rawOutputRef,
@@ -353,7 +378,7 @@ async function recordToolReceipt(params: {
     id: `${Date.now()}-${params.stepId}`,
     timestamp: receipt.timestamp,
     testId: params.stepId,
-    target: params.target.display,
+    target: targetClass(params.target),
     endpoint: params.tool,
     method: "LOCAL",
     model: `armory:${params.tool}`,
@@ -482,7 +507,7 @@ function buildDryRunResult(request: ArmoryRunRequest, target: ArmoryTarget, prof
         "http-discovery",
         "HTTP Discovery",
         "Plan a small set of safe HTTP probes on likely local ports.",
-        "Break Me Mode only moves to app-level checks when it first confirms a reachable web surface.",
+      "Break Me Mode only moves to app-level checks when it verifies a reachable web surface.",
         "Simulation only: Armory would check whether the app responds over HTTP.",
         "If no web endpoint responds, Break Me Mode would stop early instead of guessing.",
       ),
@@ -644,8 +669,8 @@ async function runHttpDiscovery(runId: string, target: ArmoryTarget, safetyLevel
     "http-discovery",
     "HTTP Discovery",
     "Check whether the target exposes a web application or API on a short allowlisted list of likely local ports.",
-    "Break Me Mode only moves to app-level checks after it confirms a reachable HTTP surface.",
-    "This is a low-risk connectivity check. Armory is only looking for whether a response exists.",
+    "Break Me Mode only moves to app-level checks after it verifies a reachable HTTP surface.",
+    "This is a low-risk connectivity probe. Armory is only looking for whether a response exists.",
   );
   steps.push(discoverStep);
   startStep(discoverStep);
@@ -691,7 +716,7 @@ async function runHttpDiscovery(runId: string, target: ArmoryTarget, safetyLevel
     completeStep(
       discoverStep,
       `HTTP responded on ${discovered.join(", ")}.`,
-      "A reachable web surface means Break Me Mode can move from network recon into a gentle application-level check.",
+      "A reachable web surface means Break Me Mode can move from a connectivity probe into a gentle application-level check.",
     );
   } else {
     blockStep(
@@ -705,11 +730,11 @@ async function runHttpDiscovery(runId: string, target: ArmoryTarget, safetyLevel
   return {
     findings: discovered.length ? [] : [
       createFinding({
-        title: "No HTTP Endpoint Confirmed",
+        title: "No HTTP Endpoint Verified",
         category: "service_detection",
         severity: "low",
         confidence: "medium",
-        explanation: "Break Me Mode did not find a reachable HTTP service on the safe candidate ports.",
+        explanation: "Break Me Mode could not verify a reachable HTTP service on the safe candidate ports.",
         fix: "Start the local app, confirm the listening port, or provide a direct URL target such as http://localhost:3000.",
         evidence: ["No HTTP candidate responded during the safe discovery pass."],
       }),
@@ -725,7 +750,7 @@ async function runPromptInjectionCheck(runId: string, target: ArmoryTarget, safe
     "Safe Prompt Behavior Check",
     "Send one harmless phrase that asks the system to reply with TEST_SUCCESS.",
     "This teaches whether the app appears to obey hostile prompt wording too literally.",
-    "This is a controlled application check. It uses a harmless phrase and does not attempt exploitation or data extraction.",
+      "This is a controlled application probe. It uses a harmless phrase and does not attempt exploitation or data extraction.",
   );
   steps.push(injectionStep);
   startStep(injectionStep);
@@ -815,7 +840,7 @@ async function runPromptInjectionCheck(runId: string, target: ArmoryTarget, safe
           confidence: "medium",
           explanation: "The app echoed the harmless test phrase, which suggests user instructions may override system intent too easily.",
           fix: "Strengthen system-priority handling, filter hostile meta-instructions, and add tests that verify refusal of instruction-override attempts.",
-          evidence: [`Matched route: ${matchedPath}`, `Response snippet: ${responseText.slice(0, 200)}`],
+          evidence: [`Matched route: ${matchedPath}`, `Redacted response snippet: ${redactSensitiveText(responseText)}`],
         }),
       ],
       receipts: [receipt],
@@ -836,7 +861,7 @@ async function runPromptInjectionCheck(runId: string, target: ArmoryTarget, safe
         confidence: "medium",
         explanation: "The safe prompt-behavior probe did not trigger the target to echo TEST_SUCCESS.",
         fix: "Keep regression tests for instruction hierarchy in place so future changes do not reintroduce the weakness.",
-        evidence: [`Matched route: ${matchedPath}`, `Response snippet: ${responseText.slice(0, 200)}`],
+        evidence: [`Matched route: ${matchedPath}`, `Redacted response snippet: ${redactSensitiveText(responseText)}`],
       }),
     ],
     receipts: [receipt],
@@ -878,6 +903,7 @@ export async function getArmoryStatus(): Promise<ArmoryStatus> {
         updatedAt: status.updatedAt ?? new Date().toISOString(),
         killSwitch: isKillSwitchEnabled(),
         locked: isKillSwitchEnabled(),
+        networkOpsEnabled: isNetworkOpsEnabled(),
         activeProcesses: getActiveProcessCount(),
         state: deriveStatusState(),
         message: deriveStatusMessage(),
@@ -901,6 +927,7 @@ export async function getArmoryStatus(): Promise<ArmoryStatus> {
     updatedAt: new Date().toISOString(),
     killSwitch: isKillSwitchEnabled(),
     locked: isKillSwitchEnabled(),
+    networkOpsEnabled: isNetworkOpsEnabled(),
     activeProcesses: getActiveProcessCount(),
     state: deriveStatusState(),
     message: deriveStatusMessage(),
@@ -951,11 +978,13 @@ export async function runArmory(request: ArmoryRunRequest): Promise<ArmoryRunRes
     throw new Error(`${profile.label} requires safety level ${profile.requiredTier} or higher.`);
   }
 
-  if (request.dryRun) {
+  if (wantsDryRun(request)) {
     const result = buildDryRunResult(request, target, profileId, safetyLevel);
     await saveStatus();
     return result;
   }
+
+  assertLiveNetworkOpsAllowed(request, target);
 
   const runId = createRunId();
   const startedAt = new Date().toISOString();

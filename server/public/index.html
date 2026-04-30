@@ -154,7 +154,7 @@
             <span>Target</span>
             <input id="armory-target" class="target-select armory-input" placeholder="localhost, 127.0.0.1, or local IP" />
           </label>
-          <label class="armory-toggle">
+          <label class="armory-toggle armory-live-option">
             <input type="checkbox" id="armory-advanced-mode" />
             <span>Advanced Mode</span>
           </label>
@@ -171,13 +171,17 @@
             <input type="checkbox" id="armory-dry-run" checked />
             <span>Simulation Mode</span>
           </label>
+          <label class="armory-toggle armory-live-option">
+            <input type="checkbox" id="armory-confirm-owned" />
+            <span>I own or control this lab target</span>
+          </label>
 
           <div class="armory-controls">
-            <button class="btn btn-primary btn-glow" id="armory-run-btn" onclick="runArmoryScan()">Run Scan</button>
+            <button class="btn btn-primary btn-glow" id="armory-run-btn" onclick="runArmoryScan()">Run Simulation</button>
             <button class="btn armory-btn-kill" id="armory-kill-btn" onclick="killArmoryRun()">Kill</button>
             <button class="btn" id="armory-reset-btn" onclick="resetArmoryState()">Reset</button>
           </div>
-          <div class="armory-help-copy">Armory is a guided teacher. It explains what it is checking, why it matters, and what to fix next.</div>
+          <div class="armory-help-copy" id="armory-help-copy">Armory runs safe simulations by default. Live lab checks require local/private targets and an explicit server-side enable flag.</div>
         </div>
 
         <div class="armory-output-card">
