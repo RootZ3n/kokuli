@@ -1,3 +1,14 @@
+/**
+ * Verum — Ledger
+ * Append-only record of all Verum Bridge requests and their outcomes.
+ *
+ * Retention policy:
+ * - LEDGER_MAX_ENTRIES (default 10 000): cap the ledger; oldest entries pruned first
+ * - LEDGER_RETENTION_DAYS (default 90): entries older than this are deleted on next write
+ *
+ * Override with env vars LEDGER_MAX_ENTRIES and LEDGER_RETENTION_DAYS.
+ */
+
 import fs from "fs-extra";
 import path from "path";
 

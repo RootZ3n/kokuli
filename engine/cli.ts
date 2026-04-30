@@ -44,6 +44,7 @@ ${chalk.cyan("Target Management:")}
   ${chalk.white("target list")}                  List all configured targets
   ${chalk.white("target set <key>")}             Switch the active target
   ${chalk.white("target add <key> <url>")}       Add a new target
+  ${chalk.yellow("  NOTE: target URLs are stored in config/targets.json — never commit private IPs.")}
   ${chalk.white("target remove <key>")}          Remove a target
   ${chalk.white("target probe [key]")}           Test connectivity to a target
 
@@ -63,7 +64,7 @@ ${chalk.cyan("Test Categories:")}
   ${chalk.white("multi-turn")}            Multi-step attack chain testing
   ${chalk.white("fuzzing")}               Automated input mutation testing
 
-${chalk.cyan("Verum Bridge:")}
+  ${chalk.white("trace <runId>")}             Cross-correlate one Verum Bridge runId across Verum, Squidley, and Ptah audit trails (see docs/RUNBOOK_VERUM_TRACE.md)
 
   ${chalk.white("bridge smoke")}             Run baseline-chat smoke against allowlisted target
   ${chalk.white("bridge suite <name>")}      Run an allowlisted suite (recon, security, exfil, ...)
@@ -89,7 +90,7 @@ ${chalk.cyan("Examples:")}
   npm run dev -- suite security --target more-input
   npm run dev -- target set squidley-lite
   npm run dev -- target add squidley-lite http://192.168.1.100:8080
-  npm run dev -- target add more-input http://10.0.0.50:9000 --chat /api/chat --format input
+  npm run dev -- target add my-target $VERUM_TARGET_URL
   npm run dev -- target probe
   npm run dev -- suite all
   npm run dev -- list
@@ -1062,6 +1063,27 @@ async function main(): Promise<void> {
         await reportLatest();
       }
       break;
+
+    case "trace": {
+      if (!args.arg) {
+        console.log(chalk.red("Missing runId. Usage: verum trace <runId> [--json]"));
+        process.exit(1);
+      }
+      const mod = await import("../tools/verum-trace.mjs");
+      const result = await mod.traceRun({
+        runId: args.arg,
+        verumRoot: process.cwd(),
+        squidleyRoot: process.env.SQUIDLEY_ROOT ?? "/mnt/ai/squidley",
+        ptahRoot: process.env.PTAH_ROOT ?? "/mnt/ai/ptah",
+      });
+      if (process.argv.includes("--json")) {
+        console.log(JSON.stringify(result, null, 2));
+      } else {
+        console.log(mod.formatHuman(result));
+      }
+      if (!result.ok) process.exit(2);
+      break;
+    }
 
     default:
       console.log(chalk.red(`Unknown command '${args.command}'`));
