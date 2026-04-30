@@ -10,8 +10,8 @@
 - **Endpoint**: `http://10.0.0.50:18791/chat`
 - **Tailscale IP**: `10.0.0.50`
 
-### Pop Tart (Compute / Red Team)
-- **Role**: Verum host, compute node, red team machine
+### Pop Tart (Compute / Trust Testing)
+- **Role**: Verum host, compute node, defensive trust-testing machine
 - **Hardware**: AMD RX 6800, 32GB DDR5
 - **OS**: Pop!_OS
 - **Services**:
@@ -19,7 +19,7 @@
   - Verum CLI (`npm run dev`)
   - Verum Web UI (`npm run web`, port 3000)
   - Pop Tart Worker (systemd, port 8765)
-- **Repo**: `/hogwarts/AI/verum`
+- **Repo**: `/path/to/verum`
 
 ### Zen Pop (Retired)
 ZenPop no longer exists. It has been replaced by Mushin.
@@ -74,4 +74,4 @@ All tests must PASS before a Squidley build is promoted from Mushin to Pop Tart.
 ### Pop Tart Worker
 - Systemd service: `poptart-worker.service`
 - FastAPI/uvicorn on port 8765
-- Working directory: `/hogwarts/AI/squidley-poptart-worker/`
+- Working directory: `/path/to/squidley-worker/`

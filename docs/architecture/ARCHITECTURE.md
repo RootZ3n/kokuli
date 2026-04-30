@@ -12,7 +12,7 @@
 ### Pop Tart
 - Pop!_OS
 - AMD RX 6800, 32GB DDR5
-- Verum host and compute/red team machine
+- Verum host and defensive trust-testing machine
 - Stores reports, documentation, and release-gate logic
 - Runs Ollama as always-on systemd service
 

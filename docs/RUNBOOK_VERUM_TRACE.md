@@ -4,18 +4,18 @@ A 60-second guide for operators on Mushin. **Read-only**, safe to run on a live 
 
 ## Prerequisites
 
-- You're on Mushin or another machine with the Verum repo at `/mnt/ai/Verum`.
+- You're on Mushin or another machine with the Verum repo at `/path/to/verum`.
 - You have a `runId` (from a Ricky/Squidley/Ptah breadcrumb, a preflight envelope, the dashboard, or `INDEX.jsonl`).
 - For the dashboard step, the Verum web server is running:
 
   ```bash
-  cd /mnt/ai/Verum && VERUM_PORT=3030 npm run web
+  cd /path/to/verum && VERUM_PORT=3030 npm run web
   ```
 
 ## 1 — Find recent runIds
 
 ```bash
-cd /mnt/ai/Verum
+cd /path/to/verum
 
 # Last 20 runs
 tail -20 reports/bridge/INDEX.jsonl | jq -r '.runId'
@@ -31,7 +31,7 @@ jq -c 'select(.status != "passed" and .startedAt > "'"$(date -u -d '1 day ago' +
 ## 2 — Trace one runId
 
 ```bash
-cd /mnt/ai/Verum
+cd /path/to/verum
 node tools/verum-trace.mjs <runId>
 ```
 
@@ -87,19 +87,19 @@ PTAH_DATA_DIR=/path/used/by/ptah \
 
 # Or pass explicit roots
 node tools/verum-trace.mjs <runId> \
-    --verum-root /mnt/ai/Verum \
-    --squidley-root /mnt/ai/squidley-v2 \
-    --ptah-root /mnt/ai/ptah
+    --verum-root /path/to/verum \
+    --squidley-root /path/to/squidley \
+    --ptah-root /path/to/ptah
 ```
 
 ## Quick reference of evidence locations (read-only)
 
 | Source | Path | Schema |
 |---|---|---|
-| Verum index | `/mnt/ai/Verum/reports/bridge/INDEX.jsonl` | append-only JSONL, one per run |
-| Verum archive | `/mnt/ai/Verum/reports/bridge/<YYYY-MM-DD>/<runId>/` | bundle of `BRIDGE_RESULT.json` + curated `reports/latest/*` snapshot |
-| Squidley breadcrumbs | `/mnt/ai/squidley-v2/state/verum/followups-<DATE>.jsonl` | append-only JSONL, `type: "verum_followup"` |
-| Ptah breadcrumbs | `/mnt/ai/ptah/data/verum/reflex-<DATE>.jsonl` | append-only JSONL, `type: "verum_reflex"` |
+| Verum index | `/path/to/verum/reports/bridge/INDEX.jsonl` | append-only JSONL, one per run |
+| Verum archive | `/path/to/verum/reports/bridge/<YYYY-MM-DD>/<runId>/` | bundle of `BRIDGE_RESULT.json` + curated `reports/latest/*` snapshot |
+| Squidley breadcrumbs | `/path/to/squidley/state/verum/followups-<DATE>.jsonl` | append-only JSONL, `type: "verum_followup"` |
+| Ptah breadcrumbs | `/path/to/ptah/data/verum/reflex-<DATE>.jsonl` | append-only JSONL, `type: "verum_reflex"` |
 | Ricky | n/a today | source of truth is the Verum index |
 
 ## When to use what

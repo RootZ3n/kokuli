@@ -1,24 +1,24 @@
 # Verum
 
-Adversarial validation and security training framework for Squidley.
+Defensive AI trust-testing and release-readiness evidence framework for owned systems.
 
 ## What This Is
-- TypeScript CLI-first security testing harness
-- Tests Squidley V2 at http://10.0.0.50:18791
+- TypeScript CLI-first defensive trust-testing harness
+- Tests explicitly authorized local or staging AI targets
 - Generates structured JSON and Markdown reports with receipt-aware parsing
 - Includes optional learning module (The Lost City of Atlantis)
 - Web UI companion (dashboard + Atlantis portal)
 - Portfolio project — document everything
 
 ## Primary Target
-- Base URL: http://10.0.0.50:18791
+- Base URL: local or staging target configured in `config/targets.json`
 - Chat endpoint: /chat
 - Payload: { "messages": [{ "role": "user", "content": "..." }] }
 - Squidley V2: hardened gateway, structured receipts, Velum privacy layer, multi-model routing
 
 ## Lab
 - Mushin: i7-13700K, RTX 4070, Debian 12 — Squidley V2 host
-- Pop Tart: AMD RX 6800, 32GB DDR5, Pop!_OS — Verum host, compute/red team
+- Pop Tart: AMD RX 6800, 32GB DDR5, Pop!_OS — Verum host and defensive trust-testing machine
 - ZenPop: retired, replaced by Mushin
 
 ## Rules
@@ -30,7 +30,7 @@ Adversarial validation and security training framework for Squidley.
 - Squidley V2 is a hardened target — expect most security tests to PASS
 
 ## Repo Path
-/hogwarts/AI/verum
+/path/to/verum
 
 ## Key Docs
 - docs/architecture/ARCHITECTURE.md

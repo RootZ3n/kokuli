@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-04-30 Public RC hardening
+
+### Release Hygiene
+- Repositioned README around defensive AI trust-testing for owned/local/staging systems.
+- Added Break Me / Armory public RC documentation covering simulation mode, live localhost/private-lab checks, ownership confirmation, report output, and redaction limits.
+- Added ecosystem relationship docs for Colosseum, Crucible, Verum, Aedis, and Squidley Public.
+- Added `LICENSE`, `SECURITY.md`, `.env.example`, GitHub issue templates, and screenshot placeholder documentation.
+- Added package metadata for Node/npm engine expectations and defensive-security keywords.
+
+### Dependency Audit
+- Ran `npm audit fix`.
+- Updated vulnerable transitive packages in `package-lock.json`:
+  - `axios` to `1.15.2`
+  - `follow-redirects` to `1.16.0`
+  - `brace-expansion` to `5.0.5`
+  - `path-to-regexp` to `8.4.2`
+  - `proxy-from-env` to `2.1.0`
+- `npm audit --audit-level=moderate` now reports zero known vulnerabilities.
+
 ## 2026-04-12 (round 2)
 
 ### UI Improvements

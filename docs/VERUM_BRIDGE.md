@@ -68,13 +68,13 @@ Each consumer should call **one stable contract**, not embed Verum-specific argv
     "low": 0
   },
   "runId": "20260426T034559Z-manual-smoke-4e8bcc",
-  "reportDir": "/mnt/ai/Verum/reports/bridge/2026-04-26/20260426T034559Z-manual-smoke-4e8bcc",
-  "reportPath": "/mnt/ai/Verum/reports/bridge/2026-04-26/20260426T034559Z-manual-smoke-4e8bcc/ASSESSMENT.json",
-  "latestReportPath": "/mnt/ai/Verum/reports/latest/ASSESSMENT.json",
+  "reportDir": "/path/to/verum/reports/bridge/2026-04-26/20260426T034559Z-manual-smoke-4e8bcc",
+  "reportPath": "/path/to/verum/reports/bridge/2026-04-26/20260426T034559Z-manual-smoke-4e8bcc/ASSESSMENT.json",
+  "latestReportPath": "/path/to/verum/reports/latest/ASSESSMENT.json",
   "stdoutTail": "...last 4KB, ANSI-stripped...",
   "stderrTail": "...",
   "error": "present only when ok=false",
-  "command": ["node", "/mnt/ai/Verum/bin/verum.js", "run", "baseline-chat", "--target", "mushin-local"]
+  "command": ["node", "/path/to/verum/bin/verum.js", "run", "baseline-chat", "--target", "mushin-local"]
 }
 ```
 
@@ -134,7 +134,7 @@ AI_SHARE_PACKAGE.md
   "durationMs": 6578,
   "status": "passed",
   "summary": { "totalTests": 1, "passed": 1, "failed": 0, ... },
-  "command": ["node", "/mnt/ai/Verum/bin/verum.js", "run", "baseline-chat", "--target", "mushin-local"],
+  "command": ["node", "/path/to/verum/bin/verum.js", "run", "baseline-chat", "--target", "mushin-local"],
   "exitCode": 0,
   "signal": null,
   "timedOut": false,
@@ -215,7 +215,7 @@ jq -c 'select(.status == "failed" and .startedAt > "'"$(date -u -d '1 day ago' +
 A read-only operator view ships with the Verum web dashboard. Start the server and visit `/bridge/runs`:
 
 ```bash
-cd /mnt/ai/Verum && VERUM_PORT=3030 npm run web
+cd /path/to/verum && VERUM_PORT=3030 npm run web
 # then open http://localhost:3030/bridge/runs
 ```
 
@@ -288,11 +288,11 @@ node tools/verum-trace.mjs <runId>
 # Machine-readable trace, pipe through jq
 node tools/verum-trace.mjs <runId> --json | jq
 
-# Override roots (e.g. when running outside /mnt/ai)
+# Override roots when running from a non-default workspace
 node tools/verum-trace.mjs <runId> \
-    --verum-root    /mnt/ai/Verum \
-    --squidley-root /mnt/ai/squidley-v2 \
-    --ptah-root     /mnt/ai/ptah
+    --verum-root    /path/to/verum \
+    --squidley-root /path/to/squidley \
+    --ptah-root     /path/to/ptah
 
 # Filter old breadcrumbs out
 node tools/verum-trace.mjs <runId> --since 7d --limit 50
@@ -364,7 +364,7 @@ There are two surfaces — pick whichever fits the caller.
 Start the Verum web server (port 3000 is occupied by `next-server` on Mushin — use `VERUM_PORT=3030`):
 
 ```bash
-cd /mnt/ai/Verum && VERUM_PORT=3030 npm run web
+cd /path/to/verum && VERUM_PORT=3030 npm run web
 ```
 
 Endpoints (all under `/api/bridge/verum/`):
@@ -376,7 +376,7 @@ Endpoints (all under `/api/bridge/verum/`):
 ### B) CLI (when called from a sibling local process)
 
 ```bash
-node /mnt/ai/Verum/bin/verum.js bridge <subcommand> [flags]
+node /path/to/verum/bin/verum.js bridge <subcommand> [flags]
 ```
 
 Subcommands: `smoke`, `suite <name>`, `test <id>`, `report`, `health`, `allowlist`.
@@ -401,9 +401,9 @@ curl -sS -X POST http://localhost:3030/api/bridge/verum/run \
 CLI:
 
 ```bash
-node /mnt/ai/Verum/bin/verum.js bridge smoke --caller ptah \
+node /path/to/verum/bin/verum.js bridge smoke --caller ptah \
     --reason "agent flagged unknown endpoint"
-node /mnt/ai/Verum/bin/verum.js bridge suite recon --caller ptah \
+node /path/to/verum/bin/verum.js bridge suite recon --caller ptah \
     --reason "follow-up after smoke pass"
 ```
 
@@ -437,18 +437,18 @@ Ricky must **not** shell out raw Verum commands. After any change touching safet
 
 ```bash
 # 1. Smoke — fail fast
-node /mnt/ai/Verum/bin/verum.js bridge smoke --caller ricky \
+node /path/to/verum/bin/verum.js bridge smoke --caller ricky \
     --reason "post-merge validation $(git rev-parse --short HEAD)"
 
 # 2. Security suite if smoke passed
-node /mnt/ai/Verum/bin/verum.js bridge suite security --caller ricky \
+node /path/to/verum/bin/verum.js bridge suite security --caller ricky \
     --reason "post-merge security regression"
 ```
 
 For a full nightly sweep (rare — guarded by concurrency lock):
 
 ```bash
-node /mnt/ai/Verum/bin/verum.js bridge suite all --caller ricky \
+node /path/to/verum/bin/verum.js bridge suite all --caller ricky \
     --reason "nightly post-merge $(date -u +%F)"
 ```
 
@@ -457,7 +457,7 @@ node /mnt/ai/Verum/bin/verum.js bridge suite all --caller ricky \
 `--dry-run` reveals the exact `argv` that *would* run, without executing:
 
 ```bash
-node /mnt/ai/Verum/bin/verum.js bridge suite security \
+node /path/to/verum/bin/verum.js bridge suite security \
     --caller manual --target mushin-local --dry-run
 ```
 
