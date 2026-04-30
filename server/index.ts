@@ -2,9 +2,14 @@ import express, { Request, Response, NextFunction } from "express";
 import path from "path";
 import fs from "fs-extra";
 import apiRouter from "./api";
+import { requireLocalAccess } from "./access";
+import { apiErrorHandler } from "./api-errors";
 
 const app = express();
 const PORT = parseInt(process.env.VERUM_PORT || process.env.KRAKZEN_PORT || "3000", 10);
+const HOST = process.env.VERUM_BIND_ALL === "1"
+  ? "0.0.0.0"
+  : (process.env.VERUM_HOST || "127.0.0.1");
 const SERVER_STARTED_AT = new Date().toISOString();
 const PACKAGE_VERSION = (() => {
   try {
@@ -97,11 +102,16 @@ setInterval(() => {
 app.disable("x-powered-by");
 app.use(securityHeaders);
 app.use(express.json({ limit: "1mb" }));
+app.use(apiErrorHandler);
 
 // Rate limit API endpoints
 app.use("/api", rateLimiter);
 
 // API routes (before static so they take priority)
+app.get("/health", (_req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
 app.get("/api/meta", (_req, res) => {
   res.json({
     version: PACKAGE_VERSION,
@@ -111,9 +121,13 @@ app.get("/api/meta", (_req, res) => {
 });
 
 app.use("/api", apiRouter);
+app.use(apiErrorHandler);
 
 app.use(express.static(path.join(__dirname, "public")));
-app.use("/reports", express.static(path.join(process.cwd(), "reports")));
+app.use("/reports", (req, res, next) => {
+  if (!requireLocalAccess(req, res, "Reports")) return;
+  next();
+}, express.static(path.join(process.cwd(), "reports")));
 
 // HTML page routes
 app.get("/atlantis", (_req, res) => {
@@ -128,8 +142,12 @@ app.get("/", (_req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`[verum-web] Dashboard:  http://localhost:${PORT}`);
-  console.log(`[verum-web] Atlantis:   http://localhost:${PORT}/atlantis`);
-  console.log(`[verum-web] API:        http://localhost:${PORT}/api`);
+app.listen(PORT, HOST, () => {
+  const displayHost = HOST === "0.0.0.0" ? "localhost" : HOST;
+  console.log(`[verum-web] Dashboard:  http://${displayHost}:${PORT}`);
+  console.log(`[verum-web] Atlantis:   http://${displayHost}:${PORT}/atlantis`);
+  console.log(`[verum-web] API:        http://${displayHost}:${PORT}/api`);
+  if (HOST === "0.0.0.0") {
+    console.log("[verum-web] Warning: VERUM_BIND_ALL=1 exposes the dashboard beyond localhost.");
+  }
 });

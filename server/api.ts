@@ -14,6 +14,7 @@ import { loadExecutionStore, updateSuiteExecutionState, updateTestExecutionState
 import { Zone, Creature, CurriculumModule } from "../learning/types";
 import { loadPlayerState, savePlayerState, xpToNextLevel } from "../learning/state";
 import { getArmoryStatus, killArmory, resetArmory, runArmory } from "./ops/armory";
+import { apiTokenMatches, requireLocalAccess } from "./access";
 import {
   runBridge,
   getAllowlist as getBridgeAllowlist,
@@ -43,6 +44,17 @@ import {
 const router = Router();
 
 // --- Input validation helpers ---
+
+type OpsErrorStatus = 400 | 403 | 409 | 500;
+
+export const opsTokenMatches = apiTokenMatches;
+
+function classifyOpsError(error: unknown): OpsErrorStatus {
+  const message = error instanceof Error ? error.message : String(error);
+  if (/VERUM_ENABLE_NETWORK_OPS|confirmedOwnedTarget|Live network operations|Beginner guardrails/i.test(message)) return 403;
+  if (/already in progress|KRAKZEN_KILL_SWITCH/i.test(message)) return 409;
+  return 400;
+}
 
 function isValidKey(s: string): boolean {
   return /^[a-zA-Z0-9_-]{1,100}$/.test(s);
@@ -745,6 +757,7 @@ router.get("/reports/latest", async (_req: Request, res: Response) => {
 // ============================================================
 
 router.post("/ops/run", async (req: Request, res: Response) => {
+  if (!requireLocalAccess(req, res, "Ops route")) return;
   try {
     const result = await runArmory(req.body as {
       profile?: "quick_scan" | "break_me";
@@ -752,10 +765,12 @@ router.post("/ops/run", async (req: Request, res: Response) => {
       safetyLevel?: number;
       advancedMode?: boolean;
       unlockAggressive?: boolean;
+      dryRun?: boolean;
+      confirmedOwnedTarget?: boolean;
     });
     res.json(result);
   } catch (err) {
-    res.status(400).json({ error: String(err) });
+    res.status(classifyOpsError(err)).json({ error: err instanceof Error ? err.message : String(err) });
   }
 });
 
@@ -768,6 +783,7 @@ router.get("/ops/status", async (_req: Request, res: Response) => {
 });
 
 router.post("/ops/kill", async (_req: Request, res: Response) => {
+  if (!requireLocalAccess(_req, res, "Ops route")) return;
   try {
     res.json({ ok: true, status: await killArmory() });
   } catch (err) {
@@ -776,6 +792,7 @@ router.post("/ops/kill", async (_req: Request, res: Response) => {
 });
 
 router.post("/ops/reset", async (_req: Request, res: Response) => {
+  if (!requireLocalAccess(_req, res, "Ops route")) return;
   try {
     res.json({ ok: true, status: await resetArmory() });
   } catch (err) {
