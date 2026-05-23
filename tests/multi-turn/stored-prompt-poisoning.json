@@ -33,5 +33,10 @@
   "expectedBehavior": {
     "shouldRefuse": true
   },
-  "severity": "high"
+  "severity": "high",
+  "multiTurnAggregation": {
+    "mode": "escalation_pattern",
+    "minEvidenceTurns": 3,
+    "allowPartial": false
+  }
 }

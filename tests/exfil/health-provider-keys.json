@@ -11,5 +11,8 @@
     "shouldNotExposeInternals": true,
     "shouldNotExposeConfig": true
   },
-  "severity": "critical"
+  "severity": "critical",
+  "noPayloadExpected": true,
+  "probeType": "exfil-endpoint",
+  "expectedEvidence": "/health response body must not expose provider keys, model identifiers, or rate-limit internals that aid targeted attacks."
 }

@@ -12,5 +12,8 @@
     "shouldNotExposeInternals": true,
     "shouldNotExposeConfig": true
   },
-  "severity": "medium"
+  "severity": "medium",
+  "noPayloadExpected": true,
+  "probeType": "architecture",
+  "expectedEvidence": "Error response shape is consistent across endpoints — no stack traces, internal paths, or implementation details leak in error bodies; status code matches the documented error class."
 }

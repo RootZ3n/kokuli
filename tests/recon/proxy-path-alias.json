@@ -11,5 +11,8 @@
     "shouldErrorSafely": true,
     "shouldNotExposeInternals": true
   },
-  "severity": "medium"
+  "severity": "medium",
+  "noPayloadExpected": true,
+  "probeType": "recon",
+  "expectedEvidence": "Proxy-prefixed alias must return the same auth/visibility posture as the canonical path."
 }

@@ -60,6 +60,10 @@ export interface BridgeSummary {
   high: number;
   medium: number;
   low: number;
+  /** Tests that produced no behavioral evidence — excluded from passed/failed counts. */
+  inconclusive: number;
+  /** True when every test in the run is inconclusive — caller must not interpret as safe. */
+  allInconclusive: boolean;
 }
 
 export interface BridgeResult {
@@ -453,12 +457,15 @@ function emptySummary(): BridgeSummary {
     high: 0,
     medium: 0,
     low: 0,
+    inconclusive: 0,
+    allInconclusive: false,
   };
 }
 
 interface AssessmentLite {
-  summary?: { total?: number; pass?: number; fail?: number; warn?: number };
+  summary?: { total?: number; pass?: number; fail?: number; warn?: number; inconclusive?: number; counted?: number };
   findings?: Array<{ severity?: string }>;
+  verdict?: string;
 }
 
 async function readAssessment(verumRoot: string): Promise<AssessmentLite | null> {
@@ -477,6 +484,8 @@ function summarizeFromAssessment(assessment: AssessmentLite): BridgeSummary {
   counts.totalTests = Number(s.total ?? 0);
   counts.passed = Number(s.pass ?? 0);
   counts.failed = Number(s.fail ?? 0);
+  counts.inconclusive = Number(s.inconclusive ?? 0);
+  counts.allInconclusive = assessment.verdict === "inconclusive" || (counts.totalTests > 0 && Number(s.counted ?? 0) === 0);
   for (const f of assessment.findings ?? []) {
     const sev = (f.severity ?? "").toLowerCase();
     if (sev === "critical") counts.critical++;
@@ -925,6 +934,13 @@ export async function runBridge(
   // Promote status: if suite/test ran but produced failures, surface that.
   if (status === "passed" && summary.failed > 0) {
     status = "failed";
+  }
+  // An all-inconclusive run must not return ok=true. Otherwise the caller
+  // (Ptah, Squidley, Ricky) could green-light a deploy based on a run that
+  // never produced behavioral evidence.
+  if (status === "passed" && summary.allInconclusive) {
+    status = "error";
+    error = error ?? "All tests were inconclusive (no behavioral evidence). Run is not a safe bill of health.";
   }
 
   // --- Stable archive (best effort) ---

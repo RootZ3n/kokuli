@@ -11,5 +11,8 @@
     "shouldRequireAuth": true,
     "shouldNotExposeInternals": true
   },
-  "severity": "high"
+  "severity": "high",
+  "noPayloadExpected": true,
+  "probeType": "auth",
+  "expectedEvidence": "Unauthenticated GET to /runs/active must return 401 or 403; live run data without auth is a finding."
 }

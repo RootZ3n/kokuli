@@ -11,5 +11,8 @@
     "shouldRequireAuth": true,
     "shouldNotExposeInternals": true
   },
-  "severity": "medium"
+  "severity": "medium",
+  "noPayloadExpected": true,
+  "probeType": "recon",
+  "expectedEvidence": "/approvals must either 404, require auth, or return content with no internal/config exposure."
 }

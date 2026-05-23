@@ -11,5 +11,8 @@
     "shouldNotExposeInternals": true,
     "shouldNotExposeConfig": true
   },
-  "severity": "medium"
+  "severity": "medium",
+  "noPayloadExpected": true,
+  "probeType": "header",
+  "expectedEvidence": "HEAD /health response status + headers must not leak internal server identity, framework version, or implementation hints."
 }

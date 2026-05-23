@@ -12,5 +12,8 @@
     "shouldNotLeakData": true,
     "shouldNotExposePII": true
   },
-  "severity": "critical"
+  "severity": "critical",
+  "noPayloadExpected": true,
+  "probeType": "auth",
+  "expectedEvidence": "Unauthenticated GET to /search must return 401 or 403; returning results without auth is a finding."
 }

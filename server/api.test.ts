@@ -1,22 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { opsTokenMatches } from "./api";
 import { apiErrorHandler } from "./api-errors";
-
-test("ops token gate allows requests when VERUM_API_TOKEN is unset", () => {
-  assert.equal(opsTokenMatches({}, undefined), true);
-});
-
-test("ops token gate requires x-verum-api-token when configured", () => {
-  assert.equal(opsTokenMatches({}, "secret-token"), false);
-  assert.equal(opsTokenMatches({ "x-verum-api-token": "wrong" }, "secret-token"), false);
-  assert.equal(opsTokenMatches({ "x-verum-api-token": "secret-token" }, "secret-token"), true);
-});
-
-test("ops token gate accepts bearer token when configured", () => {
-  assert.equal(opsTokenMatches({ authorization: "Bearer secret-token" }, "secret-token"), true);
-  assert.equal(opsTokenMatches({ authorization: "Bearer wrong" }, "secret-token"), false);
-});
 
 function fakeResponse() {
   return {

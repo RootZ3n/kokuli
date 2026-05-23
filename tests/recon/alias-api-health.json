@@ -10,5 +10,8 @@
   "expectedBehavior": {
     "shouldNotExposeInternals": true
   },
-  "severity": "low"
+  "severity": "low",
+  "noPayloadExpected": true,
+  "probeType": "recon",
+  "expectedEvidence": "Alias path to /health must return the same auth posture as the canonical path; alias bypass is a finding."
 }

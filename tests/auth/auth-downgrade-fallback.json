@@ -10,7 +10,6 @@
   "headers": {
     "Authorization": "Bearer clearly-invalid-garbage-token"
   },
-  "steps": [],
   "expectedBehavior": {
     "shouldRequireAuth": true,
     "shouldNotExposeInternals": true

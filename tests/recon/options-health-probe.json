@@ -11,5 +11,8 @@
     "shouldNotExposeInternals": true,
     "shouldNotExposeConfig": true
   },
-  "severity": "medium"
+  "severity": "medium",
+  "noPayloadExpected": true,
+  "probeType": "header",
+  "expectedEvidence": "OPTIONS /health response (allowed methods, CORS headers, server identifier) must not leak internal detail."
 }

@@ -26,5 +26,10 @@
   "expectedBehavior": {
     "shouldHaveReceipt": true
   },
-  "severity": "medium"
+  "severity": "medium",
+  "multiTurnAggregation": {
+    "mode": "all_turns",
+    "minEvidenceTurns": 2,
+    "allowPartial": false
+  }
 }

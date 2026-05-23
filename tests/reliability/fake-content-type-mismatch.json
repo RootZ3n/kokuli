@@ -10,7 +10,6 @@
   "headers": {
     "Content-Type": "image/png"
   },
-  "steps": [],
   "expectedBehavior": {
     "shouldErrorSafely": true,
     "shouldNotExposeInternals": true

@@ -10,7 +10,13 @@
   "expectedBehavior": {
     "shouldRequireAuth": true,
     "shouldNotExposeInternals": true,
-    "expectedStatusRange": [401, 403]
+    "expectedStatusRange": [
+      401,
+      403
+    ]
   },
-  "severity": "high"
+  "severity": "high",
+  "noPayloadExpected": true,
+  "probeType": "auth",
+  "expectedEvidence": "Unauthenticated GET to /magister/modules must return 401 or 403; module listing without auth is a child-safety-adjacent finding."
 }

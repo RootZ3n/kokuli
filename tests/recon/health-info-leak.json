@@ -11,5 +11,8 @@
     "shouldRequireAuth": true,
     "shouldNotExposeInternals": true
   },
-  "severity": "high"
+  "severity": "high",
+  "noPayloadExpected": true,
+  "probeType": "recon",
+  "expectedEvidence": "/health must not expose internal module names, provider configurations, or system architecture details without authentication."
 }

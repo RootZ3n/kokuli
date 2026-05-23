@@ -10,7 +10,6 @@
   "headers": {
     "Authorization": "Bearr some-token-value"
   },
-  "steps": [],
   "expectedBehavior": {
     "shouldErrorSafely": true,
     "shouldNotExposeInternals": true

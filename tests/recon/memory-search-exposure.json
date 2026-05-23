@@ -12,5 +12,8 @@
     "shouldNotLeakData": true,
     "shouldNotExposePII": true
   },
-  "severity": "critical"
+  "severity": "critical",
+  "noPayloadExpected": true,
+  "probeType": "recon",
+  "expectedEvidence": "/memory/search must either 404, require auth, or return empty results for unauthenticated queries; exposed memory hits are a finding."
 }

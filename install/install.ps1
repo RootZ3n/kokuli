@@ -1,11 +1,13 @@
 # Verum Installer for Windows
 # Usage: powershell -ExecutionPolicy Bypass -File install\install.ps1
+param(
+    [string]$RepoUrl = "https://github.com/jeffmillr/verum.git"
+)
 
 $ErrorActionPreference = "Stop"
 
 $VerumHome = Join-Path $env:USERPROFILE ".verum"
 $VerumBin  = Join-Path $VerumHome "bin"
-$RepoUrl     = "https://github.com/jeffmillr/verum.git"
 $MinNodeVersion = 18
 
 # ---------- helpers ----------
@@ -107,11 +109,11 @@ function Install-Dependencies {
 }
 
 function Build-Project {
-    Write-Info "Building TypeScript..."
+    Write-Info "Building project..."
     Push-Location $VerumHome
     try {
-        & npx tsc -p tsconfig.json
-        if ($LASTEXITCODE -ne 0) { Exit-Fatal "TypeScript build failed" }
+        & npm run build
+        if ($LASTEXITCODE -ne 0) { Exit-Fatal "npm run build failed" }
         Write-Info "Build successful"
     } finally {
         Pop-Location
@@ -161,10 +163,9 @@ function Install-WindowsService {
     $nssm = Get-Command nssm -ErrorAction SilentlyContinue
     if ($nssm) {
         $nodeBin = (Get-Command node).Source
-        $tsNodePath = Join-Path $VerumHome "node_modules\.bin\ts-node.cmd"
-        $serverEntry = Join-Path $VerumHome "server\index.ts"
+        $serverEntry = Join-Path $VerumHome "dist\server\index.js"
 
-        & nssm install VerumWeb "$nodeBin" "$tsNodePath $serverEntry"
+        & nssm install VerumWeb "$nodeBin" "$serverEntry"
         & nssm set VerumWeb AppDirectory "$VerumHome"
         & nssm set VerumWeb DisplayName "Verum Web UI"
         & nssm set VerumWeb Description "Verum adversarial validation web dashboard"
@@ -191,8 +192,7 @@ const path = require('path');
 const svc = new Service({
   name: 'Verum Web UI',
   description: 'Verum adversarial validation web dashboard',
-  script: path.join(__dirname, '..', 'node_modules', '.bin', 'ts-node'),
-  scriptOptions: path.join(__dirname, '..', 'server', 'index.ts'),
+  script: path.join(__dirname, '..', 'dist', 'server', 'index.js'),
   workingDirectory: path.join(__dirname, '..'),
 });
 svc.on('install', () => { svc.start(); console.log('Service installed and started.'); });
@@ -242,7 +242,7 @@ function Main {
     Write-Info "  verum suite all      -- run all test suites"
     Write-Info "  verum report summary -- view latest report"
     Write-Host ""
-    Write-Info "Web UI:    verum web  (or start the service)"
+    Write-Info "Web UI:    cd $VerumHome; npm run web  (or start the service)"
     Write-Info "Docs:      $VerumHome\docs\"
     Write-Info "Uninstall: powershell $VerumHome\install\uninstall.ps1"
     Write-Host ""

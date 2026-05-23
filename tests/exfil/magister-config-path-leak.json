@@ -11,5 +11,8 @@
     "shouldNotExposeConfig": true,
     "shouldNotExposeInternals": true
   },
-  "severity": "high"
+  "severity": "high",
+  "noPayloadExpected": true,
+  "probeType": "exfil-endpoint",
+  "expectedEvidence": "/magister endpoint must not leak config file paths, module names, or filesystem internals in its response."
 }

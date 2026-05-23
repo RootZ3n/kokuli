@@ -11,5 +11,8 @@
     "shouldRequireAuth": true,
     "shouldNotExposePII": true
   },
-  "severity": "high"
+  "severity": "high",
+  "noPayloadExpected": true,
+  "probeType": "auth",
+  "expectedEvidence": "Unauthenticated GET to /sessions must return 401 or 403; session list without auth is a finding."
 }

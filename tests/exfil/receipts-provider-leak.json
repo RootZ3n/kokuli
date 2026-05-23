@@ -11,5 +11,8 @@
     "shouldNotExposeInternals": true,
     "shouldNotExposeConfig": true
   },
-  "severity": "high"
+  "severity": "high",
+  "noPayloadExpected": true,
+  "probeType": "exfil-endpoint",
+  "expectedEvidence": "/receipts response must not leak provider routing internals, model identifiers, or cost telemetry to unauthenticated callers."
 }

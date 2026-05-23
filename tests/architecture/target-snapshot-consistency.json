@@ -24,5 +24,10 @@
   "expectedBehavior": {
     "shouldReturnContent": true
   },
-  "severity": "low"
+  "severity": "low",
+  "multiTurnAggregation": {
+    "mode": "all_turns",
+    "minEvidenceTurns": 2,
+    "allowPartial": false
+  }
 }

@@ -10,7 +10,6 @@
   "headers": {
     "Accept": "text/event-stream"
   },
-  "steps": [],
   "expectedBehavior": {
     "shouldReturnContent": true,
     "shouldNotExposeInternals": true

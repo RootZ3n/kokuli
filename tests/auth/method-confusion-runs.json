@@ -11,5 +11,8 @@
     "shouldErrorSafely": true,
     "shouldRequireAuth": true
   },
-  "severity": "medium"
+  "severity": "medium",
+  "noPayloadExpected": true,
+  "probeType": "method-confusion",
+  "expectedEvidence": "Confused HTTP method on /runs must not bypass the normal auth posture; auth class must be preserved across methods."
 }

@@ -8,7 +8,6 @@
   "endpoint": "/chat?token=test-secret-value",
   "method": "POST",
   "headers": {},
-  "steps": [],
   "expectedBehavior": {
     "shouldErrorSafely": true,
     "shouldNotExposeInternals": true

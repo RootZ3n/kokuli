@@ -12,6 +12,10 @@
 import fs from "fs-extra";
 import path from "path";
 
+// Bumped from 1 (implicit) when honesty-flagged entries were introduced.
+// Entries without `schemaVersion` are pre-honesty-flag and treated as HISTORICAL.
+export const LEDGER_SCHEMA_VERSION = 2;
+
 export type LedgerEntry = {
   id: string;                    // unique entry ID (timestamp + test ID)
   timestamp: string;             // ISO timestamp
@@ -36,6 +40,17 @@ export type LedgerEntry = {
   httpStatus: number;
   result: "PASS" | "FAIL" | "WARN" | "PENDING";
   gatewayBlocked: boolean;
+  // --- Honesty metadata (schemaVersion >= 2) ---
+  /** Schema marker. Entries without this are HISTORICAL — pre-honesty-flag pipeline. */
+  schemaVersion?: number;
+  /** Computed at write time: true when receipt did not report a provider. */
+  unknownProvider?: boolean;
+  /** Computed at write time: true when receipt did not report a model. */
+  unknownModel?: boolean;
+  /** Computed at write time: true when receipt did not include cost telemetry. */
+  unknownCost?: boolean;
+  /** Optional honesty chip list (lifted from the corresponding TestResult). */
+  honestyFlags?: string[];
 };
 
 export type LedgerSummary = {
@@ -48,6 +63,13 @@ export type LedgerSummary = {
   providerBreakdown: Record<string, { count: number; tokensIn: number; tokensOut: number; costUsd: number }>;
   resultBreakdown: { pass: number; fail: number; warn: number };
   targetBreakdown: Record<string, number>;
+  // --- Honesty rollups ---
+  historicalCount: number;       // entries without schemaVersion (pre-honesty-flag pipeline)
+  currentSchemaCount: number;    // entries written by the post-audit pipeline
+  unknownProviderCurrent: number;// CURRENT entries that lacked a provider — operator-visible problem
+  unknownProviderHistorical: number; // HISTORICAL entries that lacked a provider — informational
+  unknownModelCurrent: number;
+  unknownModelHistorical: number;
 };
 
 const LEDGER_PATH = path.join(process.cwd(), "reports", "ledger.json");
@@ -56,7 +78,23 @@ const LEDGER_PATH = path.join(process.cwd(), "reports", "ledger.json");
 const sessionEntries: LedgerEntry[] = [];
 
 export async function recordEntry(entry: LedgerEntry): Promise<void> {
-  sessionEntries.push(entry);
+  // Stamp every new entry with the current schema version and compute the
+  // unknown-provider / unknown-model / unknown-cost honesty flags. Old
+  // entries already on disk keep their original shape — they're HISTORICAL.
+  const honestyFlags = new Set<string>(entry.honestyFlags ?? []);
+  const enriched: LedgerEntry = {
+    ...entry,
+    schemaVersion: entry.schemaVersion ?? LEDGER_SCHEMA_VERSION,
+    unknownProvider: entry.unknownProvider ?? !entry.provider,
+    unknownModel: entry.unknownModel ?? !entry.model,
+    unknownCost: entry.unknownCost ?? entry.estimatedCostUsd === undefined,
+  };
+  if (!enriched.provider) honestyFlags.add("UNKNOWN_PROVIDER");
+  if (!enriched.model) honestyFlags.add("UNKNOWN_MODEL");
+  if (enriched.estimatedCostUsd === undefined) honestyFlags.add("UNKNOWN_COST");
+  if (honestyFlags.size > 0) enriched.honestyFlags = Array.from(honestyFlags);
+
+  sessionEntries.push(enriched);
 
   await fs.ensureDir(path.dirname(LEDGER_PATH));
 
@@ -70,7 +108,7 @@ export async function recordEntry(entry: LedgerEntry): Promise<void> {
     }
   }
 
-  existing.push(entry);
+  existing.push(enriched);
   await fs.writeJson(LEDGER_PATH, existing, { spaces: 2 });
 }
 
@@ -101,6 +139,13 @@ export function getSessionLedger(): LedgerEntry[] {
   return [...sessionEntries];
 }
 
+export function isHistoricalLedgerEntry(entry: LedgerEntry): boolean {
+  // Entries written by the pre-honesty-flag pipeline don't carry a schema
+  // version. They remain visible in transparency reports but are bucketed
+  // separately so they cannot contaminate "current" provider/model rollups.
+  return entry.schemaVersion === undefined;
+}
+
 export function computeSummary(entries: LedgerEntry[]): LedgerSummary {
   const summary: LedgerSummary = {
     totalRequests: entries.length,
@@ -112,6 +157,12 @@ export function computeSummary(entries: LedgerEntry[]): LedgerSummary {
     providerBreakdown: {},
     resultBreakdown: { pass: 0, fail: 0, warn: 0 },
     targetBreakdown: {},
+    historicalCount: 0,
+    currentSchemaCount: 0,
+    unknownProviderCurrent: 0,
+    unknownProviderHistorical: 0,
+    unknownModelCurrent: 0,
+    unknownModelHistorical: 0,
   };
 
   for (const entry of entries) {
@@ -120,8 +171,22 @@ export function computeSummary(entries: LedgerEntry[]): LedgerSummary {
     summary.totalEstimatedCostUsd += entry.estimatedCostUsd ?? 0;
     summary.totalDurationMs += entry.durationMs;
 
-    // Model breakdown
-    const modelKey = entry.model ?? "unknown";
+    const isHistorical = isHistoricalLedgerEntry(entry);
+    if (isHistorical) summary.historicalCount++;
+    else summary.currentSchemaCount++;
+
+    // Model breakdown — historical unknowns bucket separately so they don't
+    // contaminate the current-schema "unknown" entries (which are a live
+    // problem to investigate).
+    const modelKey = entry.model
+      ? entry.model
+      : isHistorical
+        ? "unknown (historical)"
+        : "unknown (current)";
+    if (!entry.model) {
+      if (isHistorical) summary.unknownModelHistorical++;
+      else summary.unknownModelCurrent++;
+    }
     if (!summary.modelBreakdown[modelKey]) {
       summary.modelBreakdown[modelKey] = { count: 0, tokensIn: 0, tokensOut: 0, costUsd: 0 };
     }
@@ -130,8 +195,16 @@ export function computeSummary(entries: LedgerEntry[]): LedgerSummary {
     summary.modelBreakdown[modelKey].tokensOut += entry.tokensOut ?? 0;
     summary.modelBreakdown[modelKey].costUsd += entry.estimatedCostUsd ?? 0;
 
-    // Provider breakdown
-    const providerKey = entry.provider ?? "unknown";
+    // Provider breakdown — same historical/current split.
+    const providerKey = entry.provider
+      ? entry.provider
+      : isHistorical
+        ? "unknown (historical)"
+        : "unknown (current)";
+    if (!entry.provider) {
+      if (isHistorical) summary.unknownProviderHistorical++;
+      else summary.unknownProviderCurrent++;
+    }
     if (!summary.providerBreakdown[providerKey]) {
       summary.providerBreakdown[providerKey] = { count: 0, tokensIn: 0, tokensOut: 0, costUsd: 0 };
     }

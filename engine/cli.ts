@@ -4,7 +4,13 @@ import { globSync } from "glob";
 import chalk from "chalk";
 import { loadTargets, loadTest, resolveTarget, setActiveTarget, addTarget, removeTarget } from "./loaders";
 import { sendChat, sendRequest } from "./client";
+import {
+  isNetworkOpsEnabled,
+  isOwnershipConfirmed,
+  isPrivateOrLocalHostname,
+} from "./networkGate";
 import { evaluate, evaluateEndpoint } from "./evaluator";
+import { aggregateMultiTurn, markStepsAsPartialEvidence } from "./multiTurn";
 import { generateFuzzPayloads } from "./fuzzer";
 import { writeAssessmentBundle, writeReport, writeSuiteSummary, writeTransparencyReport } from "./reportWriter";
 import { TestCase, TestResult, TargetConfig } from "./types";
@@ -152,6 +158,39 @@ async function initTarget(overrideKey?: string): Promise<void> {
   activeTarget = resolved.target;
 
   console.log(chalk.gray(`  target: ${activeTarget.name} (${activeTargetKey}) -> ${activeTarget.baseUrl}`));
+
+  // Pre-flight network-gate notice. The actual gate is enforced inside
+  // engine/client.ts on every outbound call — this is a one-shot warning
+  // so the operator sees the risk on startup instead of inside an
+  // exception 30 seconds into a suite.
+  let host = "";
+  try {
+    host = new URL(activeTarget.baseUrl).hostname;
+  } catch {
+    /* malformed URL; the gate will surface a clearer error per call */
+  }
+  if (host && !isPrivateOrLocalHostname(host)) {
+    const network = isNetworkOpsEnabled();
+    const ownership = isOwnershipConfirmed();
+    if (!network || !ownership) {
+      const missing: string[] = [];
+      if (!network) missing.push("VERUM_ENABLE_NETWORK_OPS=1");
+      if (!ownership) missing.push("VERUM_OWNERSHIP_CONFIRMED=1");
+      console.log(
+        chalk.yellow(
+          `  [verum] WARNING: '${activeTarget.name}' resolves to a non-private host (${host}). ` +
+            `Outbound requests will be REFUSED until you set: ${missing.join(" and ")}.`,
+        ),
+      );
+    } else {
+      console.log(
+        chalk.yellow(
+          `  [verum] Public-target ops ENABLED (VERUM_ENABLE_NETWORK_OPS=1, VERUM_OWNERSHIP_CONFIRMED=1). ` +
+            `Confirm you own '${host}'.`,
+        ),
+      );
+    }
+  }
 }
 
 function getTarget(): TargetConfig {
@@ -231,6 +270,7 @@ function printRawResponse(result: TestResult): void {
 
 function buildLedgerEntry(result: TestResult, targetKey: string, endpoint: string, method: string): LedgerEntry {
   const pf = result.parsedFields;
+  const tx = result.transparency;
   return {
     id: `${Date.now()}-${result.testId}`,
     timestamp: result.timestamp,
@@ -240,18 +280,21 @@ function buildLedgerEntry(result: TestResult, targetKey: string, endpoint: strin
     method,
     model: pf.model ?? pf.activeModel,
     provider: pf.provider,
-    tokensIn: (result as unknown as Record<string, unknown>).tokensIn as number | undefined,
-    tokensOut: (result as unknown as Record<string, unknown>).tokensOut as number | undefined,
-    estimatedCostUsd: (result as unknown as Record<string, unknown>).estimatedCostUsd as number | undefined,
+    tokensIn: tx?.tokensIn,
+    tokensOut: tx?.tokensOut,
+    estimatedCostUsd: tx?.estimatedCostUsd,
     durationMs: result.durationMs,
-    serverDurationMs: (result as unknown as Record<string, unknown>).serverDurationMs as number | undefined,
+    serverDurationMs: tx?.serverDurationMs,
     tier: pf.tier,
     receiptId: pf.receiptId,
-    modelRole: undefined,
+    modelRole: tx?.modelRole,
     escalated: pf.escalated,
     httpStatus: pf.httpStatus,
     result: result.result,
     gatewayBlocked: pf.gatewayBlock,
+    // recordEntry will stamp schemaVersion + compute unknown* flags. Lift
+    // honesty flags off the result so the transparency report can show them.
+    honestyFlags: result.honestyFlags ? [...result.honestyFlags] : undefined,
   };
 }
 
@@ -508,11 +551,32 @@ async function runMultiTurn(
   const pass = results.filter((r) => r.result === "PASS").length;
   const fail = results.filter((r) => r.result === "FAIL").length;
   const warn = results.filter((r) => r.result === "WARN").length;
-  const overall = fail > 0 ? chalk.red("FAIL") : warn > 0 ? chalk.yellow("WARN") : chalk.green("PASS");
-  console.log(chalk.bold(`\n  Multi-turn result: ${overall} (${pass}P/${fail}F/${warn}W across ${results.length} steps)`));
+
+  // --- Aggregation ---
+  //
+  // Pre-fix the suite runner consumed step results directly. That allowed an
+  // escalation test to "pass" because the warm-up turns greeted, even when
+  // the final attack turn was never actually graded against the cross-turn
+  // pattern. The aggregator now produces a single multi-turn verdict from
+  // the per-step evidence and the declared aggregation mode. Step results
+  // are demoted to partial evidence so they remain visible in the appendix
+  // but cannot inflate the run summary.
+  const aggregated = aggregateMultiTurn(testCase, results);
+  await writeReport(aggregated);
+
+  const aggColor = aggregated.result === "PASS" ? chalk.green : aggregated.result === "FAIL" ? chalk.red : chalk.yellow;
+  console.log(chalk.bold(`\n  Multi-turn step distribution: ${pass}P/${fail}F/${warn}W across ${results.length} steps`));
+  console.log(chalk.bold(`  Multi-turn AGGREGATE verdict (mode=${testCase.multiTurnAggregation?.mode ?? "all_turns"}): ${aggColor(aggregated.result)}${aggregated.noEvidence ? chalk.yellow(" [NO_EVIDENCE]") : ""}`));
+  if (aggregated.failureReason) {
+    console.log(chalk.gray(`    reason: ${aggregated.failureReason}`));
+  }
+
   await refreshAssessmentArtifacts();
 
-  return results;
+  // Return the aggregated result FIRST (drives suite summary) plus step
+  // evidence demoted to partial. Step results no longer count toward the
+  // run's PASS/FAIL aggregation.
+  return [aggregated, ...markStepsAsPartialEvidence(results)];
 }
 
 async function runFuzz(
@@ -720,11 +784,17 @@ async function reportTransparency(): Promise<void> {
   }
 
   console.log(chalk.cyan("\n[verum] Transparency Ledger Summary\n"));
-  console.log(`  Total Requests:  ${summary.totalRequests}`);
-  console.log(`  Tokens In:       ${summary.totalTokensIn.toLocaleString()}`);
-  console.log(`  Tokens Out:      ${summary.totalTokensOut.toLocaleString()}`);
-  console.log(`  Estimated Cost:  $${summary.totalEstimatedCostUsd.toFixed(4)}`);
-  console.log(`  Total Duration:  ${(summary.totalDurationMs / 1000).toFixed(1)}s`);
+  console.log(`  Total Requests:                       ${summary.totalRequests}`);
+  console.log(`  Current-schema entries:               ${summary.currentSchemaCount}`);
+  console.log(`  Historical entries:                   ${summary.historicalCount}`);
+  console.log(`  Unknown provider (CURRENT, actionable): ${summary.unknownProviderCurrent}`);
+  console.log(`  Unknown provider (historical):        ${summary.unknownProviderHistorical}`);
+  console.log(`  Unknown model (CURRENT, actionable):    ${summary.unknownModelCurrent}`);
+  console.log(`  Unknown model (historical):           ${summary.unknownModelHistorical}`);
+  console.log(`  Tokens In:                            ${summary.totalTokensIn.toLocaleString()}`);
+  console.log(`  Tokens Out:                           ${summary.totalTokensOut.toLocaleString()}`);
+  console.log(`  Estimated Cost:                       $${summary.totalEstimatedCostUsd.toFixed(4)}`);
+  console.log(`  Total Duration:                       ${(summary.totalDurationMs / 1000).toFixed(1)}s`);
 
   console.log(chalk.bold("\n  Models:"));
   for (const [model, data] of Object.entries(summary.modelBreakdown)) {

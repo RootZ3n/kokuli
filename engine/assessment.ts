@@ -264,7 +264,26 @@ function findingFingerprint(result: TestResult): string {
 
 function shouldCreateFinding(result: TestResult): boolean {
   if ((result.execution?.state ?? result.state) === "skipped") return false;
+  // No-evidence results are NEVER findings — they're inconclusive, not failures.
+  // Surfacing them as findings would create false "vulnerabilities" from network
+  // outages, provider failures, and empty bodies.
+  if (result.noEvidence) return false;
+  if (result.countsTowardScore === false) return false;
   return result.result === "FAIL" || result.result === "WARN";
+}
+
+/**
+ * Whether this test result should count toward PASS/FAIL/score aggregation.
+ * Returns false for: no-evidence, mock/demo, provider failures, judge errors,
+ * timeouts that left the model without a meaningful response, and any test
+ * that explicitly opted out via countsTowardScore=false.
+ */
+function isCountedTowardScore(result: TestResult): boolean {
+  if (result.noEvidence) return false;
+  if (result.countsTowardScore === false) return false;
+  const state = result.execution?.state ?? result.state;
+  if (state === "skipped" || state === "error" || state === "timeout") return false;
+  return true;
 }
 
 function compareSeverity(a: Severity | "none", b: Severity): Severity {
@@ -664,20 +683,46 @@ export async function buildDashboardAssessment(args: {
   });
   const fingerprintComparison = compareFingerprints(args.targetFingerprint, args.previousFingerprint);
   const comparison = deriveRunDelta(findings, args.previousFindings ?? [], fingerprintComparison.warning);
+  // PASS/FAIL/WARN counts must EXCLUDE no-evidence results to avoid the
+  // Crucible/Colosseum-style trust bug where transport failures and empty
+  // bodies silently became "safe" passes. We surface a separate `inconclusive`
+  // count and a `counted` denominator so downstream consumers can see how
+  // much real evidence the run actually produced.
+  const counted = results.filter(isCountedTowardScore);
+  const inconclusive = results.filter((result) => result.noEvidence === true || result.countsTowardScore === false).length;
+  const notCounted = results.length - counted.length;
   const summary = {
     total: results.length,
-    pass: results.filter((result) => result.result === "PASS").length,
-    fail: results.filter((result) => result.result === "FAIL").length,
-    warn: results.filter((result) => result.result === "WARN").length,
+    pass: counted.filter((result) => result.result === "PASS").length,
+    fail: counted.filter((result) => result.result === "FAIL").length,
+    warn: counted.filter((result) => result.result === "WARN").length,
+    inconclusive,
+    notCounted,
+    counted: counted.length,
   };
+
+  // Trust signal: any no-evidence in the run keeps the operator honest.
+  // If every result is inconclusive, an "all-NC" trust signal kicks the
+  // verdict toward inconclusive instead of pass.
+  const allInconclusive = results.length > 0 && counted.length === 0;
   const riskSummary = buildRiskSummary(findings, gates);
   const coverage = buildCoverage(results);
   if (fingerprintComparison.warning && !coverage.runTrustSignals.includes("inconclusive_due_to_target_variance")) {
     coverage.runTrustSignals.push("inconclusive_due_to_target_variance");
   }
+  if (allInconclusive && !coverage.runTrustSignals.includes("inconclusive_due_to_no_evidence")) {
+    coverage.runTrustSignals.push("inconclusive_due_to_no_evidence");
+  }
   const metrics = buildMetrics(results, findings, comparison);
   const operatorSummary = buildOperatorSummary({ findings, comparison, riskSummary, coverage });
-  const verdict = fingerprintComparison.warning ? "not_comparable" as PlatformVerdict : verdictFromOverall(riskSummary.overallVerdict);
+  // If the entire run produced no evidence, refuse to surface a reassuring
+  // verdict — the run is inconclusive, not safe. Fingerprint mismatch takes
+  // precedence because "not_comparable" is the more specific operator signal.
+  const verdict = fingerprintComparison.warning
+    ? "not_comparable" as PlatformVerdict
+    : allInconclusive
+      ? "inconclusive" as PlatformVerdict
+      : verdictFromOverall(riskSummary.overallVerdict);
 
   return {
     generatedAt: new Date().toISOString(),

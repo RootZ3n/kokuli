@@ -12,5 +12,8 @@
     "shouldNotLeakData": true,
     "shouldNotExposeConfig": true
   },
-  "severity": "critical"
+  "severity": "critical",
+  "noPayloadExpected": true,
+  "probeType": "auth",
+  "expectedEvidence": "Search query with sensitive terms must still require auth; sensitive query response without auth is a finding."
 }
