@@ -84,7 +84,51 @@ export type TrustSignal =
   | "partially_executed"
   | "degraded_by_timeouts"
   | "degraded_by_errors"
-  | "inconclusive_due_to_target_variance";
+  | "inconclusive_due_to_target_variance"
+  | "inconclusive_due_to_no_evidence";
+
+// --- Failure origin classification ---
+//
+// A run that did not produce a model behavior signal must be tagged with the
+// upstream cause so trust math can exclude it from PASS/FAIL aggregation.
+// MODEL is the only origin that represents real target behavior; every other
+// value means the test was not evidence-bearing for the target's safety.
+export type FailureOrigin =
+  | "MODEL"
+  | "TARGET"
+  | "PROVIDER"
+  | "INFRA"
+  | "HARNESS"
+  | "JUDGE"
+  | "PARSE"
+  | "TIMEOUT"
+  | "VALIDATION"
+  | "CONFIG"
+  | "TOOL_UNAVAILABLE"
+  | "MOCK_DEMO"
+  | "UNKNOWN";
+
+export type HonestyFlag =
+  | "NO_EVIDENCE"
+  | "INCONCLUSIVE"
+  | "NOT_COUNTED"
+  | "PROVIDER_FAILURE"
+  | "TARGET_FAILURE"
+  | "JUDGE_FAILURE"
+  | "VALIDATION_FAILURE"
+  | "TOOL_UNAVAILABLE"
+  | "MOCK_DEMO"
+  | "HISTORICAL"
+  | "PROVISIONAL"
+  | "SMALL_SAMPLE"
+  | "PARTIAL_RUN"
+  | "UNKNOWN_MODEL"
+  | "UNKNOWN_PROVIDER"
+  | "UNKNOWN_COST"
+  | "LOW_CONFIDENCE"
+  | "SEVERITY_UNSUPPORTED"
+  | "CATEGORY_UNVALIDATED"
+  | "EXACT_STRING_LEAK_DETECTOR";
 
 export type EvidenceSnapshot = {
   attackSummary: string;
@@ -226,6 +270,69 @@ export type ExecutionRecord = {
   attemptCount: number;
 };
 
+// --- Endpoint probe metadata ---
+//
+// Some legitimate tests probe a URL with no body and no custom headers — they
+// are checking method/path/auth posture, not chat content. These probes must
+// declare why a missing payload is intentional so a future maintainer (and
+// the diagnostic gate) can tell them apart from a half-finished test.
+export type ProbeType =
+  | "recon"
+  | "auth"
+  | "availability"
+  | "header"
+  | "method-confusion"
+  | "endpoint-presence"
+  | "exfil-endpoint"
+  | "architecture";
+
+// --- Multi-turn aggregation modes ---
+//
+// Each mode answers a different cross-turn question. The aggregator in
+// engine/multiTurn.ts consumes the chosen mode and the per-turn TestResult
+// list, then derives the run verdict; raw step verdicts are NOT summed.
+//   - all_turns        — every required turn must produce evidence and PASS
+//   - final_turn       — the final required turn is what counts
+//   - escalation_pattern — earlier turns are benign; later turns must refuse
+//                          AND the earlier turns must have actually succeeded
+//                          (you can't escalate from a dead target)
+//   - consistency      — every turn must independently refuse / behave safely
+//   - leakage          — checks that no required turn produced leak evidence,
+//                        AND that the relevant later turn was reached
+//   - custom           — explicit requiredTurnEvidence list (turn index → kind)
+export type AggregationMode =
+  | "all_turns"
+  | "final_turn"
+  | "escalation_pattern"
+  | "consistency"
+  | "leakage"
+  | "custom";
+
+export type TurnEvidenceKind =
+  | "content_returned"
+  | "refusal"
+  | "no_leak"
+  | "gateway_block"
+  | "any_response";
+
+export type RequiredTurnEvidence = {
+  /** 1-based turn index. Use -1 for the final turn. */
+  turn: number;
+  kind: TurnEvidenceKind;
+  /** Short note explaining why this turn carries the evidence. */
+  note?: string;
+};
+
+export type MultiTurnAggregation = {
+  mode: AggregationMode;
+  /** Minimum number of turns that must produce evidence. Default: every required turn. */
+  minEvidenceTurns?: number;
+  /** Whether partial evidence may produce a PARTIAL/WARN verdict instead of inconclusive. */
+  allowPartial?: boolean;
+  /** Explicit turn-by-turn evidence requirements (mode=custom). */
+  requiredTurnEvidence?: RequiredTurnEvidence[];
+};
+
 export type TestCase = {
   id: string;
   name: string;
@@ -242,8 +349,13 @@ export type TestCase = {
   body?: unknown;
   // Multi-turn support
   steps?: TestStep[];
+  multiTurnAggregation?: MultiTurnAggregation;
   // Fuzzing
   fuzzConfig?: FuzzConfig;
+  // No-payload endpoint probe metadata
+  noPayloadExpected?: boolean;
+  probeType?: ProbeType;
+  expectedEvidence?: string;
 };
 
 export type TestStep = {
@@ -445,6 +557,30 @@ export type TestResult = {
   targetFingerprint?: TargetFingerprint;
   targetConfigSnapshot?: TargetConfigSnapshot;
   priorRunComparison?: RunComparisonRecord;
+  // --- Trust metadata (added 2026-05) ---
+  /**
+   * True when the run produced no behavioral evidence about the target.
+   * Tests with noEvidence must NOT count toward PASS, FAIL, or severity
+   * aggregation — they are inconclusive by definition.
+   */
+  noEvidence?: boolean;
+  /**
+   * Classification of *why* a result happened. MODEL means the target
+   * produced a real behavior signal; every other value means the test
+   * did not reach a meaningful model response and should be excluded
+   * from trust math.
+   */
+  failureOrigin?: FailureOrigin;
+  /** Short human-readable explanation of the failure origin. */
+  failureReason?: string;
+  /** Honesty/warning chips surfaced in reports, exports, and UI. */
+  honestyFlags?: HonestyFlag[];
+  /**
+   * Whether this result should count toward the run's pass/fail/score
+   * aggregation. False for transport failures, network gate refusals,
+   * judge errors, mock/demo runs, no-evidence outcomes, etc.
+   */
+  countsTowardScore?: boolean;
 };
 
 export type ReceiptHealth = {
@@ -598,6 +734,12 @@ export type DashboardAssessment = {
     pass: number;
     fail: number;
     warn: number;
+    /** Tests that produced no behavioral evidence (transport failure, empty body, provider failure). */
+    inconclusive: number;
+    /** Tests excluded from PASS/FAIL aggregation (sum of noEvidence + provider/judge failures). */
+    notCounted: number;
+    /** Tests that produced behavioral evidence for the target. */
+    counted: number;
   };
   verdict: PlatformVerdict;
   riskSummary: RiskSummary;

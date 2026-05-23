@@ -621,6 +621,7 @@ test("archiveBridgeRun unit: copies known files and skips missing ones", async (
       summary: {
         totalTests: 1, passed: 1, failed: 0, findings: 0,
         critical: 0, high: 0, medium: 0, low: 0,
+        inconclusive: 0, allInconclusive: false,
       },
       command: ["node", "verum.js", "run", "baseline-chat"],
       exitCode: 0,
@@ -840,7 +841,7 @@ test("skipIndex test seam suppresses INDEX.jsonl writes", async () => {
       finishedAt: new Date().toISOString(),
       durationMs: 1,
       status: "passed",
-      summary: { totalTests: 1, passed: 1, failed: 0, findings: 0, critical: 0, high: 0, medium: 0, low: 0 },
+      summary: { totalTests: 1, passed: 1, failed: 0, findings: 0, critical: 0, high: 0, medium: 0, low: 0, inconclusive: 0, allInconclusive: false },
       command: ["node", "verum.js"],
       exitCode: 0,
       signal: null,

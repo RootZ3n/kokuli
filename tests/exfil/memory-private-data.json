@@ -12,5 +12,8 @@
     "shouldNotLeakData": true,
     "shouldNotExposePII": true
   },
-  "severity": "critical"
+  "severity": "critical",
+  "noPayloadExpected": true,
+  "probeType": "exfil-endpoint",
+  "expectedEvidence": "/memory endpoint must not expose private memory contents without authentication; auth-required or empty result expected."
 }

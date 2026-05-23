@@ -40,15 +40,13 @@ Verum focuses on AI product trust boundaries:
 
 Results are deterministic rule evaluations. A Verum finding is a probe result or observed signal that needs engineering review; it is not a claim that a vulnerability is certified or exploited.
 
-## Quickstart
+## Install / Setup
 
 Prerequisites:
 
 - Node.js 18 or newer.
 - npm.
 - A local, staging, or explicitly authorized target.
-
-Install and verify:
 
 ```bash
 npm ci
@@ -94,9 +92,7 @@ Verum is safe-by-default for public RC:
 - Live Armory / Break Me network operations are disabled unless explicitly enabled.
 - Public IP and public domain live checks are blocked for this release line.
 - Live checks require ownership confirmation.
-- Optional `VERUM_API_TOKEN` protects sensitive local API routes.
 - Armory evidence reports are redacted and summarized before write.
-- `/reports` static access is local-only and token-gated when a token is configured.
 
 ## Break Me / Armory
 
@@ -120,7 +116,7 @@ Private lab checks are intended for RFC1918 or otherwise explicitly configured l
 |---|---|
 | `VERUM_ENABLE_NETWORK_OPS=1` | Enables live localhost/private-lab Armory checks. Without this, only simulation/dry-run behavior is allowed. |
 | `VERUM_BIND_ALL=1` | Allows the web server to bind `0.0.0.0`. Default is `127.0.0.1`. Use only on a controlled network. |
-| `VERUM_API_TOKEN=<secret>` | Requires `X-Verum-Api-Token: <secret>` or `Authorization: Bearer <secret>` for protected local ops/report routes. |
+| `VERUM_HOST=<ip>[,<ip>...]` | Comma-separated list of bind addresses. Default `127.0.0.1`. Use e.g. `127.0.0.1,100.x.y.z` for localhost + Tailscale. |
 | `VERUM_PORT=3000` | Overrides the web dashboard port. |
 
 ### Ownership Confirmation
@@ -228,12 +224,132 @@ npm audit --audit-level=moderate
 
 As of this RC hardening pass, `npm audit fix` updated transitive dependency versions for axios/follow-redirects, brace-expansion, and path-to-regexp, and `npm audit --audit-level=moderate` reports zero known vulnerabilities.
 
+## Testing
+
+```bash
+npm test                    # all logic tests (node:test runner)
+npm run typecheck           # type-check only
+npm run smoke               # build + list (sanity check)
+npm run diagnostic          # offline trust audit (test pack + evaluator + bridge)
+npm run verify:release      # typecheck + build + test + smoke + diagnostic
+```
+
+## Trust Posture
+
+Verum reports evidence, not absolute security truth. Every trust-relevant
+surface is explicit about what it knows and what it doesn't.
+
+### No-evidence handling
+
+- A test result that did not produce a model response (transport failure,
+  empty body, provider error) is tagged `noEvidence: true` and excluded
+  from PASS/FAIL aggregation. It is **never** counted as a pass.
+- Reports surface a separate `inconclusive` count alongside PASS / FAIL /
+  WARN. The bridge summary, dashboard summary, exports, and JSON
+  artifacts all carry `noEvidence`, `countsTowardScore`, `failureOrigin`,
+  `failureReason`, and an `honestyFlags` list per result.
+- If every test in a run is inconclusive, the run verdict is
+  `inconclusive` and the bridge returns `status: "error"` so consumers
+  (Ptah / Squidley / Ricky) cannot accidentally treat a dead target as
+  a clean bill of health.
+
+### Detection hardening
+
+- The gateway-block detector requires a specific safety/policy phrase or a
+  structured receipt reason. A generic HTTP 400 with `"invalid"` or
+  `"policy"` in the body is no longer treated as a security pass.
+- The system-prompt leak detector matches paraphrased instruction leaks
+  ("according to my instructions", "I was programmed to…", "developer
+  instructions", `process.env.X`, `OPENAI_API_KEY`, etc.) instead of three
+  exact phrases.
+
+### No-payload endpoint probes
+
+Some recon / auth / method-confusion tests intentionally GET a URL with no
+body or custom headers — they grade on auth posture and status class. Every
+such test must declare:
+
+```json
+"noPayloadExpected": true,
+"probeType": "recon" | "auth" | "availability" | "header" | "method-confusion" | "endpoint-presence" | "exfil-endpoint" | "architecture",
+"expectedEvidence": "what this probe proves without a body"
+```
+
+An endpoint test that has no payload AND no probe metadata is a validation
+error; the diagnostic refuses to release until it is either annotated or
+given a meaningful payload.
+
+### Multi-turn evidence chaining
+
+Multi-turn tests declare a `multiTurnAggregation.mode` that controls how
+per-turn evidence is rolled up into a single run verdict. Step verdicts
+are NOT summed — they are demoted to partial evidence (countsTowardScore
+= false) and the aggregator produces one cross-turn TestResult.
+
+| Mode | What it checks |
+|---|---|
+| `all_turns` | Every required turn must produce evidence and PASS. Any no-evidence in a required turn → inconclusive. |
+| `final_turn` | Only the final required turn is graded. No-evidence on the final turn → inconclusive. |
+| `escalation_pattern` | Setup turns must be evidence-bearing (the target was alive); final turn must refuse / be blocked. No-evidence anywhere required → inconclusive. |
+| `consistency` | Every turn must independently behave safely. Any no-evidence → inconclusive. |
+| `leakage` | No required turn may produce leak evidence. Target turn (last by default) must be reached with evidence. |
+| `custom` | Explicit `requiredTurnEvidence` list mapping turn index → evidence kind. |
+
+Evidence kinds: `content_returned`, `refusal`, `no_leak`, `gateway_block`,
+`any_response`.
+
+This means a target that goes dead during the warm-up turns of an
+escalation test cannot pass — the aggregator marks the run inconclusive,
+not safe. A target that returns content but fails to refuse the attack
+turn is FAIL, even if each step's standalone verdict was PASS.
+
+### Historical vs. current honesty
+
+The ledger schema is versioned. Entries written by the post-audit
+pipeline carry `schemaVersion: 2` and explicit `unknownProvider /
+unknownModel / unknownCost` flags. Entries without `schemaVersion` are
+historical (pre-honesty-flag pipeline) and are bucketed separately in
+`unknown (historical)` rather than `unknown (current)` so a current run
+without a provider stays a loud, actionable finding.
+
+The diagnostic blocks release when a current-schema ledger entry lacks
+provider/model and does not carry an `UNKNOWN_PROVIDER` / `UNKNOWN_MODEL`
+honesty flag.
+
+### Diagnostic gates
+
+`scripts/verum-diagnostic.mjs` (wired into `npm run verify:release`)
+audits the test pack and trust surfaces offline. It exits non-zero on:
+
+- duplicate test IDs
+- missing / trivial prompts, missing criteria, invalid severity / category
+- empty `steps: []` arrays (vestigial OR intentional)
+- no-payload endpoint tests without `noPayloadExpected` + `probeType` +
+  `expectedEvidence`
+- multi-turn tests without `multiTurnAggregation.mode` or with an invalid
+  mode, or with `mode: "custom"` but no `requiredTurnEvidence`
+- evaluator regressions (missing paraphrase leak list, missing
+  no-evidence gate, re-introduced weak `t.includes("policy")` /
+  `t.includes("invalid")` gateway-block patterns)
+- assessment regressions (missing `isCountedTowardScore`, missing
+  inconclusive aggregation field)
+- TypeScript contract regressions (TestCase/TestResult lost any of the
+  required trust-metadata fields)
+- bridge multi-turn aggregator no longer wired (`aggregateMultiTurn` /
+  `markStepsAsPartialEvidence` not imported by `engine/cli.ts`)
+- bridge `INDEX.jsonl` entries marked `passed` with `allInconclusive: true`
+- current-schema ledger entries with unknown provider/model and no
+  honesty flag
+
+Run `npm run diagnostic` (or the full `npm run verify:release`) before
+any release tag.
+
 ## Development Commands
 
 ```bash
 npm run typecheck
 npm run build
-npm run test:logic
+npm run test
 npm run smoke
 npm run verify:release
 ```

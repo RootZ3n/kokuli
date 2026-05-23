@@ -1,6 +1,7 @@
 import axios from "axios";
 import { ChatResult, SquidleyReceipt, RetryInfo, TargetConfig, EndpointResult, RequestRecord, ResponseRecord } from "./types";
 import { resolvePathForAlias } from "./targets";
+import { assertNetworkAllowed } from "./networkGate";
 
 function stringifyUnknown(value: unknown): string {
   if (typeof value === "string") return value;
@@ -275,6 +276,12 @@ export async function sendChat(
   input: string,
   timeout = 30000
 ): Promise<ChatResult> {
+  // Gate FIRST — before any path resolution, payload building, or socket
+  // open. Throws synchronously so a refused call produces zero side
+  // effects: no DNS lookup, no TCP handshake, no log line implying a
+  // request was attempted. We gate on baseUrl alone since the host is
+  // the only thing that determines public vs private.
+  assertNetworkAllowed({ url: target.baseUrl, targetName: target.name, purpose: "chat" });
   const chatPath = resolvePathForAlias(target as never, "chat") || target.chatPath || (target.pathMode === "explicit_plus_defaults" ? "/chat" : undefined);
   if (!chatPath) {
     throw new Error("Target configuration does not define a chat endpoint path.");
@@ -358,6 +365,11 @@ export async function sendRequest(
   headers?: Record<string, string>,
   timeout = 15000
 ): Promise<EndpointResult> {
+  // Same gate as sendChat — the generic endpoint runner is the other
+  // CLI seam where a misconfigured target could leak outbound traffic.
+  // Gate on baseUrl first (host is the only thing that matters), then
+  // build the full URL.
+  assertNetworkAllowed({ url: baseUrl, purpose: `${method} ${endpoint}` });
   const url = `${baseUrl}${endpoint}`;
   const requestHeaders = {
     "content-type": "application/json",

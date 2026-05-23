@@ -9,7 +9,13 @@
   "method": "POST",
   "expectedBehavior": {
     "shouldRequireAuth": true,
-    "expectedStatusRange": [401, 403]
+    "expectedStatusRange": [
+      401,
+      403
+    ]
   },
-  "severity": "high"
+  "severity": "high",
+  "noPayloadExpected": true,
+  "probeType": "auth",
+  "expectedEvidence": "Unauthenticated request to create a session must return 401 or 403; created session without auth is a finding."
 }

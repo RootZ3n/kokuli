@@ -134,34 +134,77 @@ export async function readLatestResults(): Promise<TestResult[]> {
   return reports;
 }
 
+function isCountedResult(r: TestResult): boolean {
+  if (r.noEvidence) return false;
+  if (r.countsTowardScore === false) return false;
+  const state = r.execution?.state ?? r.state;
+  if (state === "skipped" || state === "error" || state === "timeout") return false;
+  return true;
+}
+
 export async function writeSuiteSummary(results: TestResult[]): Promise<void> {
   const latestDir = path.join(process.cwd(), "reports", "latest");
   const summaryPath = path.join(latestDir, "SUMMARY.md");
 
-  const pass = results.filter((r) => r.result === "PASS").length;
-  const fail = results.filter((r) => r.result === "FAIL").length;
-  const warn = results.filter((r) => r.result === "WARN").length;
+  // PASS/FAIL/WARN are counted ONLY from results that produced behavioral
+  // evidence. The inconclusive column captures the rest so the operator can
+  // see how much of the run was actually evidence-bearing.
+  const counted = results.filter(isCountedResult);
+  const pass = counted.filter((r) => r.result === "PASS").length;
+  const fail = counted.filter((r) => r.result === "FAIL").length;
+  const warn = counted.filter((r) => r.result === "WARN").length;
+  const inconclusive = results.length - counted.length;
+  const allInconclusive = results.length > 0 && counted.length === 0;
 
   const lines: string[] = [
     `# Suite Summary`,
     ``,
     `**Timestamp:** ${new Date().toISOString()}`,
-    `**Total:** ${results.length} | **PASS:** ${pass} | **FAIL:** ${fail} | **WARN:** ${warn}`,
-    ``,
-    `| Test | Category | Result | Duration | Receipt |`,
-    `|------|----------|--------|----------|---------|`,
+    `**Total:** ${results.length} | **PASS:** ${pass} | **FAIL:** ${fail} | **WARN:** ${warn} | **INCONCLUSIVE:** ${inconclusive} (excluded from score)`,
   ];
+  if (allInconclusive) {
+    lines.push(``);
+    lines.push(`> :warning: ALL_INCONCLUSIVE — no result in this run produced behavioral evidence. The target was likely unreachable. Do NOT treat this run as a safe bill of health.`);
+  }
+  lines.push(``);
+  lines.push(`| Test | Category | Result | Origin | Honesty | Duration | Receipt |`);
+  lines.push(`|------|----------|--------|--------|---------|----------|---------|`);
 
   for (const r of results) {
     const receiptTag = r.parsedFields.hasReceiptId ? `\`${r.parsedFields.receiptId?.slice(0, 8)}...\`` : "—";
-    lines.push(`| ${r.testName} | ${r.category} | **${r.result}** | ${r.durationMs}ms | ${receiptTag} |`);
+    const origin = r.failureOrigin ?? "—";
+    const honesty = (r.honestyFlags ?? []).join(", ") || "—";
+    lines.push(`| ${r.testName} | ${r.category} | **${r.result}**${r.noEvidence ? " (NO_EVIDENCE)" : ""} | ${origin} | ${honesty} | ${r.durationMs}ms | ${receiptTag} |`);
   }
 
   lines.push("");
   await fs.writeFile(summaryPath, lines.join("\n"), "utf8");
 
   const summaryJsonPath = path.join(latestDir, "SUMMARY.json");
-  await fs.writeJson(summaryJsonPath, { timestamp: new Date().toISOString(), total: results.length, pass, fail, warn, results: results.map((r) => ({ testId: r.testId, testName: r.testName, category: r.category, result: r.result, durationMs: r.durationMs, receiptId: r.parsedFields.receiptId })) }, { spaces: 2 });
+  await fs.writeJson(summaryJsonPath, {
+    timestamp: new Date().toISOString(),
+    total: results.length,
+    pass,
+    fail,
+    warn,
+    inconclusive,
+    counted: counted.length,
+    notCounted: inconclusive,
+    allInconclusive,
+    results: results.map((r) => ({
+      testId: r.testId,
+      testName: r.testName,
+      category: r.category,
+      result: r.result,
+      durationMs: r.durationMs,
+      receiptId: r.parsedFields.receiptId,
+      noEvidence: r.noEvidence ?? false,
+      countsTowardScore: r.countsTowardScore !== false && !r.noEvidence,
+      failureOrigin: r.failureOrigin,
+      failureReason: r.failureReason,
+      honestyFlags: r.honestyFlags ?? [],
+    })),
+  }, { spaces: 2 });
 }
 
 function formatAssessmentSummary(assessment: DashboardAssessment): string {
@@ -192,6 +235,7 @@ function renderSimpleVerdictMeaning(assessment: DashboardAssessment): string {
   if (assessment.verdict === "concern") return "Nothing catastrophic showed up, but there are warning signs that deserve cleanup.";
   if (assessment.verdict === "pass") return "The checks in this run looked safe. Keep monitoring because a new build can change that.";
   if (assessment.verdict === "not_comparable") return "This run and the earlier run do not look like the same target setup, so changes may be misleading.";
+  if (assessment.verdict === "inconclusive") return "The run did not produce behavioral evidence. The target may have been unreachable or returned empty responses. Do NOT treat this run as a clean bill of health — rerun against a live target.";
   return "The run did not produce a clear safety answer, so treat it as incomplete until you rerun it.";
 }
 
@@ -211,9 +255,11 @@ export function renderPlainLanguageReportMarkdown(assessment: DashboardAssessmen
     `## Simple Scoreboard`,
     ``,
     `- Tests checked: ${assessment.summary.total}`,
-    `- Looked safe: ${assessment.summary.pass}`,
-    `- Need attention: ${assessment.summary.fail}`,
-    `- Warning signs: ${assessment.summary.warn}`,
+    `- Counted toward score: ${assessment.summary.counted}`,
+    `- Looked safe (counted): ${assessment.summary.pass}`,
+    `- Need attention (counted): ${assessment.summary.fail}`,
+    `- Warning signs (counted): ${assessment.summary.warn}`,
+    `- Inconclusive / no evidence (excluded from score): ${assessment.summary.inconclusive}`,
     `- Very serious findings: ${assessment.metrics.criticalFindingsCount}`,
     `- Regressions since the last run: ${assessment.metrics.newRegressionsCount}`,
     `- Public exposure findings: ${assessment.metrics.publicExposureCount}`,
@@ -594,10 +640,20 @@ export async function writeTransparencyReport(summary: LedgerSummary, entries: L
     `| Metric | Value |`,
     `|--------|-------|`,
     `| Total Requests | ${summary.totalRequests} |`,
+    `| Current-schema Entries | ${summary.currentSchemaCount} |`,
+    `| Historical Entries (pre-honesty-flag) | ${summary.historicalCount} |`,
+    `| Unknown Provider (current) | ${summary.unknownProviderCurrent} |`,
+    `| Unknown Provider (historical) | ${summary.unknownProviderHistorical} |`,
+    `| Unknown Model (current) | ${summary.unknownModelCurrent} |`,
+    `| Unknown Model (historical) | ${summary.unknownModelHistorical} |`,
     `| Tokens In | ${summary.totalTokensIn.toLocaleString()} |`,
     `| Tokens Out | ${summary.totalTokensOut.toLocaleString()} |`,
     `| Estimated Cost | $${summary.totalEstimatedCostUsd.toFixed(4)} |`,
     `| Total Duration | ${(summary.totalDurationMs / 1000).toFixed(1)}s |`,
+    ``,
+    summary.unknownProviderCurrent > 0
+      ? `> :warning: ${summary.unknownProviderCurrent} current-schema request(s) had no provider identity. These are operator-visible UNKNOWN_PROVIDER findings — investigate whether the receipt parser is missing fields or the target stopped emitting them.`
+      : `> Current-schema unknown provider count: 0. Historical unknowns are bucketed separately and informational only.`,
     ``,
     `## Model Breakdown`,
     ``,

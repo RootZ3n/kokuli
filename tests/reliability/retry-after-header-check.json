@@ -8,7 +8,6 @@
   "endpoint": "/chat",
   "method": "POST",
   "headers": {},
-  "steps": [],
   "expectedBehavior": {
     "shouldErrorSafely": true,
     "shouldNotExposeInternals": true

@@ -14,7 +14,6 @@ import { loadExecutionStore, updateSuiteExecutionState, updateTestExecutionState
 import { Zone, Creature, CurriculumModule } from "../learning/types";
 import { loadPlayerState, savePlayerState, xpToNextLevel } from "../learning/state";
 import { getArmoryStatus, killArmory, resetArmory, runArmory } from "./ops/armory";
-import { apiTokenMatches, requireLocalAccess } from "./access";
 import {
   runBridge,
   getAllowlist as getBridgeAllowlist,
@@ -46,8 +45,6 @@ const router = Router();
 // --- Input validation helpers ---
 
 type OpsErrorStatus = 400 | 403 | 409 | 500;
-
-export const opsTokenMatches = apiTokenMatches;
 
 function classifyOpsError(error: unknown): OpsErrorStatus {
   const message = error instanceof Error ? error.message : String(error);
@@ -691,7 +688,7 @@ router.post("/suite/:category", async (req: Request, res: Response) => {
 });
 
 // GET /api/reports/summary — latest suite summary
-router.get("/reports/summary", async (_req: Request, res: Response) => {
+router.get("/reports/summary", async (req: Request, res: Response) => {
   try {
     const summaryPath = path.join(process.cwd(), "reports", "latest", "SUMMARY.json");
     if (await fs.pathExists(summaryPath)) {
@@ -705,7 +702,8 @@ router.get("/reports/summary", async (_req: Request, res: Response) => {
   }
 });
 
-router.get("/dashboard", async (_req: Request, res: Response) => {
+// GET /api/dashboard — current assessment bundle
+router.get("/dashboard", async (req: Request, res: Response) => {
   try {
     const assessmentPath = path.join(process.cwd(), "reports", "latest", "ASSESSMENT.json");
     if (await fs.pathExists(assessmentPath)) {
@@ -726,7 +724,7 @@ router.get("/dashboard", async (_req: Request, res: Response) => {
 });
 
 // GET /api/reports/latest — list latest report files
-router.get("/reports/latest", async (_req: Request, res: Response) => {
+router.get("/reports/latest", async (req: Request, res: Response) => {
   try {
     const dir = path.join(process.cwd(), "reports", "latest");
     const files = (await fs.readdir(dir))
@@ -757,7 +755,6 @@ router.get("/reports/latest", async (_req: Request, res: Response) => {
 // ============================================================
 
 router.post("/ops/run", async (req: Request, res: Response) => {
-  if (!requireLocalAccess(req, res, "Ops route")) return;
   try {
     const result = await runArmory(req.body as {
       profile?: "quick_scan" | "break_me";
@@ -783,7 +780,6 @@ router.get("/ops/status", async (_req: Request, res: Response) => {
 });
 
 router.post("/ops/kill", async (_req: Request, res: Response) => {
-  if (!requireLocalAccess(_req, res, "Ops route")) return;
   try {
     res.json({ ok: true, status: await killArmory() });
   } catch (err) {
@@ -792,7 +788,6 @@ router.post("/ops/kill", async (_req: Request, res: Response) => {
 });
 
 router.post("/ops/reset", async (_req: Request, res: Response) => {
-  if (!requireLocalAccess(_req, res, "Ops route")) return;
   try {
     res.json({ ok: true, status: await resetArmory() });
   } catch (err) {

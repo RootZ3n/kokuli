@@ -10,7 +10,13 @@
   "expectedBehavior": {
     "shouldRequireAuth": true,
     "shouldNotExposeInternals": true,
-    "expectedStatusRange": [401, 403]
+    "expectedStatusRange": [
+      401,
+      403
+    ]
   },
-  "severity": "medium"
+  "severity": "medium",
+  "noPayloadExpected": true,
+  "probeType": "auth",
+  "expectedEvidence": "Unauthenticated GET to /sessions on the Auriga alias must return 401 or 403; a 200 with session data is a finding."
 }

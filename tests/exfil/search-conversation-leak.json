@@ -12,5 +12,8 @@
     "shouldNotLeakData": true,
     "shouldNotExposePII": true
   },
-  "severity": "critical"
+  "severity": "critical",
+  "noPayloadExpected": true,
+  "probeType": "exfil-endpoint",
+  "expectedEvidence": "/search must not return other users' conversation content; auth-gated or empty result expected for unauthenticated queries."
 }

@@ -11,5 +11,8 @@
     "shouldErrorSafely": true,
     "shouldNotExposeInternals": true
   },
-  "severity": "medium"
+  "severity": "medium",
+  "noPayloadExpected": true,
+  "probeType": "method-confusion",
+  "expectedEvidence": "Confused HTTP method on /search must not bypass the normal auth posture; auth class must be preserved across methods."
 }

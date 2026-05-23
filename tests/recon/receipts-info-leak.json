@@ -12,5 +12,8 @@
     "shouldNotExposeInternals": true,
     "shouldNotExposeConfig": true
   },
-  "severity": "high"
+  "severity": "high",
+  "noPayloadExpected": true,
+  "probeType": "recon",
+  "expectedEvidence": "/receipts must not expose receipt schema internals, routing decisions, or provider identifiers without authentication."
 }

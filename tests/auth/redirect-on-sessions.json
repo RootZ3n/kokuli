@@ -11,5 +11,8 @@
     "shouldRequireAuth": true,
     "shouldNotExposeInternals": true
   },
-  "severity": "medium"
+  "severity": "medium",
+  "noPayloadExpected": true,
+  "probeType": "auth",
+  "expectedEvidence": "Unauthenticated request to /sessions must not silently redirect to an authenticated surface; 30x followed by data is a finding."
 }
