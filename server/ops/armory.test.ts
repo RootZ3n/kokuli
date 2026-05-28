@@ -9,7 +9,7 @@ import { __resetToolRunnerForTests } from "./toolRunner";
 
 async function withTempWorkspace<T>(fn: () => Promise<T>): Promise<T> {
   const originalCwd = process.cwd();
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "verum-armory-"));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "kokuli-armory-"));
   await fs.ensureDir(path.join(dir, "reports", "latest"));
   process.chdir(dir);
   try {
@@ -71,7 +71,7 @@ test("guardrails allow local targets and block public targets unless advanced mo
 
 test("live network ops are blocked by default while dry-run still works", async () => {
   await withTempWorkspace(async () => {
-    await withEnv({ VERUM_ENABLE_NETWORK_OPS: undefined }, async () => {
+    await withEnv({ KOKULI_ENABLE_NETWORK_OPS: undefined }, async () => {
       __resetArmoryForTests();
       __resetToolRunnerForTests();
 
@@ -98,7 +98,7 @@ test("live network ops are blocked by default while dry-run still works", async 
 
 test("live network ops require env flag and ownership confirmation", async () => {
   await withTempWorkspace(async () => {
-    await withEnv({ VERUM_ENABLE_NETWORK_OPS: "1" }, async () => {
+    await withEnv({ KOKULI_ENABLE_NETWORK_OPS: "1" }, async () => {
       __resetArmoryForTests();
       __resetToolRunnerForTests();
 
@@ -144,7 +144,7 @@ test("live network ops require env flag and ownership confirmation", async () =>
 
 test("live network ops block public targets even in advanced mode", async () => {
   await withTempWorkspace(async () => {
-    await withEnv({ VERUM_ENABLE_NETWORK_OPS: "1" }, async () => {
+    await withEnv({ KOKULI_ENABLE_NETWORK_OPS: "1" }, async () => {
       __resetArmoryForTests();
       __resetToolRunnerForTests();
 
@@ -164,7 +164,7 @@ test("live network ops block public targets even in advanced mode", async () => 
 
 test("live network ops allow localhost and private lab targets only when enabled", async () => {
   await withTempWorkspace(async () => {
-    await withEnv({ VERUM_ENABLE_NETWORK_OPS: "1" }, async () => {
+    await withEnv({ KOKULI_ENABLE_NETWORK_OPS: "1" }, async () => {
       __resetArmoryForTests();
       __resetToolRunnerForTests();
 
@@ -211,7 +211,7 @@ test("live network ops allow localhost and private lab targets only when enabled
 
 test("live receipts write redacted summarized evidence only", async () => {
   await withTempWorkspace(async () => {
-    await withEnv({ VERUM_ENABLE_NETWORK_OPS: "1" }, async () => {
+    await withEnv({ KOKULI_ENABLE_NETWORK_OPS: "1" }, async () => {
       __resetArmoryForTests();
       __resetToolRunnerForTests();
 
@@ -300,7 +300,7 @@ test("dry-run returns simulated guided steps and never launches a subprocess", a
 
 test("missing nmap returns a structured beginner-facing error and dry-run still works", async () => {
   await withTempWorkspace(async () => {
-    await withEnv({ VERUM_ENABLE_NETWORK_OPS: "1" }, async () => {
+    await withEnv({ KOKULI_ENABLE_NETWORK_OPS: "1" }, async () => {
       __resetArmoryForTests();
       __resetToolRunnerForTests();
 
@@ -337,7 +337,7 @@ test("missing nmap returns a structured beginner-facing error and dry-run still 
 
 test("kill switch cancels a running task, blocks new runs until reset, and status transitions are explicit", async () => {
   await withTempWorkspace(async () => {
-    await withEnv({ VERUM_ENABLE_NETWORK_OPS: "1" }, async () => {
+    await withEnv({ KOKULI_ENABLE_NETWORK_OPS: "1" }, async () => {
       __resetArmoryForTests();
       __resetToolRunnerForTests();
 

@@ -11,7 +11,7 @@ import { validateTest, validateTestPack } from "./validation";
 import type { TestCase } from "./types";
 
 function tmpRoot(): string {
-  return fs.mkdtempSync(path.join(os.tmpdir(), "verum-validation-"));
+  return fs.mkdtempSync(path.join(os.tmpdir(), "kokuli-validation-"));
 }
 
 async function writeTest(root: string, category: string, file: string, body: Partial<TestCase>): Promise<string> {

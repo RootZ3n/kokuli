@@ -1,6 +1,6 @@
 /**
- * Verum — Ledger
- * Append-only record of all Verum Bridge requests and their outcomes.
+ * Kokuli — Ledger
+ * Append-only record of all Kokuli Bridge requests and their outcomes.
  *
  * Retention policy:
  * - LEDGER_MAX_ENTRIES (default 10 000): cap the ledger; oldest entries pruned first

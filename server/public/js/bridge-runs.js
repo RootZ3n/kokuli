@@ -246,7 +246,7 @@
         attachRowHandlers(doc);
       })
       .catch(function () {
-        if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="br-error">Could not load bridge runs. Make sure Verum is running and the API is reachable.</td></tr>';
+        if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="br-error">Could not load bridge runs. Make sure Kokuli is running and the API is reachable.</td></tr>';
       });
   }
 

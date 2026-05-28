@@ -9,8 +9,11 @@ import {
 
 // Capture and restore env so tests can set/unset gate flags freely.
 const SNAPSHOT_KEYS = [
+  "KOKULI_ENABLE_NETWORK_OPS",
   "VERUM_ENABLE_NETWORK_OPS",
+  "KOKULI_OWNERSHIP_CONFIRMED",
   "VERUM_OWNERSHIP_CONFIRMED",
+  "KOKULI_NETWORK_BYPASS",
   "VERUM_NETWORK_BYPASS",
 ];
 function snapshotEnv(): Record<string, string | undefined> {
@@ -93,22 +96,22 @@ test("assertNetworkAllowed: public target refused without BOTH env flags", () =>
       () => assertNetworkAllowed({ url: "https://api.openai.com/v1/chat" }),
       (err: unknown) =>
         err instanceof NetworkGateError &&
-        /VERUM_ENABLE_NETWORK_OPS=1/.test(err.message) &&
-        /VERUM_OWNERSHIP_CONFIRMED=1/.test(err.message),
+        /KOKULI_ENABLE_NETWORK_OPS=1/.test(err.message) &&
+        /KOKULI_OWNERSHIP_CONFIRMED=1/.test(err.message),
     );
 
-    // Only one flag set: still refused.
-    process.env.VERUM_ENABLE_NETWORK_OPS = "1";
+    // Only one flag set (KOKULI_ variant): still refused.
+    process.env.KOKULI_ENABLE_NETWORK_OPS = "1";
     assert.throws(
       () => assertNetworkAllowed({ url: "https://api.openai.com/v1/chat" }),
       (err: unknown) =>
         err instanceof NetworkGateError &&
-        /VERUM_OWNERSHIP_CONFIRMED=1/.test(err.message) &&
-        !/VERUM_ENABLE_NETWORK_OPS=1/.test(err.message),
+        /KOKULI_OWNERSHIP_CONFIRMED=1/.test(err.message) &&
+        !/KOKULI_ENABLE_NETWORK_OPS=1/.test(err.message),
     );
 
     // Both flags set: passes.
-    process.env.VERUM_OWNERSHIP_CONFIRMED = "1";
+    process.env.KOKULI_OWNERSHIP_CONFIRMED = "1";
     assertNetworkAllowed({ url: "https://api.openai.com/v1/chat" });
   } finally {
     restoreEnv(snap);
@@ -119,18 +122,18 @@ test("assertNetworkAllowed: env var typo still refuses (strict truthy values onl
   const snap = snapshotEnv();
   try {
     clearGateEnv();
-    process.env.VERUM_ENABLE_NETWORK_OPS = "tru"; // typo
-    process.env.VERUM_OWNERSHIP_CONFIRMED = "1";
+    process.env.KOKULI_ENABLE_NETWORK_OPS = "tru"; // typo
+    process.env.KOKULI_OWNERSHIP_CONFIRMED = "1";
     assert.throws(
       () => assertNetworkAllowed({ url: "https://api.openai.com/" }),
       NetworkGateError,
     );
-    process.env.VERUM_ENABLE_NETWORK_OPS = "0";
+    process.env.KOKULI_ENABLE_NETWORK_OPS = "0";
     assert.throws(
       () => assertNetworkAllowed({ url: "https://api.openai.com/" }),
       NetworkGateError,
     );
-    process.env.VERUM_ENABLE_NETWORK_OPS = "";
+    process.env.KOKULI_ENABLE_NETWORK_OPS = "";
     assert.throws(
       () => assertNetworkAllowed({ url: "https://api.openai.com/" }),
       NetworkGateError,
@@ -203,13 +206,13 @@ test("client.sendChat refuses public targets without ever calling axios", async 
   }
 });
 
-test("VERUM_NETWORK_BYPASS only honored under NODE_ENV=test", () => {
+test("KOKULI_NETWORK_BYPASS only honored under NODE_ENV=test", () => {
   const snap = snapshotEnv();
   const origNodeEnv = process.env.NODE_ENV;
   try {
     clearGateEnv();
     process.env.NODE_ENV = "production";
-    process.env.VERUM_NETWORK_BYPASS = "1";
+    process.env.KOKULI_NETWORK_BYPASS = "1";
     assert.throws(
       () => assertNetworkAllowed({ url: "https://api.openai.com/" }),
       NetworkGateError,

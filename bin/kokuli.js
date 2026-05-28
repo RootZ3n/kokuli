@@ -1,12 +1,13 @@
 #!/usr/bin/env node
-// Verum CLI entry point (compatibility alias for kokuli)
-// Prefer: kokuli (bin/kokuli.js)
+// Kokuli CLI entry point
+// Used for global npm installs: npm install -g kokuli
 
 "use strict";
 
 const path = require("path");
 const fs = require("fs");
 
+// Set working directory to the package root (where package.json lives)
 const packageDir = path.resolve(__dirname, "..");
 process.chdir(packageDir);
 

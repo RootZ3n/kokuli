@@ -1,4 +1,4 @@
-(function initVerumTargetForm(globalScope) {
+(function initKokuliTargetForm(globalScope) {
   "use strict";
 
   function normalizeTargetPayload(raw, options) {
@@ -55,5 +55,6 @@
     module.exports = api;
   }
 
+  globalScope.KokuliTargetForm = api;
   globalScope.VerumTargetForm = api;
 })(typeof window !== "undefined" ? window : globalThis);

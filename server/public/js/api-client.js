@@ -1,4 +1,4 @@
-(function initVerumApi(globalScope) {
+(function initKokuliApi(globalScope) {
   "use strict";
 
   function parseBodyText(rawText) {
@@ -78,5 +78,6 @@
     module.exports = apiClient;
   }
 
+  globalScope.KokuliApi = apiClient;
   globalScope.VerumApi = apiClient;
 })(typeof window !== "undefined" ? window : globalThis);

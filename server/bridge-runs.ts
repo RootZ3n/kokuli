@@ -258,8 +258,8 @@ export function applyFilters(rows: BridgeRunRow[], filters: BridgeRunListFilters
 
 // ── INDEX I/O ──────────────────────────────────────────────────────────────
 
-export async function readBridgeIndex(verumRoot: string): Promise<{ rows: BridgeRunRow[]; malformedCount: number; empty: boolean }> {
-  const filePath = path.join(verumRoot, BRIDGE_INDEX_FILE);
+export async function readBridgeIndex(kokuliRoot: string): Promise<{ rows: BridgeRunRow[]; malformedCount: number; empty: boolean }> {
+  const filePath = path.join(kokuliRoot, BRIDGE_INDEX_FILE);
   if (!(await fs.pathExists(filePath))) {
     return { rows: [], malformedCount: 0, empty: true };
   }
@@ -281,11 +281,11 @@ export async function readBridgeIndex(verumRoot: string): Promise<{ rows: Bridge
 }
 
 export async function listBridgeRuns(
-  verumRoot: string,
+  kokuliRoot: string,
   filters: BridgeRunListFilters,
   now: Date = new Date(),
 ): Promise<BridgeRunListResult> {
-  const { rows, malformedCount, empty } = await readBridgeIndex(verumRoot);
+  const { rows, malformedCount, empty } = await readBridgeIndex(kokuliRoot);
   const filtered = applyFilters(rows, filters, now);
   return { rows: filtered, malformedCount, totalRows: rows.length, empty };
 }
@@ -297,9 +297,9 @@ export async function listBridgeRuns(
  * defending against path traversal. Returns null if the resolved path escapes
  * the bridge root.
  */
-function resolveArchiveDir(verumRoot: string, reportDirRelative: string): string | null {
-  const bridgeRoot = path.resolve(verumRoot, "reports", "bridge");
-  const candidate = path.resolve(verumRoot, reportDirRelative);
+function resolveArchiveDir(kokuliRoot: string, reportDirRelative: string): string | null {
+  const bridgeRoot = path.resolve(kokuliRoot, "reports", "bridge");
+  const candidate = path.resolve(kokuliRoot, reportDirRelative);
   const rel = path.relative(bridgeRoot, candidate);
   if (rel.startsWith("..") || path.isAbsolute(rel)) return null;
   return candidate;
@@ -390,18 +390,18 @@ export function sanitizeAssessmentSummary(raw: unknown): SanitizedAssessmentSumm
   return out;
 }
 
-export async function readBridgeRunDetail(verumRoot: string, runId: string): Promise<BridgeRunDetail | null> {
+export async function readBridgeRunDetail(kokuliRoot: string, runId: string): Promise<BridgeRunDetail | null> {
   if (typeof runId !== "string" || !RUN_ID_PATTERN.test(runId)) return null;
 
   // Look up the row from INDEX so we trust its reportDir over any caller input.
-  const { rows } = await readBridgeIndex(verumRoot);
+  const { rows } = await readBridgeIndex(kokuliRoot);
   const row = rows.find((r) => r.runId === runId) ?? null;
   // If runId not in index, we can still try the date-dir scan as a fallback —
   // but only by re-deriving the path from the runId's date prefix and the runId.
   // To keep this simple and audit-friendly we require the runId to be in INDEX.
   if (!row) return null;
 
-  const archiveDir = resolveArchiveDir(verumRoot, row.reportDir);
+  const archiveDir = resolveArchiveDir(kokuliRoot, row.reportDir);
   const files = {
     bridgeResult: false,
     assessment: false,

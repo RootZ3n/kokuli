@@ -22,7 +22,7 @@ temp/
 coverage/
 .nyc_output/
 
-# Verum runtime evidence (generated, not source)
+# Kokuli runtime evidence (generated, not source)
 reports/latest/*
 !reports/latest/.gitkeep
 reports/archive/*

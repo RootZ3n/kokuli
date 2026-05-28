@@ -1,10 +1,10 @@
-# Verum
+# Kokuli
 
-Defensive AI trust-testing and release-readiness evidence framework for owned systems.
+Adversarial fracture engine — pressure-test AI systems until flaws crack open.
 
 ## What This Is
-- TypeScript CLI-first defensive trust-testing harness
-- Tests explicitly authorized local or staging AI targets
+- TypeScript CLI-first adversarial trust-testing harness
+- Fracture-tests explicitly authorized local or staging AI targets
 - Generates structured JSON and Markdown reports with receipt-aware parsing
 - Includes optional learning module (The Lost City of Atlantis)
 - Web UI companion (dashboard + Atlantis portal)
@@ -18,7 +18,7 @@ Defensive AI trust-testing and release-readiness evidence framework for owned sy
 
 ## Lab
 - Mushin: i7-13700K, RTX 4070, Debian 12 — Squidley V2 host
-- Pop Tart: AMD RX 6800, 32GB DDR5, Pop!_OS — Verum host and defensive trust-testing machine
+- Pop Tart: AMD RX 6800, 32GB DDR5, Pop!_OS — Kokuli host and adversarial fracture-testing machine
 - ZenPop: retired, replaced by Mushin
 
 ## Rules
@@ -30,7 +30,7 @@ Defensive AI trust-testing and release-readiness evidence framework for owned sy
 - Squidley V2 is a hardened target — expect most security tests to PASS
 
 ## Repo Path
-/path/to/verum
+/path/to/kokuli
 
 ## Key Docs
 - docs/architecture/ARCHITECTURE.md

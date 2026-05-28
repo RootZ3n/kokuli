@@ -1,21 +1,21 @@
-# Runbook — tracing a Verum Bridge run
+# Runbook — tracing a Kokuli Bridge run
 
 A 60-second guide for operators on Mushin. **Read-only**, safe to run on a live system.
 
 ## Prerequisites
 
-- You're on Mushin or another machine with the Verum repo at `/path/to/verum`.
+- You're on Mushin or another machine with the Kokuli repo at `/path/to/kokuli`.
 - You have a `runId` (from a Ricky/Squidley/Ptah breadcrumb, a preflight envelope, the dashboard, or `INDEX.jsonl`).
-- For the dashboard step, the Verum web server is running:
+- For the dashboard step, the Kokuli web server is running:
 
   ```bash
-  cd /path/to/verum && VERUM_PORT=3030 npm run web
+  cd /path/to/kokuli && KOKULI_PORT=3030 npm run web
   ```
 
 ## 1 — Find recent runIds
 
 ```bash
-cd /path/to/verum
+cd /path/to/kokuli
 
 # Last 20 runs
 tail -20 reports/bridge/INDEX.jsonl | jq -r '.runId'
@@ -31,13 +31,13 @@ jq -c 'select(.status != "passed" and .startedAt > "'"$(date -u -d '1 day ago' +
 ## 2 — Trace one runId
 
 ```bash
-cd /path/to/verum
+cd /path/to/kokuli
 node tools/verum-trace.mjs <runId>
 ```
 
 Output sections:
 
-- **Verum** — index row + reportDir/reportPath + file availability
+- **Kokuli** — index row + reportDir/reportPath + file availability
 - **Ptah** — count of reflex breadcrumbs matching this runId
 - **Squidley** — count of follow-up breadcrumbs matching this runId
 - **Summary** — totalTests / passed / failed / findings / critical / high
@@ -67,9 +67,9 @@ Filter by caller / status / mode / since / limit. Click a row for the same data 
 
 ## What the trace tool does NOT do
 
-- **Does not execute a Verum bridge run.** It only reads.
+- **Does not execute a Kokuli bridge run.** It only reads.
 - **Does not write any file.** Pure stdout/stderr.
-- **Does not call Verum's CLI or HTTP execute endpoints.**
+- **Does not call Kokuli's CLI or HTTP execute endpoints.**
 - **Does not expose forbidden fields.** `stdoutTail`, `stderrTail`, `command`, raw `reason` text, env vars, auth tokens, raw user prompts, raw shell commands are all projected out by explicit per-source whitelists.
 
 ## Env / root caveats
@@ -87,7 +87,7 @@ PTAH_DATA_DIR=/path/used/by/ptah \
 
 # Or pass explicit roots
 node tools/verum-trace.mjs <runId> \
-    --verum-root /path/to/verum \
+    --verum-root /path/to/kokuli \
     --squidley-root /path/to/squidley \
     --ptah-root /path/to/ptah
 ```
@@ -96,11 +96,11 @@ node tools/verum-trace.mjs <runId> \
 
 | Source | Path | Schema |
 |---|---|---|
-| Verum index | `/path/to/verum/reports/bridge/INDEX.jsonl` | append-only JSONL, one per run |
-| Verum archive | `/path/to/verum/reports/bridge/<YYYY-MM-DD>/<runId>/` | bundle of `BRIDGE_RESULT.json` + curated `reports/latest/*` snapshot |
+| Kokuli index | `/path/to/kokuli/reports/bridge/INDEX.jsonl` | append-only JSONL, one per run |
+| Kokuli archive | `/path/to/kokuli/reports/bridge/<YYYY-MM-DD>/<runId>/` | bundle of `BRIDGE_RESULT.json` + curated `reports/latest/*` snapshot |
 | Squidley breadcrumbs | `/path/to/squidley/state/verum/followups-<DATE>.jsonl` | append-only JSONL, `type: "verum_followup"` |
 | Ptah breadcrumbs | `/path/to/ptah/data/verum/reflex-<DATE>.jsonl` | append-only JSONL, `type: "verum_reflex"` |
-| Ricky | n/a today | source of truth is the Verum index |
+| Ricky | n/a today | source of truth is the Kokuli index |
 
 ## When to use what
 

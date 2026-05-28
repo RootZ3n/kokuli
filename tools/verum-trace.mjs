@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// verum-trace — read-only cross-correlation tool for one Verum Bridge runId.
+// kokuli-trace — read-only cross-correlation tool for one Kokuli Bridge runId.
 //
 // Joins three independently-written audit trails:
-//   1. Verum:    reports/bridge/INDEX.jsonl  +  reports/bridge/<date>/<runId>/
+//   1. Kokuli:   reports/bridge/INDEX.jsonl  +  reports/bridge/<date>/<runId>/
 //   2. Squidley: <state>/verum/followups-<DATE>.jsonl  (verum_followup breadcrumbs)
 //   3. Ptah:     <data>/verum/reflex-<DATE>.jsonl       (verum_reflex breadcrumbs)
 //
@@ -13,7 +13,7 @@
 //   - Validates runId before any I/O.
 //
 // CLI:   node tools/verum-trace.mjs <runId> [--json]
-//                                          [--verum-root <path>]
+//                                          [--kokuli-root <path>]
 //                                          [--squidley-root <path>]
 //                                          [--ptah-root <path>]
 //                                          [--since 7d]
@@ -91,7 +91,7 @@ function truncate(s, max = 200) {
   return s.slice(0, max - 1) + "…";
 }
 
-export function projectVerumIndexRow(raw) {
+export function projectKokuliIndexRow(raw) {
   if (!raw || typeof raw !== "object") return null;
   if (!safeStr(raw.runId) || !RUN_ID_RE.test(raw.runId)) return null;
   return {
@@ -261,27 +261,27 @@ async function listDatedFiles(dir, prefix) {
 
 // ─── Source readers ───────────────────────────────────────────────────────
 
-export async function findVerumIndexRow(verumRoot, runId) {
-  const indexPath = path.join(verumRoot, "reports", "bridge", "INDEX.jsonl");
+export async function findKokuliIndexRow(kokuliRoot, runId) {
+  const indexPath = path.join(kokuliRoot, "reports", "bridge", "INDEX.jsonl");
   if (!existsSync(indexPath)) return { row: null, malformed: 0, indexExists: false };
   const { parsed, malformed } = await readJsonlSafely(indexPath);
   for (const obj of parsed) {
     if (obj && obj.runId === runId) {
-      const row = projectVerumIndexRow(obj);
+      const row = projectKokuliIndexRow(obj);
       if (row) return { row, malformed, indexExists: true };
     }
   }
   return { row: null, malformed, indexExists: true };
 }
 
-export async function checkArchiveFiles(verumRoot, indexRow) {
+export async function checkArchiveFiles(kokuliRoot, indexRow) {
   if (!indexRow || !indexRow.reportDir) {
     return { reportDirExists: false, bridgeResultExists: false, assessmentExists: false, bridgeResult: null, assessmentSummary: null };
   }
-  // reportDir is stored relative in the INDEX. Resolve under verumRoot.
-  const absReportDir = path.resolve(verumRoot, indexRow.reportDir);
+  // reportDir is stored relative in the INDEX. Resolve under kokuliRoot.
+  const absReportDir = path.resolve(kokuliRoot, indexRow.reportDir);
   // Defense: re-check that the resolved path is inside reports/bridge.
-  const bridgeRoot = path.resolve(verumRoot, "reports", "bridge");
+  const bridgeRoot = path.resolve(kokuliRoot, "reports", "bridge");
   if (path.relative(bridgeRoot, absReportDir).startsWith("..")) {
     return { reportDirExists: false, bridgeResultExists: false, assessmentExists: false, bridgeResult: null, assessmentSummary: null };
   }
@@ -353,7 +353,7 @@ export async function findPtahBreadcrumbs(ptahRoot, runId, opts = {}) {
 
 // ─── Orchestrator ─────────────────────────────────────────────────────────
 
-export async function traceRun({ runId, verumRoot, squidleyRoot, ptahRoot, since, limit, now }) {
+export async function traceRun({ runId, kokuliRoot, squidleyRoot, ptahRoot, since, limit, now }) {
   const v = validateRunId(runId);
   if (!v.ok) {
     return { ok: false, error: v.error, runId: typeof runId === "string" ? runId.slice(0, 32) : "" };
@@ -362,8 +362,8 @@ export async function traceRun({ runId, verumRoot, squidleyRoot, ptahRoot, since
   const sinceIso = parseSince(since, now ?? new Date());
   const lim = clampLimit(limit);
 
-  const { row, malformed: indexMalformed, indexExists } = await findVerumIndexRow(verumRoot, runId);
-  const archive = await checkArchiveFiles(verumRoot, row);
+  const { row, malformed: indexMalformed, indexExists } = await findKokuliIndexRow(kokuliRoot, runId);
+  const archive = await checkArchiveFiles(kokuliRoot, row);
   const sq = await findSquidleyBreadcrumbs(squidleyRoot, runId, { sinceIso, limit: lim });
   const pt = await findPtahBreadcrumbs(ptahRoot, runId, { sinceIso, limit: lim });
 
@@ -394,15 +394,15 @@ export async function traceRun({ runId, verumRoot, squidleyRoot, ptahRoot, since
 export function formatHuman(trace) {
   const lines = [];
   if (!trace.ok) {
-    lines.push(`Verum Trace: invalid runId`);
+    lines.push(`Kokuli Trace: invalid runId`);
     lines.push(`  error: ${trace.error}`);
     return lines.join("\n");
   }
-  lines.push(`Verum Trace: ${trace.runId}`);
+  lines.push(`Kokuli Trace: ${trace.runId}`);
   lines.push("");
-  lines.push("Verum:");
+  lines.push("Kokuli:");
   if (!trace.verum.indexExists) {
-    lines.push("  (reports/bridge/INDEX.jsonl missing — Verum bridge has not run yet)");
+    lines.push("  (reports/bridge/INDEX.jsonl missing — Kokuli bridge has not run yet)");
   } else if (!trace.verum.row) {
     lines.push("  (no INDEX.jsonl row matches this runId)");
   } else {
@@ -447,7 +447,7 @@ export function formatHuman(trace) {
       (latest.patternSignature ? ` pattern=${latest.patternSignature}`        : ""));
   }
 
-  // Summary roll-up — prefer Verum row summary, fall back to bridge result.
+  // Summary roll-up — prefer Kokuli row summary, fall back to bridge result.
   const summary = trace.verum.row?.summary ?? trace.verum.bridgeResult?.summary;
   if (summary) {
     lines.push("");
@@ -470,7 +470,7 @@ function parseArgv(argv) {
   const out = {
     runId: undefined,
     json: false,
-    verumRoot: undefined,
+    kokuliRoot: undefined,
     squidleyRoot: undefined,
     ptahRoot: undefined,
     since: undefined,
@@ -483,7 +483,7 @@ function parseArgv(argv) {
     if (a === "--help" || a === "-h") { out.help = true; continue; }
     if (a === "--json")               { out.json = true; continue; }
     if (a === "--")                   { continue; }
-    if (a === "--verum-root"    || a === "--squidley-root" || a === "--ptah-root" ||
+    if (a === "--kokuli-root"    || a === "--squidley-root" || a === "--ptah-root" ||
         a === "--since"         || a === "--limit") {
       const value = argv[i + 1];
       if (value === undefined || value.startsWith("--")) {
@@ -491,7 +491,7 @@ function parseArgv(argv) {
         return out;
       }
       i++;
-      if (a === "--verum-root")    out.verumRoot    = value;
+      if (a === "--kokuli-root")    out.kokuliRoot    = value;
       if (a === "--squidley-root") out.squidleyRoot = value;
       if (a === "--ptah-root")     out.ptahRoot     = value;
       if (a === "--since")         out.since        = value;
@@ -512,14 +512,14 @@ function parseArgv(argv) {
   return out;
 }
 
-const HELP = `verum-trace — read-only cross-correlation for one Verum Bridge runId.
+const HELP = `kokuli-trace — read-only cross-correlation for one Kokuli Bridge runId.
 
 Usage:
   node tools/verum-trace.mjs <runId> [flags]
 
 Flags:
   --json                   Output sanitized JSON only.
-  --verum-root <path>      Override Verum repo root (default: cwd / /mnt/ai/Verum).
+  --kokuli-root <path>      Override Kokuli repo root (default: cwd / /mnt/ai/Verum).
   --squidley-root <path>   Override Squidley root (default: /mnt/ai/squidley-v2).
   --ptah-root <path>       Override Ptah root (default: /mnt/ai/ptah).
   --since <1d|12h|30m|ISO> Drop breadcrumbs with startedAt before threshold.
@@ -532,7 +532,7 @@ Exit codes:
 
 function defaultRoots() {
   return {
-    verumRoot:    process.env.VERUM_ROOT    ?? process.cwd(),
+    kokuliRoot:    process.env.KOKULI_ROOT   ?? process.env.VERUM_ROOT ?? process.cwd(),
     squidleyRoot: process.env.SQUIDLEY_ROOT ?? "/mnt/ai/squidley-v2",
     ptahRoot:     process.env.PTAH_ROOT     ?? "/mnt/ai/ptah",
   };
@@ -558,7 +558,7 @@ export async function main(argv) {
   const roots = defaultRoots();
   const trace = await traceRun({
     runId: opts.runId,
-    verumRoot:    opts.verumRoot    ?? roots.verumRoot,
+    kokuliRoot:    opts.kokuliRoot    ?? roots.kokuliRoot,
     squidleyRoot: opts.squidleyRoot ?? roots.squidleyRoot,
     ptahRoot:     opts.ptahRoot     ?? roots.ptahRoot,
     since:        opts.since,
@@ -588,7 +588,7 @@ if (isMain) {
   main(process.argv.slice(2)).then(
     (code) => process.exit(code),
     (err) => {
-      process.stderr.write(`[verum-trace] fatal: ${err instanceof Error ? err.message : String(err)}\n`);
+      process.stderr.write(`[kokuli-trace] fatal: ${err instanceof Error ? err.message : String(err)}\n`);
       process.exit(1);
     },
   );

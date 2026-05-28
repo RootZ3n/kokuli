@@ -151,7 +151,7 @@ let currentRunContext: ActiveArmoryRunContext | null = null;
 let lastRun: ArmoryRunResult | null = null;
 
 export function isNetworkOpsEnabled(): boolean {
-  return process.env.VERUM_ENABLE_NETWORK_OPS === "1";
+  return (process.env.KOKULI_ENABLE_NETWORK_OPS ?? process.env.VERUM_ENABLE_NETWORK_OPS) === "1";
 }
 
 function wantsDryRun(request: ArmoryRunRequest): boolean {
@@ -160,7 +160,7 @@ function wantsDryRun(request: ArmoryRunRequest): boolean {
 
 function assertLiveNetworkOpsAllowed(request: ArmoryRunRequest, target: ArmoryTarget): void {
   if (!isNetworkOpsEnabled()) {
-    throw new Error("Live network operations are disabled. Set VERUM_ENABLE_NETWORK_OPS=1 to enable live localhost/private-lab checks.");
+    throw new Error("Live network operations are disabled. Set KOKULI_ENABLE_NETWORK_OPS=1 (or VERUM_ENABLE_NETWORK_OPS=1) to enable live localhost/private-lab checks.");
   }
   if (request.confirmedOwnedTarget !== true) {
     throw new Error("Live network operations require confirmedOwnedTarget:true.");

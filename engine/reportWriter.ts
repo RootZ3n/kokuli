@@ -241,7 +241,7 @@ function renderSimpleVerdictMeaning(assessment: DashboardAssessment): string {
 
 export function renderPlainLanguageReportMarkdown(assessment: DashboardAssessment): string {
   const lines = [
-    `# Verum Plain Language Report`,
+    `# Kokuli Fracture Report`,
     ``,
     `This report explains the latest scan in simple language.`,
     ``,
@@ -303,9 +303,9 @@ export function renderPlainLanguageReportMarkdown(assessment: DashboardAssessmen
 
 export function renderAssistantShareMarkdown(assessment: DashboardAssessment): string {
   const lines = [
-    `# Verum AI Share Package`,
+    `# Kokuli AI Share Package`,
     ``,
-    `Paste this package into Codex, ChatGPT, or Claude if you want help understanding or fixing the latest Verum run.`,
+    `Paste this package into Codex, ChatGPT, or Claude if you want help understanding or fixing the latest Kokuli run.`,
     ``,
     `## Ask`,
     ``,
@@ -348,7 +348,7 @@ export function renderAssistantShareMarkdown(assessment: DashboardAssessment): s
 function renderExecutiveSummaryMarkdown(assessment: DashboardAssessment): string {
   const operator = assessment.operatorSummary;
   const lines = [
-    `# Verum Executive Summary`,
+    `# Kokuli Executive Summary`,
     ``,
     formatAssessmentSummary(assessment),
     ``,
@@ -390,7 +390,7 @@ function renderExecutiveSummaryMarkdown(assessment: DashboardAssessment): string
 
 function renderTechnicalFindingsMarkdown(assessment: DashboardAssessment): string {
   const lines = [
-    `# Verum Technical Findings`,
+    `# Kokuli Technical Findings`,
     ``,
     formatAssessmentSummary(assessment),
     ``,
@@ -435,7 +435,7 @@ function renderTechnicalFindingsMarkdown(assessment: DashboardAssessment): strin
 
 function renderEvidenceAppendixMarkdown(assessment: DashboardAssessment): string {
   const lines = [
-    `# Verum Evidence Appendix`,
+    `# Kokuli Evidence Appendix`,
     ``,
     formatAssessmentSummary(assessment),
     ``,
@@ -479,7 +479,7 @@ function renderEvidenceAppendixMarkdown(assessment: DashboardAssessment): string
 
 function renderRemediationChecklistMarkdown(assessment: DashboardAssessment): string {
   const lines = [
-    `# Verum Remediation Checklist`,
+    `# Kokuli Remediation Checklist`,
     ``,
     formatAssessmentSummary(assessment),
     ``,
@@ -502,7 +502,7 @@ function renderRemediationChecklistMarkdown(assessment: DashboardAssessment): st
 
 function renderRetestComparisonMarkdown(assessment: DashboardAssessment): string {
   const lines = [
-    `# Verum Retest Comparison`,
+    `# Kokuli Retest Comparison`,
     ``,
     formatAssessmentSummary(assessment),
     ``,
@@ -523,7 +523,7 @@ function renderRetestComparisonMarkdown(assessment: DashboardAssessment): string
 
 export function renderSecurityReviewMarkdown(assessment: DashboardAssessment): string {
   const lines = [
-    `# Verum Security Review`,
+    `# Kokuli Security Review`,
     ``,
     `## Scope`,
     ``,

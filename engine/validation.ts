@@ -1,6 +1,6 @@
 // engine/validation.ts
 //
-// Semantic validation for Verum test definitions.
+// Semantic validation for Kokuli test definitions.
 //
 // `loadTest` only does a JSON.parse — it returns whatever shape the file
 // happens to have. CLI/server filter on `name && category` and otherwise
@@ -15,7 +15,7 @@
 //   - fuzz tests with iterations <= 0
 //
 // This module is consumed by:
-//   * scripts/verum-diagnostic.mjs (release gate)
+//   * scripts/kokuli-diagnostic.mjs (release gate)
 //   * engine/cli.ts (registry filter — only validated tests enter score math)
 //   * server/api.ts (refuses to register invalid tests in the UI)
 //   * engine/validation.test.ts (regression coverage)
@@ -344,11 +344,11 @@ export function validateTest(test: LoadedTest): ValidationIssue[] {
   }
 
   // Tool-required tests must declare tool availability or be marked tool_unavailable
-  // (Verum does not yet wire tool invocations; flag any test whose prompt mentions
+  // (Kokuli does not yet wire tool invocations; flag any test whose prompt mentions
   // tool/function calling so the operator can confirm the boundary is exercised.)
   const promptCorpus = `${raw.input ?? ""} ${raw.purpose ?? ""}`.toLowerCase();
   if (/\b(tool[_ -]?call|function[_ -]?call|invoke\s+tool|use\s+the\s+tool)\b/.test(promptCorpus)) {
-    push("warning", "TOOL_BOUNDARY_UNVERIFIED", "test mentions tools/function-calling but Verum has no tool runner — exercise is unverified");
+    push("warning", "TOOL_BOUNDARY_UNVERIFIED", "test mentions tools/function-calling but Kokuli has no tool runner — exercise is unverified");
   }
 
   // Severity-without-evidence guard: critical tests with no failureCriteria

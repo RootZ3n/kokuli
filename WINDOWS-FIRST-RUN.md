@@ -1,10 +1,10 @@
-# Verum Windows First Run
+# Kokuli Windows First Run
 
 This RC uses the PowerShell installer. There is no MSI, native executable, Docker image, or Electron/Tauri installer.
 
 ## Package/install method
 
-From a Verum checkout:
+From a Kokuli checkout:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File install\install.ps1
@@ -34,8 +34,8 @@ Copy-Item .env.example .env
 Recommended first local web settings:
 
 ```text
-VERUM_HOST=127.0.0.1
-VERUM_PORT=3000
+KOKULI_HOST=127.0.0.1
+KOKULI_PORT=3000
 ```
 
 ## Exact test commands
@@ -47,13 +47,13 @@ powershell -ExecutionPolicy Bypass -File install\install.ps1
 Open a new PowerShell if you accepted the PATH update:
 
 ```powershell
-verum list
+kokuli list
 ```
 
 To start the web dashboard without the optional Windows service:
 
 ```powershell
-cd $env:USERPROFILE\.verum
+cd $env:USERPROFILE\.kokuli
 npm run web
 ```
 
@@ -65,31 +65,31 @@ http://127.0.0.1:3000
 
 ## Expected output
 
-`verum list` should start with:
+`kokuli list` should start with:
 
 ```text
-[verum] Available tests:
+[kokuli] Available tests:
 ```
 
 `npm run web` should print:
 
 ```text
-[verum-web] Dashboard:  http://127.0.0.1:3000
-[verum-web] Atlantis:   http://127.0.0.1:3000/atlantis
-[verum-web] API:        http://127.0.0.1:3000/api
+[kokuli-web] Dashboard:  http://127.0.0.1:3000
+[kokuli-web] Atlantis:   http://127.0.0.1:3000/atlantis
+[kokuli-web] API:        http://127.0.0.1:3000/api
 ```
 
 ## Cleanup
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File $env:USERPROFILE\.verum\install\uninstall.ps1
+powershell -ExecutionPolicy Bypass -File $env:USERPROFILE\.kokuli\install\uninstall.ps1
 ```
 
-If you manually created `.env` or report/state folders outside `$env:USERPROFILE\.verum`, remove those separately.
+If you manually created `.env` or report/state folders outside `$env:USERPROFILE\.kokuli`, remove those separately.
 
 ## Known RC gaps
 
 - Native Windows has not been personally verified yet.
 - The installer is source-based and requires Node/npm.
 - Optional service mode requires `nssm` or falls back to installing `node-windows`.
-- The CLI does not expose a `verum web` command; use `npm run web` from `$env:USERPROFILE\.verum` unless service mode is installed.
+- The CLI does not expose a `kokuli web` command; use `npm run web` from `$env:USERPROFILE\.kokuli` unless service mode is installed.

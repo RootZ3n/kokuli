@@ -124,5 +124,6 @@
     module.exports = armoryUi;
   }
 
+  globalScope.KokuliArmoryUi = armoryUi;
   globalScope.VerumArmoryUi = armoryUi;
 })(typeof window !== "undefined" ? window : globalThis);

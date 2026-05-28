@@ -31,7 +31,7 @@ import {
 } from "./bridge/verumBridge";
 
 const USAGE = `
-${chalk.bold("Verum")} — adversarial validation framework
+${chalk.bold("Kokuli")} — adversarial fracture engine
 
 ${chalk.cyan("Core Commands:")}
 
@@ -70,7 +70,7 @@ ${chalk.cyan("Test Categories:")}
   ${chalk.white("multi-turn")}            Multi-step attack chain testing
   ${chalk.white("fuzzing")}               Automated input mutation testing
 
-  ${chalk.white("trace <runId>")}             Cross-correlate one Verum Bridge runId across Verum, Squidley, and Ptah audit trails (see docs/RUNBOOK_VERUM_TRACE.md)
+  ${chalk.white("trace <runId>")}             Cross-correlate one Kokuli Bridge runId across Kokuli, Squidley, and Ptah audit trails (see docs/RUNBOOK_VERUM_TRACE.md)
 
   ${chalk.white("bridge smoke")}             Run baseline-chat smoke against allowlisted target
   ${chalk.white("bridge suite <name>")}      Run an allowlisted suite (recon, security, exfil, ...)
@@ -178,14 +178,14 @@ async function initTarget(overrideKey?: string): Promise<void> {
       if (!ownership) missing.push("VERUM_OWNERSHIP_CONFIRMED=1");
       console.log(
         chalk.yellow(
-          `  [verum] WARNING: '${activeTarget.name}' resolves to a non-private host (${host}). ` +
+          `  [kokuli] WARNING: '${activeTarget.name}' resolves to a non-private host (${host}). ` +
             `Outbound requests will be REFUSED until you set: ${missing.join(" and ")}.`,
         ),
       );
     } else {
       console.log(
         chalk.yellow(
-          `  [verum] Public-target ops ENABLED (VERUM_ENABLE_NETWORK_OPS=1, VERUM_OWNERSHIP_CONFIRMED=1). ` +
+          `  [kokuli] Public-target ops ENABLED (VERUM_ENABLE_NETWORK_OPS=1, VERUM_OWNERSHIP_CONFIRMED=1). ` +
             `Confirm you own '${host}'.`,
         ),
       );
@@ -376,7 +376,7 @@ async function runSingle(testPath: string, showRaw = false): Promise<TestResult 
   }
 
   // --- Standard chat tests (original behavior) ---
-  console.log(chalk.cyan(`\n[verum] Running: ${testCase.name}`));
+  console.log(chalk.cyan(`\n[kokuli] Fracturing: ${testCase.name}`));
   console.log(chalk.gray(`  target: ${target.name} -> ${target.baseUrl}${target.chatPath || "/chat"}`));
 
   const chat = await sendChat(target, testCase.input);
@@ -402,7 +402,7 @@ async function runEndpointTest(
   const endpoint = testCase.endpoint!;
   const method = testCase.method ?? "GET";
 
-  console.log(chalk.cyan(`\n[verum] Running: ${testCase.name}`));
+  console.log(chalk.cyan(`\n[kokuli] Pressuring: ${testCase.name}`));
   console.log(chalk.gray(`  target: ${target.name} -> ${method} ${target.baseUrl}${endpoint}`));
 
   const response = await sendRequest(
@@ -431,7 +431,7 @@ async function runChatEndpointTest(
   target: TargetConfig,
   showRaw: boolean
 ): Promise<TestResult> {
-  console.log(chalk.cyan(`\n[verum] Running: ${testCase.name}`));
+  console.log(chalk.cyan(`\n[kokuli] Fracturing: ${testCase.name}`));
   console.log(chalk.gray(`  target: ${target.name} -> POST ${target.baseUrl}/chat`));
 
   const chat = await sendChat(target, testCase.input);
@@ -476,7 +476,7 @@ async function runMultiTurn(
   target: TargetConfig,
   showRaw: boolean
 ): Promise<TestResult[]> {
-  console.log(chalk.cyan(`\n[verum] Running multi-turn: ${testCase.name}`));
+  console.log(chalk.cyan(`\n[kokuli] Stress-testing multi-turn: ${testCase.name}`));
   console.log(chalk.gray(`  target: ${target.name} -> ${testCase.steps!.length} steps`));
 
   const results: TestResult[] = [];
@@ -586,7 +586,7 @@ async function runFuzz(
 ): Promise<TestResult[]> {
   const config = testCase.fuzzConfig!;
 
-  console.log(chalk.cyan(`\n[verum] Running fuzz: ${testCase.name}`));
+  console.log(chalk.cyan(`\n[kokuli] Shattering via fuzz: ${testCase.name}`));
   console.log(chalk.gray(`  target: ${target.name} -> ${config.iterations} iterations, mutations: ${config.mutations.join(", ")}`));
 
   const payloads = generateFuzzPayloads(config.baseInput, config.mutations, config.iterations);
@@ -658,7 +658,7 @@ async function runSuite(category: string): Promise<void> {
     throw new Error(`No tests found for suite '${category}'`);
   }
 
-  console.log(chalk.cyan(`\n[verum] Running suite: ${category} (${registry.length} tests)`));
+  console.log(chalk.cyan(`\n[kokuli] Cracking suite: ${category} (${registry.length} tests)`));
 
   const results: TestResult[] = [];
   for (const entry of registry) {
@@ -689,7 +689,7 @@ async function runBaselineSuite(): Promise<void> {
   const manifest = (await fs.readJson(manifestPath)) as BaselineManifest;
   const registry = await buildRegistry();
 
-  console.log(chalk.cyan(`\n[verum] Running baseline suite v${manifest.version} (locked ${manifest.locked})`));
+  console.log(chalk.cyan(`\n[kokuli] Cracking baseline suite v${manifest.version} (locked ${manifest.locked})`));
   console.log(chalk.gray(`  ${manifest.description}`));
   console.log(chalk.gray(`  Threshold: PASS>=${manifest.pass_threshold.PASS}, WARN<=${manifest.pass_threshold.WARN}, FAIL<=${manifest.pass_threshold.FAIL}\n`));
 
@@ -745,7 +745,7 @@ async function listTests(category?: string): Promise<void> {
     return;
   }
 
-  console.log(chalk.cyan(`\n[verum] Available tests${category ? ` (${category})` : ""}:\n`));
+  console.log(chalk.cyan(`\n[kokuli] Available tests${category ? ` (${category})` : ""}:\n`));
 
   const byCategory = new Map<string, TestRegistryEntry[]>();
   for (const entry of registry) {
@@ -768,7 +768,7 @@ async function reportLatest(): Promise<void> {
   const dir = path.join(process.cwd(), "reports", "latest");
   const files = (await fs.readdir(dir)).filter((x) => x.endsWith(".md") || x.endsWith(".json"));
 
-  console.log(chalk.cyan("\n[verum] Latest reports:\n"));
+  console.log(chalk.cyan("\n[kokuli] Latest reports:\n"));
   for (const file of files.sort()) {
     console.log(`  ${file}`);
   }
@@ -783,7 +783,7 @@ async function reportTransparency(): Promise<void> {
     return;
   }
 
-  console.log(chalk.cyan("\n[verum] Transparency Ledger Summary\n"));
+  console.log(chalk.cyan("\n[kokuli] Transparency Ledger Summary\n"));
   console.log(`  Total Requests:                       ${summary.totalRequests}`);
   console.log(`  Current-schema entries:               ${summary.currentSchemaCount}`);
   console.log(`  Historical entries:                   ${summary.historicalCount}`);
@@ -843,7 +843,7 @@ async function handleTargetCommand(args: ParsedArgs): Promise<void> {
       console.log(chalk.yellow(`Active target '${key}' not found in config.`));
       return;
     }
-    console.log(chalk.cyan(`\n[verum] Active target:\n`));
+    console.log(chalk.cyan(`\n[kokuli] Active target:\n`));
     console.log(`  ${chalk.white.bold(key)}`);
     console.log(`    Name:    ${t.name}`);
     console.log(`    URL:     ${chalk.green(t.baseUrl)}`);
@@ -857,7 +857,7 @@ async function handleTargetCommand(args: ParsedArgs): Promise<void> {
   switch (sub) {
     case "list": {
       const data = await loadTargets();
-      console.log(chalk.cyan(`\n[verum] Configured targets:\n`));
+      console.log(chalk.cyan(`\n[kokuli] Configured targets:\n`));
       for (const [key, t] of Object.entries(data.targets)) {
         const active = key === data.defaultTarget ? chalk.green(" (active)") : "";
         console.log(`  ${chalk.white.bold(key)}${active}`);
@@ -872,7 +872,7 @@ async function handleTargetCommand(args: ParsedArgs): Promise<void> {
       const key = args.restArgs[0];
       if (!key) throw new Error("Missing target key. Usage: target set <key>");
       const t = await setActiveTarget(key);
-      console.log(chalk.green(`\n[verum] Active target set to '${key}' -> ${t.baseUrl}\n`));
+      console.log(chalk.green(`\n[kokuli] Active target set to '${key}' -> ${t.baseUrl}\n`));
       break;
     }
 
@@ -890,7 +890,7 @@ async function handleTargetCommand(args: ParsedArgs): Promise<void> {
       };
 
       await addTarget(key, newTarget);
-      console.log(chalk.green(`\n[verum] Target '${key}' added:`));
+      console.log(chalk.green(`\n[kokuli] Target '${key}' added:`));
       console.log(`  Name:    ${newTarget.name}`);
       console.log(`  URL:     ${newTarget.baseUrl}`);
       console.log(`  Chat:    ${newTarget.chatPath}`);
@@ -904,7 +904,7 @@ async function handleTargetCommand(args: ParsedArgs): Promise<void> {
       const key = args.restArgs[0];
       if (!key) throw new Error("Missing target key. Usage: target remove <key>");
       await removeTarget(key);
-      console.log(chalk.green(`\n[verum] Target '${key}' removed.\n`));
+      console.log(chalk.green(`\n[kokuli] Target '${key}' removed.\n`));
       break;
     }
 
@@ -921,7 +921,7 @@ async function handleTargetCommand(args: ParsedArgs): Promise<void> {
 }
 
 async function probeTarget(key: string, target: TargetConfig): Promise<void> {
-  console.log(chalk.cyan(`\n[verum] Probing target: ${target.name} (${key})`));
+  console.log(chalk.cyan(`\n[kokuli] Probing target for fracture points: ${target.name} (${key})`));
   console.log(chalk.gray(`  URL: ${target.baseUrl}\n`));
 
   // Check base connectivity
@@ -1136,13 +1136,13 @@ async function main(): Promise<void> {
 
     case "trace": {
       if (!args.arg) {
-        console.log(chalk.red("Missing runId. Usage: verum trace <runId> [--json]"));
+        console.log(chalk.red("Missing runId. Usage: kokuli trace <runId> [--json]"));
         process.exit(1);
       }
       const mod = await import("../tools/verum-trace.mjs");
       const result = await mod.traceRun({
         runId: args.arg,
-        verumRoot: process.cwd(),
+        kokuliRoot: process.cwd(),
         squidleyRoot: process.env.SQUIDLEY_ROOT ?? "/mnt/ai/squidley",
         ptahRoot: process.env.PTAH_ROOT ?? "/mnt/ai/ptah",
       });
@@ -1163,6 +1163,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((error) => {
-  console.error(chalk.red("[verum] Error:"), error instanceof Error ? error.message : error);
+  console.error(chalk.red("[kokuli] Error:"), error instanceof Error ? error.message : error);
   process.exit(1);
 });

@@ -48,7 +48,7 @@ type OpsErrorStatus = 400 | 403 | 409 | 500;
 
 function classifyOpsError(error: unknown): OpsErrorStatus {
   const message = error instanceof Error ? error.message : String(error);
-  if (/VERUM_ENABLE_NETWORK_OPS|confirmedOwnedTarget|Live network operations|Beginner guardrails/i.test(message)) return 403;
+  if (/VERUM_ENABLE_NETWORK_OPS|KOKULI_ENABLE_NETWORK_OPS|confirmedOwnedTarget|Live network operations|Beginner guardrails/i.test(message)) return 403;
   if (/already in progress|KRAKZEN_KILL_SWITCH/i.test(message)) return 409;
   return 400;
 }
@@ -519,7 +519,7 @@ async function persistExecutedResults(
       persisted.push(finalized);
       previousByTestId.set(finalized.testId, finalized);
     } catch (persistErr) {
-      console.error(`[verum] Error persisting result for ${result.testId}:`, persistErr instanceof Error ? persistErr.stack : persistErr);
+      console.error(`[kokuli] Error persisting result for ${result.testId}:`, persistErr instanceof Error ? persistErr.stack : persistErr);
       persisted.push(result);
     }
   }
@@ -527,7 +527,7 @@ async function persistExecutedResults(
   try {
     await writeAssessmentBundle({ target: targetKey, targetName, targetConfig });
   } catch (assessmentErr) {
-    console.error("[verum] Assessment bundle error (non-fatal):", assessmentErr instanceof Error ? assessmentErr.stack : assessmentErr);
+    console.error("[kokuli] Assessment bundle error (non-fatal):", assessmentErr instanceof Error ? assessmentErr.stack : assessmentErr);
   }
   return persisted;
 }
@@ -655,7 +655,7 @@ router.post("/suite/:category", async (req: Request, res: Response) => {
         await recordTestResults(persisted, resolved.key);
         results.push(...persisted);
       } catch (entryErr) {
-        console.error(`[verum] Error running test ${entry.id}:`, entryErr instanceof Error ? entryErr.stack : entryErr);
+        console.error(`[kokuli] Error running test ${entry.id}:`, entryErr instanceof Error ? entryErr.stack : entryErr);
         await updateTestExecutionState({ testId: entry.id, suiteId: category, state: "error" }).catch(() => undefined);
       }
     }
@@ -664,7 +664,7 @@ router.post("/suite/:category", async (req: Request, res: Response) => {
     try {
       await writeAssessmentBundle({ target: resolved.key, targetName: resolved.target.name, targetConfig: resolved.target, results });
     } catch (assessmentErr) {
-      console.error("[verum] Assessment bundle error (non-fatal):", assessmentErr instanceof Error ? assessmentErr.stack : assessmentErr);
+      console.error("[kokuli] Assessment bundle error (non-fatal):", assessmentErr instanceof Error ? assessmentErr.stack : assessmentErr);
     }
 
     const pass = results.filter((r) => r.result === "PASS").length;
@@ -682,7 +682,7 @@ router.post("/suite/:category", async (req: Request, res: Response) => {
     if (category) {
       await updateSuiteExecutionState({ suiteId: category, state: "error" }).catch(() => undefined);
     }
-    console.error("[verum] Suite error:", err instanceof Error ? err.stack : err);
+    console.error("[kokuli] Suite error:", err instanceof Error ? err.stack : err);
     res.status(500).json({ error: String(err), stack: err instanceof Error ? err.stack : undefined });
   }
 });
@@ -1063,10 +1063,38 @@ router.post("/learn/:id/quiz", async (req: Request, res: Response) => {
   }
 });
 
-// --- Verum Bridge routes ---
+// --- Kokuli Bridge routes ---
 //
 // Stable, allowlisted entry point for Ptah / Squidley / Ricky.
 // All validation lives in engine/bridge/verumBridge.ts; this just adapts HTTP <-> bridge.
+
+router.get("/bridge/kokuli/health", (_req: Request, res: Response) => {
+  res.json(getBridgeHealth());
+});
+
+router.get("/bridge/kokuli/allowlist", (_req: Request, res: Response) => {
+  res.json(getBridgeAllowlist());
+});
+
+router.post("/bridge/kokuli/run", async (req: Request, res: Response) => {
+  try {
+    const body = (req.body && typeof req.body === "object" ? req.body : {}) as BridgeRequest;
+    const result = await runBridge(body);
+    const httpStatus =
+      result.status === "blocked" ? 403 :
+      result.status === "error" && !result.ok ? 400 :
+      200;
+    res.status(httpStatus).json(result);
+  } catch (err) {
+    res.status(500).json({
+      ok: false,
+      status: "error",
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+});
+
+// --- Backward-compatible /bridge/verum/* aliases ---
 
 router.get("/bridge/verum/health", (_req: Request, res: Response) => {
   res.json(getBridgeHealth());

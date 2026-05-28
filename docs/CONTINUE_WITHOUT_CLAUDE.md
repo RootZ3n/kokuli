@@ -1,8 +1,8 @@
-# Continue Without Claude — Verum
+# Continue Without Claude — Kokuli
 
 ## What this repo does
 
-Verum is the security/red-team evaluation suite. Engine in `engine/`,
+Kokuli is the adversarial fracture engine (security/red-team evaluation suite). Engine in `engine/`,
 HTTP server in `server/`, learning examples in `learning/`, install
 scripts in `install/`. **Public RC was prepared 3 weeks ago but not
 landed** — see uncommitted work on `main`.
@@ -25,7 +25,7 @@ npm run install:local    # install/install.sh
 - `engine/cli.ts` — CLI entry, suite + target + report commands
 - `engine/assessment.ts` — assessment runner
 - `engine/evaluator.ts` — verdict logic
-- `engine/bridge/verumBridge.ts` — cross-lab bridge
+- `engine/bridge/verumBridge.ts` — cross-lab bridge (filename retains legacy name)
 - `server/api.ts` — HTTP API
 - `learning/` — example targets / suites for documentation
 - `CHANGELOG.md` — release history
@@ -35,7 +35,7 @@ npm run install:local    # install/install.sh
 
 - `docs/`, `learning/` (examples only)
 - `tests/architecture/`, `tests/auth/` (JSON fixtures)
-- `tools/verum-trace.*` (instrumentation helper)
+- `tools/verum-trace.*` (instrumentation helper, filename retains legacy name)
 
 ## Dangerous edit zones
 
@@ -56,7 +56,7 @@ git diff <file>
 # To revert all uncommitted work:
 git stash       # safer than 'git checkout .'
 # To land it:
-git add -A && git commit -m "verum: land public RC prep"
+git add -A && git commit -m "kokuli: land public RC prep"
 ```
 
 ## Prompts for smaller models

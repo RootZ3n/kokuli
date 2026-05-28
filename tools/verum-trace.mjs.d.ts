@@ -1,6 +1,6 @@
 export type TraceRunOptions = {
   runId: string;
-  verumRoot?: string;
+  kokuliRoot?: string;
   squidleyRoot?: string;
   ptahRoot?: string;
   since?: string;

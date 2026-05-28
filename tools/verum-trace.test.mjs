@@ -8,12 +8,12 @@ import {
   validateRunId,
   parseSince,
   clampLimit,
-  projectVerumIndexRow,
+  projectKokuliIndexRow,
   projectBridgeResult,
   projectAssessmentSummary,
   projectSquidleyBreadcrumb,
   projectPtahBreadcrumb,
-  findVerumIndexRow,
+  findKokuliIndexRow,
   findSquidleyBreadcrumbs,
   findPtahBreadcrumbs,
   traceRun,
@@ -43,28 +43,28 @@ function indexRow(overrides = {}) {
   };
 }
 
-async function withTempVerumRoots(fn) {
-  const verumRoot = await fs.mkdtemp(path.join(os.tmpdir(), "vtrace-v-"));
-  const squidleyRoot = await fs.mkdtemp(path.join(os.tmpdir(), "vtrace-sq-"));
-  const ptahRoot = await fs.mkdtemp(path.join(os.tmpdir(), "vtrace-pt-"));
+async function withTempKokuliRoots(fn) {
+  const kokuliRoot = await fs.mkdtemp(path.join(os.tmpdir(), "ktrace-v-"));
+  const squidleyRoot = await fs.mkdtemp(path.join(os.tmpdir(), "ktrace-sq-"));
+  const ptahRoot = await fs.mkdtemp(path.join(os.tmpdir(), "ktrace-pt-"));
   try {
-    return await fn({ verumRoot, squidleyRoot, ptahRoot });
+    return await fn({ kokuliRoot, squidleyRoot, ptahRoot });
   } finally {
-    await fs.rm(verumRoot, { recursive: true, force: true });
+    await fs.rm(kokuliRoot, { recursive: true, force: true });
     await fs.rm(squidleyRoot, { recursive: true, force: true });
     await fs.rm(ptahRoot, { recursive: true, force: true });
   }
 }
 
-async function writeIndex(verumRoot, lines) {
-  const dir = path.join(verumRoot, "reports", "bridge");
+async function writeIndex(kokuliRoot, lines) {
+  const dir = path.join(kokuliRoot, "reports", "bridge");
   await fs.mkdir(dir, { recursive: true });
   await fs.writeFile(path.join(dir, "INDEX.jsonl"),
     lines.map(l => typeof l === "string" ? l : JSON.stringify(l)).join("\n") + (lines.length ? "\n" : ""));
 }
 
-async function writeArchive(verumRoot, runId, files = {}) {
-  const dir = path.join(verumRoot, "reports", "bridge", "2026-04-26", runId);
+async function writeArchive(kokuliRoot, runId, files = {}) {
+  const dir = path.join(kokuliRoot, "reports", "bridge", "2026-04-26", runId);
   await fs.mkdir(dir, { recursive: true });
   for (const [name, body] of Object.entries(files)) {
     await fs.writeFile(path.join(dir, name), typeof body === "string" ? body : JSON.stringify(body, null, 2));
@@ -87,7 +87,7 @@ async function writePtahBreadcrumb(ptahRoot, date, lines) {
 
 // ─── validateRunId ─────────────────────────────────────────────────────────
 
-test("validateRunId accepts a real Verum runId", () => {
+test("validateRunId accepts a real Kokuli runId", () => {
   assert.equal(validateRunId(RUN_ID).ok, true);
   assert.equal(validateRunId("20260426T120000Z-ricky-suite-security-deadbe").ok, true);
 });
@@ -127,7 +127,7 @@ test("clampLimit applies defaults and bounds", () => {
 
 // ─── Projections ───────────────────────────────────────────────────────────
 
-test("projectVerumIndexRow keeps only safe fields", () => {
+test("projectKokuliIndexRow keeps only safe fields", () => {
   const polluted = {
     ...indexRow(),
     reason: "secret-reason-text",
@@ -136,17 +136,17 @@ test("projectVerumIndexRow keeps only safe fields", () => {
     command: ["leak"],
     authToken: "Bearer xyz",
   };
-  const r = projectVerumIndexRow(polluted);
+  const r = projectKokuliIndexRow(polluted);
   const blob = JSON.stringify(r);
   for (const banned of ["secret-reason-text", "stdoutTail", "stderrTail", "authToken", "Bearer", "command"]) {
     assert.equal(blob.includes(banned), false, `leaked: ${banned}`);
   }
 });
 
-test("projectVerumIndexRow rejects malformed runId", () => {
-  assert.equal(projectVerumIndexRow({ ...indexRow(), runId: "../bad" }), null);
-  assert.equal(projectVerumIndexRow({ ...indexRow(), runId: "x" }), null);
-  assert.equal(projectVerumIndexRow(null), null);
+test("projectKokuliIndexRow rejects malformed runId", () => {
+  assert.equal(projectKokuliIndexRow({ ...indexRow(), runId: "../bad" }), null);
+  assert.equal(projectKokuliIndexRow({ ...indexRow(), runId: "x" }), null);
+  assert.equal(projectKokuliIndexRow(null), null);
 });
 
 test("projectBridgeResult drops command / stdoutTail and keeps reasonLength", () => {
@@ -218,24 +218,24 @@ test("projectSquidleyBreadcrumb rejects unrelated rows", () => {
   assert.equal(projectSquidleyBreadcrumb({ type: "other" }), null);
 });
 
-// ─── findVerumIndexRow ─────────────────────────────────────────────────────
+// ─── findKokuliIndexRow ─────────────────────────────────────────────────────
 
-test("findVerumIndexRow returns null when INDEX missing", async () => {
-  await withTempVerumRoots(async ({ verumRoot }) => {
-    const r = await findVerumIndexRow(verumRoot, RUN_ID);
+test("findKokuliIndexRow returns null when INDEX missing", async () => {
+  await withTempKokuliRoots(async ({ kokuliRoot }) => {
+    const r = await findKokuliIndexRow(kokuliRoot, RUN_ID);
     assert.equal(r.indexExists, false);
     assert.equal(r.row, null);
   });
 });
 
-test("findVerumIndexRow finds matching row and skips malformed lines", async () => {
-  await withTempVerumRoots(async ({ verumRoot }) => {
-    await writeIndex(verumRoot, [
+test("findKokuliIndexRow finds matching row and skips malformed lines", async () => {
+  await withTempKokuliRoots(async ({ kokuliRoot }) => {
+    await writeIndex(kokuliRoot, [
       indexRow({ runId: "20260426T100000Z-other-smoke-bbbbbb" }),
       "this is not json",
       indexRow(),
     ]);
-    const r = await findVerumIndexRow(verumRoot, RUN_ID);
+    const r = await findKokuliIndexRow(kokuliRoot, RUN_ID);
     assert.equal(r.indexExists, true);
     assert.equal(r.row.runId, RUN_ID);
     assert.equal(r.malformed, 1);
@@ -245,7 +245,7 @@ test("findVerumIndexRow finds matching row and skips malformed lines", async () 
 // ─── findSquidleyBreadcrumbs / findPtahBreadcrumbs ─────────────────────────
 
 test("findSquidleyBreadcrumbs matches by runId, sorted newest first", async () => {
-  await withTempVerumRoots(async ({ squidleyRoot }) => {
+  await withTempKokuliRoots(async ({ squidleyRoot }) => {
     await writeSquidleyBreadcrumb(squidleyRoot, "2026-04-26", [
       { type: "verum_followup", source: "squidley", runId: RUN_ID, status: "scheduled", startedAt: "2026-04-26T12:00:00.000Z" },
       { type: "verum_followup", source: "squidley", runId: RUN_ID, status: "passed", startedAt: "2026-04-26T12:00:02.000Z" },
@@ -258,7 +258,7 @@ test("findSquidleyBreadcrumbs matches by runId, sorted newest first", async () =
 });
 
 test("findPtahBreadcrumbs matches similarly and respects limit", async () => {
-  await withTempVerumRoots(async ({ ptahRoot }) => {
+  await withTempKokuliRoots(async ({ ptahRoot }) => {
     await writePtahBreadcrumb(ptahRoot, "2026-04-26", [
       { type: "verum_reflex", source: "ptah", runId: RUN_ID, status: "scheduled", startedAt: "2026-04-26T12:00:00.000Z" },
       { type: "verum_reflex", source: "ptah", runId: RUN_ID, status: "passed", startedAt: "2026-04-26T12:00:02.000Z" },
@@ -270,7 +270,7 @@ test("findPtahBreadcrumbs matches similarly and respects limit", async () => {
 });
 
 test("breadcrumb finders apply since filter", async () => {
-  await withTempVerumRoots(async ({ ptahRoot }) => {
+  await withTempKokuliRoots(async ({ ptahRoot }) => {
     await writePtahBreadcrumb(ptahRoot, "2026-04-26", [
       { type: "verum_reflex", source: "ptah", runId: RUN_ID, status: "old", startedAt: "2026-04-25T00:00:00.000Z" },
       { type: "verum_reflex", source: "ptah", runId: RUN_ID, status: "new", startedAt: "2026-04-26T12:00:00.000Z" },
@@ -284,15 +284,15 @@ test("breadcrumb finders apply since filter", async () => {
 // ─── traceRun ──────────────────────────────────────────────────────────────
 
 test("traceRun rejects an unsafe runId before any I/O", async () => {
-  const r = await traceRun({ runId: "../etc/passwd", verumRoot: "/", squidleyRoot: "/", ptahRoot: "/" });
+  const r = await traceRun({ runId: "../etc/passwd", kokuliRoot: "/", squidleyRoot: "/", ptahRoot: "/" });
   assert.equal(r.ok, false);
   assert.match(r.error, /forbidden path/);
 });
 
-test("traceRun finds Verum + Squidley + Ptah for a real runId", async () => {
-  await withTempVerumRoots(async ({ verumRoot, squidleyRoot, ptahRoot }) => {
-    await writeIndex(verumRoot, [indexRow()]);
-    await writeArchive(verumRoot, RUN_ID, {
+test("traceRun finds Kokuli + Squidley + Ptah for a real runId", async () => {
+  await withTempKokuliRoots(async ({ kokuliRoot, squidleyRoot, ptahRoot }) => {
+    await writeIndex(kokuliRoot, [indexRow()]);
+    await writeArchive(kokuliRoot, RUN_ID, {
       "BRIDGE_RESULT.json": {
         runId: RUN_ID,
         request: { caller: "manual", target: "mushin-local", mode: "smoke", reasonLength: 12 },
@@ -312,7 +312,7 @@ test("traceRun finds Verum + Squidley + Ptah for a real runId", async () => {
     await writePtahBreadcrumb(ptahRoot, "2026-04-26", [
       { type: "verum_reflex", source: "ptah", runId: RUN_ID, status: "passed", startedAt: "2026-04-26T12:00:01.000Z", trigger: "velum-block", eventId: "step-1" },
     ]);
-    const trace = await traceRun({ runId: RUN_ID, verumRoot, squidleyRoot, ptahRoot });
+    const trace = await traceRun({ runId: RUN_ID, kokuliRoot, squidleyRoot, ptahRoot });
     assert.equal(trace.ok, true);
     assert.equal(trace.runId, RUN_ID);
     assert.equal(trace.verum.row.status, "passed");
@@ -329,9 +329,9 @@ test("traceRun finds Verum + Squidley + Ptah for a real runId", async () => {
 });
 
 test("traceRun returns clean 'not found' sections when runId has no matches anywhere", async () => {
-  await withTempVerumRoots(async ({ verumRoot, squidleyRoot, ptahRoot }) => {
-    await writeIndex(verumRoot, []);
-    const trace = await traceRun({ runId: RUN_ID, verumRoot, squidleyRoot, ptahRoot });
+  await withTempKokuliRoots(async ({ kokuliRoot, squidleyRoot, ptahRoot }) => {
+    await writeIndex(kokuliRoot, []);
+    const trace = await traceRun({ runId: RUN_ID, kokuliRoot, squidleyRoot, ptahRoot });
     assert.equal(trace.ok, true);
     assert.equal(trace.verum.row, null);
     assert.equal(trace.squidley.count, 0);
@@ -340,8 +340,8 @@ test("traceRun returns clean 'not found' sections when runId has no matches anyw
 });
 
 test("traceRun handles missing INDEX.jsonl gracefully", async () => {
-  await withTempVerumRoots(async ({ verumRoot, squidleyRoot, ptahRoot }) => {
-    const trace = await traceRun({ runId: RUN_ID, verumRoot, squidleyRoot, ptahRoot });
+  await withTempKokuliRoots(async ({ kokuliRoot, squidleyRoot, ptahRoot }) => {
+    const trace = await traceRun({ runId: RUN_ID, kokuliRoot, squidleyRoot, ptahRoot });
     assert.equal(trace.ok, true);
     assert.equal(trace.verum.indexExists, false);
     assert.equal(trace.verum.row, null);
@@ -349,12 +349,12 @@ test("traceRun handles missing INDEX.jsonl gracefully", async () => {
 });
 
 test("traceRun handles archive dir present but ASSESSMENT.json missing", async () => {
-  await withTempVerumRoots(async ({ verumRoot, squidleyRoot, ptahRoot }) => {
-    await writeIndex(verumRoot, [indexRow()]);
-    await writeArchive(verumRoot, RUN_ID, {
+  await withTempKokuliRoots(async ({ kokuliRoot, squidleyRoot, ptahRoot }) => {
+    await writeIndex(kokuliRoot, [indexRow()]);
+    await writeArchive(kokuliRoot, RUN_ID, {
       "BRIDGE_RESULT.json": { runId: RUN_ID, request: {}, summary: { totalTests: 0, passed: 0, failed: 0, findings: 0, critical: 0, high: 0 }, archive: {} },
     });
-    const trace = await traceRun({ runId: RUN_ID, verumRoot, squidleyRoot, ptahRoot });
+    const trace = await traceRun({ runId: RUN_ID, kokuliRoot, squidleyRoot, ptahRoot });
     assert.equal(trace.verum.bridgeResultExists, true);
     assert.equal(trace.verum.assessmentExists, false);
     assert.equal(trace.verum.assessmentSummary, null);
@@ -364,12 +364,12 @@ test("traceRun handles archive dir present but ASSESSMENT.json missing", async (
 // ─── formatHuman ───────────────────────────────────────────────────────────
 
 test("formatHuman renders a complete trace including dashboard hint", async () => {
-  await withTempVerumRoots(async ({ verumRoot, squidleyRoot, ptahRoot }) => {
-    await writeIndex(verumRoot, [indexRow()]);
-    await writeArchive(verumRoot, RUN_ID, {});
-    const trace = await traceRun({ runId: RUN_ID, verumRoot, squidleyRoot, ptahRoot });
+  await withTempKokuliRoots(async ({ kokuliRoot, squidleyRoot, ptahRoot }) => {
+    await writeIndex(kokuliRoot, [indexRow()]);
+    await writeArchive(kokuliRoot, RUN_ID, {});
+    const trace = await traceRun({ runId: RUN_ID, kokuliRoot, squidleyRoot, ptahRoot });
     const text = formatHuman(trace);
-    assert.match(text, /Verum Trace: 20260426T120000Z-manual-smoke-aaaaaa/);
+    assert.match(text, /Kokuli Trace: 20260426T120000Z-manual-smoke-aaaaaa/);
     assert.match(text, /status:\s+passed/);
     assert.match(text, /Dashboard: http:\/\/localhost:3030\/bridge\/runs/);
     for (const banned of ["stdoutTail", "stderrTail", "command:"]) {
@@ -387,8 +387,8 @@ test("formatHuman shows error for invalid runId result", () => {
 // ─── --json output ─────────────────────────────────────────────────────────
 
 test("main --json produces valid parseable JSON for a known runId", async () => {
-  await withTempVerumRoots(async ({ verumRoot, squidleyRoot, ptahRoot }) => {
-    await writeIndex(verumRoot, [indexRow()]);
+  await withTempKokuliRoots(async ({ kokuliRoot, squidleyRoot, ptahRoot }) => {
+    await writeIndex(kokuliRoot, [indexRow()]);
     // Capture stdout
     const chunks = [];
     const origWrite = process.stdout.write.bind(process.stdout);
@@ -396,7 +396,7 @@ test("main --json produces valid parseable JSON for a known runId", async () => 
     try {
       const code = await main([
         RUN_ID, "--json",
-        "--verum-root", verumRoot,
+        "--kokuli-root", kokuliRoot,
         "--squidley-root", squidleyRoot,
         "--ptah-root", ptahRoot,
       ]);

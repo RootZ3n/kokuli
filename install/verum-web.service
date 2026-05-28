@@ -1,5 +1,5 @@
 [Unit]
-Description=Verum Web UI
+Description=Kokuli Web UI
 After=network.target
 
 [Service]
