@@ -1,18 +1,18 @@
-# Verum Bridge
+# Kokuli Bridge
 
-A narrow, allowlisted interface that lets **Ptah**, **Squidley**, and **Ricky/OpenClaw** request safety/security assessments from Verum without knowing Verum's internals.
+A narrow, allowlisted interface that lets **Ptah**, **Squidley**, and **Ricky/OpenClaw** request safety/security assessments from Kokuli without knowing Kokuli's internals.
 
-The bridge is a small layer over the existing Verum CLI. There is **no new daemon**. The bridge spawns the same `node bin/verum.js …` commands you would type by hand, but only commands it has explicitly approved.
+The bridge is a small layer over the existing Kokuli CLI. There is **no new daemon**. The bridge spawns the same `node bin/kokuli.js …` commands you would type by hand, but only commands it has explicitly approved.
 
 ## Why it exists
 
-Three different consumers want to run Verum for different reasons:
+Three different consumers want to run Kokuli for different reasons:
 
 - **Ptah** — when a lab agent does something suspicious (tool misuse, unsafe autonomous chain, unknown exposed endpoint), Ptah should be able to fire off a smoke or recon run as a reflex.
-- **Squidley** — governance/safety paths inside Squidley should be able to call Verum before enabling risky tool chains, before public-demo mode, or after Velum blocks suspicious input.
+- **Squidley** — governance/safety paths inside Squidley should be able to call Kokuli before enabling risky tool chains, before public-demo mode, or after Velum blocks suspicious input.
 - **Ricky / OpenClaw** — after code changes that touch safety, auth, prompt routing, memory, receipts, or tool execution, Ricky should run smoke first and a security suite second.
 
-Each consumer should call **one stable contract**, not embed Verum-specific argv strings.
+Each consumer should call **one stable contract**, not embed Kokuli-specific argv strings.
 
 ## Hard rules
 
@@ -41,7 +41,7 @@ Each consumer should call **one stable contract**, not embed Verum-specific argv
 }
 ```
 
-`prompt-injection` is a Verum-Bridge alias and maps to the upstream `security` suite. `mode=report` ignores `suite` / `testId` and returns the latest summary.
+`prompt-injection` is a Kokuli-Bridge alias and maps to the upstream `security` suite. `mode=report` ignores `suite` / `testId` and returns the latest summary.
 
 ## Response shape
 
@@ -68,13 +68,13 @@ Each consumer should call **one stable contract**, not embed Verum-specific argv
     "low": 0
   },
   "runId": "20260426T034559Z-manual-smoke-4e8bcc",
-  "reportDir": "/path/to/verum/reports/bridge/2026-04-26/20260426T034559Z-manual-smoke-4e8bcc",
-  "reportPath": "/path/to/verum/reports/bridge/2026-04-26/20260426T034559Z-manual-smoke-4e8bcc/ASSESSMENT.json",
-  "latestReportPath": "/path/to/verum/reports/latest/ASSESSMENT.json",
+  "reportDir": "/path/to/kokuli/reports/bridge/2026-04-26/20260426T034559Z-manual-smoke-4e8bcc",
+  "reportPath": "/path/to/kokuli/reports/bridge/2026-04-26/20260426T034559Z-manual-smoke-4e8bcc/ASSESSMENT.json",
+  "latestReportPath": "/path/to/kokuli/reports/latest/ASSESSMENT.json",
   "stdoutTail": "...last 4KB, ANSI-stripped...",
   "stderrTail": "...",
   "error": "present only when ok=false",
-  "command": ["node", "/path/to/verum/bin/verum.js", "run", "baseline-chat", "--target", "mushin-local"]
+  "command": ["node", "/path/to/kokuli/bin/kokuli.js", "run", "baseline-chat", "--target", "mushin-local"]
 }
 ```
 
@@ -83,7 +83,7 @@ Each consumer should call **one stable contract**, not embed Verum-specific argv
 | Field | Stable across future runs? | When to use |
 |---|---|---|
 | `reportPath` | **Yes** — points into `reports/bridge/<date>/<runId>/`. | Consumers persisting evidence per Velum incident, per Ricky preflight, per Ptah reflex. |
-| `latestReportPath` | **No** — points at `reports/latest/ASSESSMENT.json`, which any test run will overwrite. | Operator humans using the dashboard or `verum report summary`. |
+| `latestReportPath` | **No** — points at `reports/latest/ASSESSMENT.json`, which any test run will overwrite. | Operator humans using the dashboard or `kokuli report summary`. |
 
 Consumers should store `runId` and `reportPath`, not `latestReportPath`. If you need both, they're both returned.
 
@@ -134,7 +134,7 @@ AI_SHARE_PACKAGE.md
   "durationMs": 6578,
   "status": "passed",
   "summary": { "totalTests": 1, "passed": 1, "failed": 0, ... },
-  "command": ["node", "/path/to/verum/bin/verum.js", "run", "baseline-chat", "--target", "mushin-local"],
+  "command": ["node", "/path/to/kokuli/bin/kokuli.js", "run", "baseline-chat", "--target", "mushin-local"],
   "exitCode": 0,
   "signal": null,
   "timedOut": false,
@@ -167,7 +167,7 @@ If the archive write itself fails (disk full, `reports/bridge/` is occupied by a
 
 Every completed bridge run also appends one JSON line to `reports/bridge/INDEX.jsonl`. This is the operator-facing ledger — fast lookup without walking date directories.
 
-Each line is independently parseable JSON. Paths are **relative** to the Verum root so the file is portable. Schema:
+Each line is independently parseable JSON. Paths are **relative** to the Kokuli root so the file is portable. Schema:
 
 ```json
 {
@@ -212,10 +212,10 @@ jq -c 'select(.status == "failed" and .startedAt > "'"$(date -u -d '1 day ago' +
 
 ### Bridge Runs UI / API
 
-A read-only operator view ships with the Verum web dashboard. Start the server and visit `/bridge/runs`:
+A read-only operator view ships with the Kokuli web dashboard. Start the server and visit `/bridge/runs`:
 
 ```bash
-cd /path/to/verum && VERUM_PORT=3030 npm run web
+cd /path/to/kokuli && KOKULI_PORT=3030 npm run web
 # then open http://localhost:3030/bridge/runs
 ```
 
@@ -269,15 +269,15 @@ Detail response (sanitized — never includes `command`, `stdoutTail`, `stderrTa
 }
 ```
 
-**The UI is strictly read-only.** No execute / re-run / delete / retention controls. Operators wanting to mutate state use the existing CLI (`node bin/verum.js bridge ...`) or the bridge wrapper from each consumer (`tools/verum-bridge.sh`, `pnpm verum:preflight`, etc.).
+**The UI is strictly read-only.** No execute / re-run / delete / retention controls. Operators wanting to mutate state use the existing CLI (`node bin/kokuli.js bridge ...`) or the bridge wrapper from each consumer (`tools/verum-bridge.sh`, `pnpm verum:preflight`, etc.).
 
-`reportPath` and `reportDir` shown in this UI are the **stable evidence pointers** — they survive subsequent Verum runs. `latestReportPath` (when populated) points at `reports/latest/`, which is rolling and **must not be used as audit evidence**.
+`reportPath` and `reportDir` shown in this UI are the **stable evidence pointers** — they survive subsequent Kokuli runs. `latestReportPath` (when populated) points at `reports/latest/`, which is rolling and **must not be used as audit evidence**.
 
 ### Tracing a run across apps
 
 `tools/verum-trace.mjs` is a tiny read-only CLI that joins one `runId` across the three audit trails the bridge ecosystem now writes:
 
-1. Verum's `reports/bridge/INDEX.jsonl` + `reports/bridge/<date>/<runId>/`
+1. Kokuli's `reports/bridge/INDEX.jsonl` + `reports/bridge/<date>/<runId>/`
 2. Squidley's `state/verum/followups-<DATE>.jsonl`
 3. Ptah's `data/verum/reflex-<DATE>.jsonl`
 
@@ -290,7 +290,7 @@ node tools/verum-trace.mjs <runId> --json | jq
 
 # Override roots when running from a non-default workspace
 node tools/verum-trace.mjs <runId> \
-    --verum-root    /path/to/verum \
+    --verum-root    /path/to/kokuli \
     --squidley-root /path/to/squidley \
     --ptah-root     /path/to/ptah
 
@@ -298,14 +298,14 @@ node tools/verum-trace.mjs <runId> \
 node tools/verum-trace.mjs <runId> --since 7d --limit 50
 ```
 
-The tool is **strictly read-only**: it never executes a bridge run, never writes any file, and never calls Verum CLI / HTTP endpoints. It validates the `runId` (path-traversal, absolute-path, and weird-character checks) before any file I/O. Forbidden fields (`stdoutTail`, `stderrTail`, `command`, raw `reason` text, env vars, auth tokens) are filtered by an explicit per-source field whitelist — even if a future writer leaks them upstream, the trace output stays clean.
+The tool is **strictly read-only**: it never executes a bridge run, never writes any file, and never calls Kokuli CLI / HTTP endpoints. It validates the `runId` (path-traversal, absolute-path, and weird-character checks) before any file I/O. Forbidden fields (`stdoutTail`, `stderrTail`, `command`, raw `reason` text, env vars, auth tokens) are filtered by an explicit per-source field whitelist — even if a future writer leaks them upstream, the trace output stays clean.
 
 Human-mode example:
 
 ```text
-Verum Trace: 20260426T110956Z-ptah-smoke-4f5e42
+Kokuli Trace: 20260426T110956Z-ptah-smoke-4f5e42
 
-Verum:
+Kokuli:
   status:     passed
   caller:     ptah
   mode:       smoke
@@ -359,24 +359,24 @@ Hard cap: `maxRuntimeMs` cannot exceed 2 hours.
 
 There are two surfaces — pick whichever fits the caller.
 
-### A) HTTP (when Verum web is running)
+### A) HTTP (when Kokuli web is running)
 
-Start the Verum web server (port 3000 is occupied by `next-server` on Mushin — use `VERUM_PORT=3030`):
+Start the Kokuli web server (port 3000 is occupied by `next-server` on Mushin — use `KOKULI_PORT=3030`):
 
 ```bash
-cd /path/to/verum && VERUM_PORT=3030 npm run web
+cd /path/to/kokuli && KOKULI_PORT=3030 npm run web
 ```
 
 Endpoints (all under `/api/bridge/verum/`):
 
-- `GET  /api/bridge/verum/health`     — liveness + verum path + allowlist preview
+- `GET  /api/bridge/verum/health`     — liveness + kokuli path + allowlist preview
 - `GET  /api/bridge/verum/allowlist`  — full allowlist + default timeouts
 - `POST /api/bridge/verum/run`        — run a request and return the normalized result
 
 ### B) CLI (when called from a sibling local process)
 
 ```bash
-node /path/to/verum/bin/verum.js bridge <subcommand> [flags]
+node /path/to/kokuli/bin/kokuli.js bridge <subcommand> [flags]
 ```
 
 Subcommands: `smoke`, `suite <name>`, `test <id>`, `report`, `health`, `allowlist`.
@@ -401,9 +401,9 @@ curl -sS -X POST http://localhost:3030/api/bridge/verum/run \
 CLI:
 
 ```bash
-node /path/to/verum/bin/verum.js bridge smoke --caller ptah \
+node /path/to/kokuli/bin/kokuli.js bridge smoke --caller ptah \
     --reason "agent flagged unknown endpoint"
-node /path/to/verum/bin/verum.js bridge suite recon --caller ptah \
+node /path/to/kokuli/bin/kokuli.js bridge suite recon --caller ptah \
     --reason "follow-up after smoke pass"
 ```
 
@@ -433,22 +433,22 @@ curl -sS -X POST http://localhost:3030/api/bridge/verum/run \
 
 ### Ricky / OpenClaw — post-change validation
 
-Ricky must **not** shell out raw Verum commands. After any change touching safety / auth / routing / memory / receipts / tools:
+Ricky must **not** shell out raw Kokuli commands. After any change touching safety / auth / routing / memory / receipts / tools:
 
 ```bash
 # 1. Smoke — fail fast
-node /path/to/verum/bin/verum.js bridge smoke --caller ricky \
+node /path/to/kokuli/bin/kokuli.js bridge smoke --caller ricky \
     --reason "post-merge validation $(git rev-parse --short HEAD)"
 
 # 2. Security suite if smoke passed
-node /path/to/verum/bin/verum.js bridge suite security --caller ricky \
+node /path/to/kokuli/bin/kokuli.js bridge suite security --caller ricky \
     --reason "post-merge security regression"
 ```
 
 For a full nightly sweep (rare — guarded by concurrency lock):
 
 ```bash
-node /path/to/verum/bin/verum.js bridge suite all --caller ricky \
+node /path/to/kokuli/bin/kokuli.js bridge suite all --caller ricky \
     --reason "nightly post-merge $(date -u +%F)"
 ```
 
@@ -457,7 +457,7 @@ node /path/to/verum/bin/verum.js bridge suite all --caller ricky \
 `--dry-run` reveals the exact `argv` that *would* run, without executing:
 
 ```bash
-node /path/to/verum/bin/verum.js bridge suite security \
+node /path/to/kokuli/bin/kokuli.js bridge suite security \
     --caller manual --target mushin-local --dry-run
 ```
 
@@ -475,7 +475,7 @@ The bridge always returns a structured response — it never throws to the calle
 
 - Does **not** authenticate against the Tailscale Squidley target. To enable that, `config/targets.json:mushin-squidley-v2` would need an `auth` block and a `SQUIDLEY_AUTH_TOKEN` env var; this is intentionally out of scope.
 - Does **not** run as a systemd service. The bridge is in-process: HTTP routes piggyback on `npm run web`, CLI runs spawn directly. A systemd service would be a follow-up once the contract is exercised in practice.
-- Does **not** stream progress. Every `run` call is synchronous from the caller's perspective: the bridge spawns Verum, waits, returns one response. For long sweeps the caller must be willing to block for up to `maxRuntimeMs`.
+- Does **not** stream progress. Every `run` call is synchronous from the caller's perspective: the bridge spawns Kokuli, waits, returns one response. For long sweeps the caller must be willing to block for up to `maxRuntimeMs`.
 
 ## Implementation pointers
 

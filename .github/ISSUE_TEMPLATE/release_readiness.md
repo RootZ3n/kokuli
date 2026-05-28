@@ -23,7 +23,7 @@ Version or commit:
 ## Safety Defaults
 
 - [ ] Web binds to `127.0.0.1` by default.
-- [ ] Live network ops require `VERUM_ENABLE_NETWORK_OPS=1`.
+- [ ] Live network ops require `KOKULI_ENABLE_NETWORK_OPS=1`.
 - [ ] Live checks require ownership confirmation.
 - [ ] Public targets are blocked.
 - [ ] Reports are redacted/summarized before write.

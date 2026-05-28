@@ -67,7 +67,7 @@ export function apiErrorHandler(err: ApiErrorWithStatus, req: Request, res: Resp
 
   const payload = clientErrorPayload(err);
   if (payload.status >= 500) {
-    console.error("[verum-api] request failed", {
+    console.error("[kokuli-api] request failed", {
       method: req.method,
       path: req.path,
       status: payload.status,

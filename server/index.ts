@@ -5,10 +5,11 @@ import apiRouter from "./api";
 import { apiErrorHandler } from "./api-errors";
 
 const app = express();
-const PORT = parseInt(process.env.VERUM_PORT || process.env.KRAKZEN_PORT || "3000", 10);
-const HOSTS = process.env.VERUM_BIND_ALL === "1"
+const PORT = parseInt(process.env.KOKULI_PORT || process.env.VERUM_PORT || process.env.KRAKZEN_PORT || "3000", 10);
+const BIND_ALL = (process.env.KOKULI_BIND_ALL || process.env.VERUM_BIND_ALL) === "1";
+const HOSTS = BIND_ALL
   ? ["0.0.0.0"]
-  : (process.env.VERUM_HOST || "127.0.0.1")
+  : (process.env.KOKULI_HOST || process.env.VERUM_HOST || "127.0.0.1")
       .split(",")
       .map((h) => h.trim())
       .filter(Boolean);
@@ -144,11 +145,11 @@ app.get("/", (_req, res) => {
 for (const host of HOSTS) {
   app.listen(PORT, host, () => {
     const displayHost = host === "0.0.0.0" ? "localhost" : host;
-    console.log(`[verum-web] Dashboard:  http://${displayHost}:${PORT}`);
-    console.log(`[verum-web] Atlantis:   http://${displayHost}:${PORT}/atlantis`);
-    console.log(`[verum-web] API:        http://${displayHost}:${PORT}/api`);
+    console.log(`[kokuli-web] Dashboard:  http://${displayHost}:${PORT}`);
+    console.log(`[kokuli-web] Atlantis:   http://${displayHost}:${PORT}/atlantis`);
+    console.log(`[kokuli-web] API:        http://${displayHost}:${PORT}/api`);
   });
 }
-if (process.env.VERUM_BIND_ALL === "1") {
-  console.log("[verum-web] Warning: VERUM_BIND_ALL=1 exposes the dashboard beyond localhost.");
+if (BIND_ALL) {
+  console.log("[kokuli-web] Warning: KOKULI_BIND_ALL=1 (or VERUM_BIND_ALL=1) exposes the dashboard beyond localhost.");
 }

@@ -2,5 +2,5 @@
   "localOnlyIntent": true,
   "allowExternalTargets": false,
   "allowedProtocols": ["http:", "https:"],
-  "notes": "Verum only targets user-owned or explicitly approved lab systems."
+  "notes": "Kokuli only targets user-owned or explicitly approved lab systems."
 }

@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
-# Verum Uninstaller for Linux and macOS
+# Kokuli Uninstaller for Linux and macOS
+# Also cleans up legacy ~/.verum installations
 set -euo pipefail
 
-KRAUM_HOME="${HOME}/.verum"
-SYMLINK_PATH="/usr/local/bin/verum"
+KRAUM_HOME="${HOME}/.kokuli"
+LEGACY_HOME="${HOME}/.verum"
+SYMLINK_PATH="/usr/local/bin/kokuli"
+LEGACY_SYMLINK="/usr/local/bin/verum"
 
-info()  { printf "\033[1;34m[verum]\033[0m %s\n" "$*"; }
-warn()  { printf "\033[1;33m[verum]\033[0m %s\n" "$*"; }
-error() { printf "\033[1;31m[verum]\033[0m %s\n" "$*" >&2; }
+info()  { printf "\033[1;34m[kokuli]\033[0m %s\n" "$*"; }
+warn()  { printf "\033[1;33m[kokuli]\033[0m %s\n" "$*"; }
+error() { printf "\033[1;31m[kokuli]\033[0m %s\n" "$*" >&2; }
 
 confirm() {
   local prompt="${1:-Continue?} [y/N] "
@@ -16,10 +19,10 @@ confirm() {
 }
 
 echo ""
-echo "  Verum Uninstaller"
+echo "  Kokuli Uninstaller"
 echo ""
 
-if ! confirm "This will remove Verum from your system. Continue?"; then
+if ! confirm "This will remove Kokuli from your system. Continue?"; then
   info "Aborted."
   exit 0
 fi
@@ -40,37 +43,45 @@ fi
 # ---------- remove launchd plist (macOS) ----------
 
 if [[ "$(uname -s)" == "Darwin" ]]; then
-  local_plist="${HOME}/Library/LaunchAgents/com.verum.web.plist"
-  if [[ -f "${local_plist}" ]]; then
-    info "Unloading and removing launchd plist..."
-    launchctl unload "${local_plist}" 2>/dev/null || true
-    rm -f "${local_plist}"
-    info "launchd plist removed"
-  fi
+  for plist_name in com.kokuli.web com.verum.web; do
+    local_plist="${HOME}/Library/LaunchAgents/${plist_name}.plist"
+    if [[ -f "${local_plist}" ]]; then
+      info "Unloading and removing launchd plist ${plist_name}..."
+      launchctl unload "${local_plist}" 2>/dev/null || true
+      rm -f "${local_plist}"
+      info "launchd plist removed: ${plist_name}"
+    fi
+  done
 fi
 
 # ---------- remove symlink ----------
 
-if [[ -L "${SYMLINK_PATH}" ]]; then
-  info "Removing symlink at ${SYMLINK_PATH}..."
-  if [[ -w "$(dirname "${SYMLINK_PATH}")" ]]; then
-    rm -f "${SYMLINK_PATH}"
-  else
-    sudo rm -f "${SYMLINK_PATH}"
+for link in "${SYMLINK_PATH}" "${LEGACY_SYMLINK}"; do
+  if [[ -L "${link}" ]]; then
+    info "Removing symlink at ${link}..."
+    if [[ -w "$(dirname "${link}")" ]]; then
+      rm -f "${link}"
+    else
+      sudo rm -f "${link}"
+    fi
+    info "Symlink removed: ${link}"
   fi
-  info "Symlink removed"
-fi
+done
 
 # ---------- remove install directory ----------
 
-if [[ -d "${KRAUM_HOME}" ]]; then
-  info "Removing ${KRAUM_HOME}..."
-  rm -rf "${KRAUM_HOME}"
-  info "Installation directory removed"
-else
-  warn "No installation found at ${KRAUM_HOME}"
+for dir in "${KRAUM_HOME}" "${LEGACY_HOME}"; do
+  if [[ -d "${dir}" ]]; then
+    info "Removing ${dir}..."
+    rm -rf "${dir}"
+    info "Installation directory removed: ${dir}"
+  fi
+done
+
+if [[ ! -d "${KRAUM_HOME}" && ! -d "${LEGACY_HOME}" ]]; then
+  warn "No installation found at ${KRAUM_HOME} or ${LEGACY_HOME}"
 fi
 
 echo ""
-info "Verum has been uninstalled."
+info "Kokuli has been uninstalled."
 echo ""

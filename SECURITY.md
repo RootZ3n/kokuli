@@ -2,19 +2,19 @@
 
 ## Scope
 
-Verum is a defensive AI trust-testing tool for systems you own or are explicitly authorized to test. Do not use Verum against public internet systems, third-party services, or production systems without clear written authorization.
+Kokuli is a defensive AI fracture-testing tool for systems you own or are explicitly authorized to test. Do not use Kokuli against public internet systems, third-party services, or production systems without clear written authorization.
 
 ## Safe Defaults
 
-- Web server default bind: `127.0.0.1`. Set `VERUM_HOST` (comma-separated list) to additionally bind a Tailscale or other trusted interface.
-- Live Armory / Break Me network operations require `VERUM_ENABLE_NETWORK_OPS=1`.
+- Web server default bind: `127.0.0.1`. Set `KOKULI_HOST` (comma-separated list; `VERUM_HOST` accepted as fallback) to additionally bind a Tailscale or other trusted interface.
+- Live Armory / Break Me network operations require `KOKULI_ENABLE_NETWORK_OPS=1` (`VERUM_ENABLE_NETWORK_OPS` accepted as fallback).
 - Live checks require explicit ownership confirmation.
 - Public IP and public domain live checks are blocked in the public RC line.
 - Armory receipts redact and summarize evidence before report write.
 
 ## Deployment posture: lab-only
 
-Verum is a lab-only tool. The web server has no authentication gates and no per-route localhost restrictions: anything that can reach the bind address can use the API. Limit network exposure at the bind layer (default `127.0.0.1`, optionally a Tailscale IP) and your operating system firewall — do not place Verum on an untrusted network.
+Kokuli is a lab-only tool. The web server has no authentication gates and no per-route localhost restrictions: anything that can reach the bind address can use the API. Limit network exposure at the bind layer (default `127.0.0.1`, optionally a Tailscale IP) and your operating system firewall — do not place Kokuli on an untrusted network.
 
 ## Reporting A Vulnerability
 
@@ -30,7 +30,7 @@ Please include:
 
 ## Report Handling
 
-Verum reports can contain sensitive engineering evidence even after redaction. Treat `reports/` output as confidential unless it has been reviewed and intentionally sanitized for sharing.
+Kokuli reports can contain sensitive engineering evidence even after redaction. Treat `reports/` output as confidential unless it has been reviewed and intentionally sanitized for sharing.
 
 ## Dependency Audit Status
 
@@ -51,18 +51,18 @@ before release tagging.
 
 ## Audit Summary — 2026-05-04
 
-> **Note (2026-05-10):** The `VERUM_API_TOKEN` gate and the per-route loopback checks described below were removed as part of moving Verum to a lab-only deployment posture. The audit record is retained for history. Current access control is bind-layer only (see *Safe Defaults* above).
+> **Note (2026-05-10):** The `VERUM_API_TOKEN` gate and the per-route loopback checks described below were removed as part of moving Kokuli (then Verum) to a lab-only deployment posture. The audit record is retained for history. Current access control is bind-layer only (see *Safe Defaults* above).
 
 
 ### Scope
-Full security audit of Verum v0.2.0 focusing on authentication, authorization, injection hardening, and SSRF protection. The following findings were identified and resolved.
+Full security audit of Kokuli v0.2.0 (then named Verum) focusing on authentication, authorization, injection hardening, and SSRF protection. The following findings were identified and resolved.
 
 ### Issues Fixed
 
 #### 1. 🔴 Critical — Report endpoints were open without authentication (CVE-class)
 **Files:** `server/api.ts`, `server/access.ts`
 **Severity:** Critical
-**Finding:** `/api/reports/summary`, `/api/dashboard`, and `/api/reports/latest` used only `requireLocalAccess()` (loopback check). Since Verum binds to `127.0.0.1` by default, any local user or local process could read full assessment reports and test results without any token. This exposed all test results, target configs, and findings to any local actor.
+**Finding:** `/api/reports/summary`, `/api/dashboard`, and `/api/reports/latest` used only `requireLocalAccess()` (loopback check). Since Kokuli binds to `127.0.0.1` by default, any local user or local process could read full assessment reports and test results without any token. This exposed all test results, target configs, and findings to any local actor.
 
 **Fix:** Added a new `requireAuth()` middleware (token-only, no localhost restriction) and applied it to all report endpoints. The `requireLocalAccess` ops routes (ops/run, ops/kill, ops/reset) continue to require both localhost origin AND valid token.
 
@@ -117,11 +117,11 @@ Additionally changed `apiTokenMatches()` to fail-closed when VERUM_API_TOKEN is 
 
 ```bash
 # For live Armory ops (network probing of your own lab):
-VERUM_ENABLE_NETWORK_OPS=1
-VERUM_OWNERSHIP_CONFIRMED=1
+KOKULI_ENABLE_NETWORK_OPS=1
+KOKULI_OWNERSHIP_CONFIRMED=1
 
-# Start Verum
-systemctl --user start verum-web
+# Start Kokuli
+systemctl --user start kokuli-web
 ```
 
 ### Test Results

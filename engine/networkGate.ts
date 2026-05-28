@@ -1,21 +1,22 @@
 /**
- * Verum's CLI-side network gate.
+ * Kokuli's CLI-side network gate.
  *
  * The Armory web UI gate (server/ops/safety.ts + armory.ts) was already
- * enforcing VERUM_ENABLE_NETWORK_OPS + ownership confirmation. The CLI
- * path (engine/cli.ts → engine/client.ts) was NOT — it would happily
- * make outbound axios requests to whatever URL appeared in a target
- * config. This module closes that hole.
+ * enforcing KOKULI_ENABLE_NETWORK_OPS (VERUM_ENABLE_NETWORK_OPS fallback)
+ * + ownership confirmation. The CLI path (engine/cli.ts → engine/client.ts)
+ * was NOT — it would happily make outbound axios requests to whatever URL
+ * appeared in a target config. This module closes that hole.
  *
  * Default policy:
  *   - Local / private / lab targets (loopback, RFC1918, RFC6598/CGNAT,
  *     IPv6 ULA + link-local, *.local mDNS) are allowed.
  *   - Any other host is treated as "public" and refused unless the
  *     operator has set BOTH:
- *         VERUM_ENABLE_NETWORK_OPS=1
- *         VERUM_OWNERSHIP_CONFIRMED=1
- *   - VERUM_NETWORK_BYPASS=1 short-circuits the gate (e.g. for tests
- *     that mock the network and never actually leave the host).
+ *         KOKULI_ENABLE_NETWORK_OPS=1   (fallback: VERUM_ENABLE_NETWORK_OPS=1)
+ *         KOKULI_OWNERSHIP_CONFIRMED=1  (fallback: VERUM_OWNERSHIP_CONFIRMED=1)
+ *   - KOKULI_NETWORK_BYPASS=1 (fallback: VERUM_NETWORK_BYPASS=1) short-circuits
+ *     the gate (e.g. for tests that mock the network and never actually leave
+ *     the host).
  *
  * The dual-env-var contract mirrors the Armory contract intentionally:
  * one flag says "yes I want the network on at all" and the other is
@@ -54,17 +55,17 @@ function envFlag(name: string): boolean {
 }
 
 export function isNetworkOpsEnabled(): boolean {
-  return envFlag("VERUM_ENABLE_NETWORK_OPS");
+  return envFlag("KOKULI_ENABLE_NETWORK_OPS") || envFlag("VERUM_ENABLE_NETWORK_OPS");
 }
 
 export function isOwnershipConfirmed(): boolean {
-  return envFlag("VERUM_OWNERSHIP_CONFIRMED");
+  return envFlag("KOKULI_OWNERSHIP_CONFIRMED") || envFlag("VERUM_OWNERSHIP_CONFIRMED");
 }
 
 function isNetworkBypass(): boolean {
   // Only honored under NODE_ENV=test to keep production code paths tight.
   // (Tests that need to run real-but-offline integrations can opt in.)
-  return process.env.NODE_ENV === "test" && envFlag("VERUM_NETWORK_BYPASS");
+  return process.env.NODE_ENV === "test" && (envFlag("KOKULI_NETWORK_BYPASS") || envFlag("VERUM_NETWORK_BYPASS"));
 }
 
 export function isPrivateOrLocalHostname(hostname: string): boolean {
@@ -120,13 +121,13 @@ export function assertNetworkAllowed(ctx: NetworkGateContext): void {
     parsed = new URL(ctx.url);
   } catch {
     throw new NetworkGateError(
-      `[verum] Refusing to make a request — malformed URL '${ctx.url}'.`,
+      `[kokuli] Refusing to make a request — malformed URL '${ctx.url}'.`,
     );
   }
 
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
     throw new NetworkGateError(
-      `[verum] Refusing to make a request — only http/https are allowed (got '${parsed.protocol}').`,
+      `[kokuli] Refusing to make a request — only http/https are allowed (got '${parsed.protocol}').`,
     );
   }
 
@@ -138,14 +139,14 @@ export function assertNetworkAllowed(ctx: NetworkGateContext): void {
   if (network && ownership) return;
 
   const missing: string[] = [];
-  if (!network) missing.push("VERUM_ENABLE_NETWORK_OPS=1");
-  if (!ownership) missing.push("VERUM_OWNERSHIP_CONFIRMED=1");
+  if (!network) missing.push("KOKULI_ENABLE_NETWORK_OPS=1 (or VERUM_ENABLE_NETWORK_OPS=1)");
+  if (!ownership) missing.push("KOKULI_OWNERSHIP_CONFIRMED=1 (or VERUM_OWNERSHIP_CONFIRMED=1)");
 
   const label = ctx.targetName ? `${ctx.targetName} (${host})` : host;
   const purpose = ctx.purpose ? ` for ${ctx.purpose}` : "";
   throw new NetworkGateError(
-    `[verum] Refusing to send a public-target request${purpose} to '${label}'. ` +
-      `Verum gates outbound network ops by default. To enable, set: ${missing.join(" and ")}, ` +
+    `[kokuli] Refusing to send a public-target request${purpose} to '${label}'. ` +
+      `Kokuli gates outbound network ops by default. To enable, set: ${missing.join(" and ")}, ` +
       `and confirm you own the target. Local lab IPs (loopback, RFC1918, RFC6598/CGNAT, *.local) are always allowed.`,
   );
 }

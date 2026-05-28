@@ -1,6 +1,6 @@
 /* Atlantis-specific overrides and additions */
 .atlantis-bg {
-  background: linear-gradient(180deg, #0a0e17 0%, #0d1525 40%, #12183a 100%);
+  background: linear-gradient(180deg, #0c0a1a 0%, #130f28 40%, #1a1538 100%);
   min-height: 100vh;
 }
 

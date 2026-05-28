@@ -1,4 +1,4 @@
-# Verum Architecture
+# Kokuli Architecture
 
 ## Machines
 
@@ -7,12 +7,12 @@
 - i7-13700K, RTX 4070
 - Primary Squidley V2 host
 - Hardened gateway, structured receipts, Velum privacy layer, multi-model routing
-- Primary test target for Verum
+- Primary test target for Kokuli
 
 ### Pop Tart
 - Pop!_OS
 - AMD RX 6800, 32GB DDR5
-- Verum host and defensive trust-testing machine
+- Kokuli host and defensive trust-testing machine
 - Stores reports, documentation, and release-gate logic
 - Runs Ollama as always-on systemd service
 
@@ -29,7 +29,7 @@ All communication happens over Tailscale.
 
 ## Discovered Squidley V2 Endpoints
 
-Verum probes all known Squidley endpoints, not just `/chat`:
+Kokuli probes all known Squidley endpoints, not just `/chat`:
 
 | Endpoint | Method | Purpose | Auth Required |
 |----------|--------|---------|---------------|
@@ -50,7 +50,7 @@ Verum probes all known Squidley endpoints, not just `/chat`:
 | `/auriga/sessions` | GET | Media sessions | **None** |
 | `/animus/ideas` | GET | Idea store | **None** |
 
-## Verum Core
+## Kokuli Core
 
 ### Engine Components
 
@@ -64,28 +64,31 @@ Verum probes all known Squidley endpoints, not just `/chat`:
 
 ### Test Categories
 
-| Category | Tests | Priority | Description |
-|----------|-------|----------|-------------|
-| **child-safety** | 12 | CRITICAL | Magister child protection — jailbreak, PII, grooming, harmful content |
-| **security** | 6 | High | Prompt injection, refusal, system prompt protection |
-| **recon** | 8 | High | Endpoint discovery, information leakage detection |
-| **auth** | 8 | High | Authentication/authorization verification |
-| **exfil** | 8 | High | Data exfiltration and leakage testing |
-| **multi-turn** | 4 | High | Multi-step attack chain testing |
-| **fuzzing** | 3 | Medium | Automated input mutation testing |
-| **reliability** | 2 | Medium | Input sanitization, malformed input handling |
-| **architecture** | 2 | Medium | Receipt validation, field presence |
+| Category | Tests | Fixtures | Priority | Description |
+|----------|-------|----------|----------|-------------|
+| **child-safety** | 12 | 12 | CRITICAL | Magister child protection — jailbreak, PII, grooming, harmful content |
+| **security** | 9 | 9 | High | Prompt injection, refusal, system prompt protection |
+| **recon** | 18 | 18 | High | Endpoint discovery, information leakage detection |
+| **auth** | 23 | 23 | High | Authentication/authorization verification, CORS, method confusion |
+| **exfil** | 14 | 14 | High | Data exfiltration and leakage testing (transform-reveal, chunked, memory bypass) |
+| **multi-turn** | 11 | 11 | High | Multi-step attack chain testing (escalation, poisoning, delayed jailbreak) |
+| **fuzzing** | 8 | ~60 variants | Medium | Automated input mutation testing (unicode, injection, oversized, encoding, traversal) |
+| **reliability** | 17 | 17 | Medium | Input sanitization, malformed input, rate limiting, streaming, SSE |
+| **architecture** | 11 | 11 | Medium | Receipt validation, field presence, schema consistency, correlation IDs |
+| **baseline** | 1 suite | 9 threshold criteria | CRITICAL | Locked gate suite — PASS>=6, WARN<=3, FAIL=0 required to pass |
+
+**Total unique fixture manifests: 121. Total execution variants (including fuzz sub-variants and multi-turn steps): 209.**
 
 ### Web UI
 
-- **server/index.ts** — Express server on port 3000 (systemd service: verum-web)
+- **server/index.ts** — Express server on port 3000 (systemd service: kokuli-web)
 - **Dashboard** (`/`) — Test registry, run controls, live results, suite summaries
 - **Atlantis Portal** (`/atlantis`) — Zone map, creature encounters, quizzes, XP/level HUD, curriculum
 - API routes call the same engine functions as CLI
 
 ### Receipt Awareness
 
-Verum parses structured Squidley V2 SSE streaming responses and inspects:
+Kokuli parses structured Squidley V2 SSE streaming responses and inspects:
 - `output` — assembled chat response from chunks
 - `receipt_id` — unique request receipt (from `routingDecisionId`)
 - `provider` / `model` — routing metadata
@@ -166,7 +169,7 @@ Tests are evaluated deterministically:
 
 ### Architecture Rule
 
-The learning module is a **removable plugin**. Verum core has zero dependency on it. You can delete the entire `learning/` directory and every test suite still runs.
+The learning module is a **removable plugin**. Kokuli core has zero dependency on it. You can delete the entire `learning/` directory and every test suite still runs.
 
 ### Module Structure
 
@@ -193,19 +196,65 @@ learning/
 
 The learning module registers `realm` and `learn` as commands in the main CLI. If the learning module were removed, these commands would simply not exist.
 
-## Long-Term Direction
+## AI Judge Layer (Future)
 
-### Verum Core
-- AI judge layer for semantic evaluation
-- Regression framework with trend analysis
-- Release gate workflow (Mushin -> Pop Tart)
-- Multimodal endpoint testing
-- Rate limiting and abuse testing
-- Session-aware multi-turn with real /sessions API
-- Concurrent test execution
+Kokuli is built on deterministic evaluation by design — pattern matching, refusal detection, leak classification, receipt integrity. Deterministic judges are authoritative because they never hallucinate a verdict.
+
+However, some attack surfaces are inherently semantic: character consistency drift, nuanced refusal quality, creative jailbreak variants that evade substring patterns. For those, an optional AI judge layer will sit **alongside** the deterministic evaluator, never replacing it.
+
+### Design principles
+
+1. **Deterministic evaluation is always authoritative.** AI judge output is advisory — flagged as `OPINION`, never `FAIL`.
+2. **Sanitized evidence only.** The judge model never sees raw prompts, system prompts, or target internals — only the sanitized response text and the expected behavior.
+3. **Cost-gated and opt-in.** AI judge runs require explicit `--ai-judge` flag or `KOKULI_AI_JUDGE=1` (`VERUM_AI_JUDGE` accepted as fallback). No surprise costs.
+4. **Attribution is explicit.** Every AI-judge finding carries `judgeModel`, `judgeConfidence`, and `judgeProvider` in the report. Operator can always tell who decided what.
+
+### Integration points
+
+| Phase | What | Integration |
+|-------|------|-------------|
+| 1 | Semantic refusal grading | `evaluator.ts` — after deterministic `looksLikeRefusal()`, run judge to score refusal quality (graceful vs robotic vs over-refusal) |
+| 2 | Multi-turn drift detection | `multiTurn.ts` — judge compares turn N to turn 1 persona markers when deterministic markers are absent |
+| 3 | Exfil intent classification | `evaluator.ts` — when deterministic patterns are ambiguous, judge scores whether the response plausibly exfiltrates |
+| 4 | Fuzzing response meaning | `fuzzer.ts` — judge scores whether a garbled response is a safe error or a revealing crash dump |
+
+### Bundle impact
+
+AI judge layers append to the existing evidence bundle:
+
+```jsonc
+{
+  "aiReview": {
+    "enabled": true,
+    "judgeModel": "openrouter/anthropic/claude-sonnet-4",
+    "judgeProvider": "openrouter",
+    "judgeCostUsd": 0.0004,
+    "judgeFindings": ["OPINION: response shows mild persona drift in turn 3"],
+    "judgeConfidence": "medium",
+    "disagreesWithDeterministic": false
+  }
+}
+```
+
+### Non-goals
+
+- AI judge will never override a deterministic verdict.
+- AI judge will never access raw target state, system prompts, or evidence it could use to reconstruct secrets.
+- AI judge will never run by default — no cost pipeline.
 
 ### Learning Module
 - More zones, creatures, and curriculum modules
-- XP-gated access to advanced Verum features
+- XP-gated access to advanced Kokuli features
 - Network security training modules
 - VM lab guidance integration
+
+### Long-term roadmap (non-blocking for release)
+
+| Priority | Feature | Phase |
+|----------|---------|-------|
+| High | Regression framework with trend analysis and retest comparison | Post-RC |
+| High | Release gate workflow across Mushin → Pop Tart | Post-RC |
+| Medium | Concurrent test execution | Post-RC |
+| Medium | Multimodal and audio endpoint testing | Post-RC |
+| Medium | Rate limiting and abuse testing automation | Post-RC |
+| Low | Session-aware multi-turn with real /sessions API integration | Post-RC |

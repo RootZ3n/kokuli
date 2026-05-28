@@ -1,20 +1,20 @@
-# Verum Installer for Windows
+# Kokuli Installer for Windows
 # Usage: powershell -ExecutionPolicy Bypass -File install\install.ps1
 param(
-    [string]$RepoUrl = "https://github.com/jeffmillr/verum.git"
+    [string]$RepoUrl = "https://github.com/jeffmillr/kokuli.git"
 )
 
 $ErrorActionPreference = "Stop"
 
-$VerumHome = Join-Path $env:USERPROFILE ".verum"
-$VerumBin  = Join-Path $VerumHome "bin"
+$KokuliHome = Join-Path $env:USERPROFILE ".kokuli"
+$KokuliBin  = Join-Path $KokuliHome "bin"
 $MinNodeVersion = 18
 
 # ---------- helpers ----------
 
-function Write-Info  { param([string]$Msg) Write-Host "[verum] $Msg" -ForegroundColor Cyan }
-function Write-Warn  { param([string]$Msg) Write-Host "[verum] $Msg" -ForegroundColor Yellow }
-function Write-Err   { param([string]$Msg) Write-Host "[verum] $Msg" -ForegroundColor Red }
+function Write-Info  { param([string]$Msg) Write-Host "[kokuli] $Msg" -ForegroundColor Cyan }
+function Write-Warn  { param([string]$Msg) Write-Host "[kokuli] $Msg" -ForegroundColor Yellow }
+function Write-Err   { param([string]$Msg) Write-Host "[kokuli] $Msg" -ForegroundColor Red }
 
 function Confirm-Prompt {
     param([string]$Prompt = "Continue? [y/N]")
@@ -60,46 +60,46 @@ function Install-Source {
 
     if (Test-Path "package.json") {
         $pkg = Get-Content "package.json" -Raw
-        if ($pkg -match '"name":\s*"verum"') {
-            Write-Info "Running inside a Verum checkout -- using current directory as source"
+        if ($pkg -match '"name":\s*"(kokuli|verum)"') {
+            Write-Info "Running inside a Kokuli checkout -- using current directory as source"
             $script:SourceDir = (Get-Location).Path
         }
     }
 
-    if (Test-Path $VerumHome) {
-        Write-Warn "Existing installation found at $VerumHome"
+    if (Test-Path $KokuliHome) {
+        Write-Warn "Existing installation found at $KokuliHome"
         if (Confirm-Prompt "Remove and reinstall? [y/N]") {
-            Remove-Item -Recurse -Force $VerumHome
+            Remove-Item -Recurse -Force $KokuliHome
         } else {
             Exit-Fatal "Installation aborted."
         }
     }
 
-    New-Item -ItemType Directory -Force -Path $VerumHome | Out-Null
+    New-Item -ItemType Directory -Force -Path $KokuliHome | Out-Null
 
     if ($script:SourceDir) {
-        Write-Info "Copying project files to $VerumHome..."
+        Write-Info "Copying project files to $KokuliHome..."
         $items = Get-ChildItem -Path $script:SourceDir -Exclude "node_modules", "dist"
         foreach ($item in $items) {
-            Copy-Item -Recurse -Force $item.FullName -Destination $VerumHome
+            Copy-Item -Recurse -Force $item.FullName -Destination $KokuliHome
         }
     } else {
         $gitPath = Get-Command git -ErrorAction SilentlyContinue
         if ($gitPath) {
-            Write-Info "Cloning Verum repository..."
-            & git clone --depth 1 $RepoUrl $VerumHome
+            Write-Info "Cloning Kokuli repository..."
+            & git clone --depth 1 $RepoUrl $KokuliHome
             if ($LASTEXITCODE -ne 0) {
-                Exit-Fatal "Failed to clone repository. Check your network or clone manually to $VerumHome"
+                Exit-Fatal "Failed to clone repository. Check your network or clone manually to $KokuliHome"
             }
         } else {
-            Exit-Fatal "git is not installed and you are not inside a Verum checkout. Install git or run this script from the repo root."
+            Exit-Fatal "git is not installed and you are not inside a Kokuli checkout. Install git or run this script from the repo root."
         }
     }
 }
 
 function Install-Dependencies {
     Write-Info "Installing dependencies..."
-    Push-Location $VerumHome
+    Push-Location $KokuliHome
     try {
         & npm install
         if ($LASTEXITCODE -ne 0) { Exit-Fatal "npm install failed" }
@@ -110,7 +110,7 @@ function Install-Dependencies {
 
 function Build-Project {
     Write-Info "Building project..."
-    Push-Location $VerumHome
+    Push-Location $KokuliHome
     try {
         & npm run build
         if ($LASTEXITCODE -ne 0) { Exit-Fatal "npm run build failed" }
@@ -121,41 +121,45 @@ function Build-Project {
 }
 
 function New-Wrapper {
-    New-Item -ItemType Directory -Force -Path $VerumBin | Out-Null
+    New-Item -ItemType Directory -Force -Path $KokuliBin | Out-Null
 
     $nodeBin = (Get-Command node).Source
 
     $wrapperContent = @"
 @echo off
-"$nodeBin" "$VerumHome\dist\engine\cli.js" %*
+"$nodeBin" "$KokuliHome\dist\engine\cli.js" %*
 "@
-    $wrapperBat = Join-Path $VerumBin "verum.cmd"
-    Set-Content -Path $wrapperBat -Value $wrapperContent -Encoding ASCII
-    Write-Info "Wrapper script created at $wrapperBat"
+    $kokuliCmd = Join-Path $KokuliBin "kokuli.cmd"
+    Set-Content -Path $kokuliCmd -Value $wrapperContent -Encoding ASCII
+    Write-Info "Wrapper script created at $kokuliCmd"
+
+    $verumCmd = Join-Path $KokuliBin "verum.cmd"
+    Set-Content -Path $verumCmd -Value $wrapperContent -Encoding ASCII
+    Write-Info "Legacy wrapper script created at $verumCmd"
 }
 
 function Add-ToPath {
     $currentUserPath = [Environment]::GetEnvironmentVariable("Path", "User")
-    if ($currentUserPath -split ";" | Where-Object { $_ -eq $VerumBin }) {
-        Write-Info "$VerumBin is already in PATH"
+    if ($currentUserPath -split ";" | Where-Object { $_ -eq $KokuliBin }) {
+        Write-Info "$KokuliBin is already in PATH"
         return
     }
 
-    if (Confirm-Prompt "Add $VerumBin to your user PATH? [y/N]") {
-        $newPath = "$currentUserPath;$VerumBin"
+    if (Confirm-Prompt "Add $KokuliBin to your user PATH? [y/N]") {
+        $newPath = "$currentUserPath;$KokuliBin"
         [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
-        $env:Path = "$env:Path;$VerumBin"
-        Write-Info "Added $VerumBin to user PATH"
+        $env:Path = "$env:Path;$KokuliBin"
+        Write-Info "Added $KokuliBin to user PATH"
         Write-Warn "You may need to restart your terminal for PATH changes to take effect"
     } else {
-        Write-Warn "Skipped PATH update. Add $VerumBin to your PATH manually."
+        Write-Warn "Skipped PATH update. Add $KokuliBin to your PATH manually."
     }
 }
 
 function Install-WindowsService {
     Write-Host ""
-    Write-Info "Verum includes a web UI that can run as a background service."
-    if (-not (Confirm-Prompt "Install Verum web UI as a Windows service? [y/N]")) {
+    Write-Info "Kokuli includes a web UI that can run as a background service."
+    if (-not (Confirm-Prompt "Install Kokuli web UI as a Windows service? [y/N]")) {
         return
     }
 
@@ -163,21 +167,21 @@ function Install-WindowsService {
     $nssm = Get-Command nssm -ErrorAction SilentlyContinue
     if ($nssm) {
         $nodeBin = (Get-Command node).Source
-        $serverEntry = Join-Path $VerumHome "dist\server\index.js"
+        $serverEntry = Join-Path $KokuliHome "dist\server\index.js"
 
-        & nssm install VerumWeb "$nodeBin" "$serverEntry"
-        & nssm set VerumWeb AppDirectory "$VerumHome"
-        & nssm set VerumWeb DisplayName "Verum Web UI"
-        & nssm set VerumWeb Description "Verum adversarial validation web dashboard"
-        & nssm set VerumWeb Start SERVICE_AUTO_START
-        Write-Info "Windows service 'VerumWeb' installed via nssm"
-        Write-Info "Start it with: nssm start VerumWeb"
+        & nssm install KokuliWeb "$nodeBin" "$serverEntry"
+        & nssm set KokuliWeb AppDirectory "$KokuliHome"
+        & nssm set KokuliWeb DisplayName "Kokuli Web UI"
+        & nssm set KokuliWeb Description "Kokuli adversarial fracture engine web dashboard"
+        & nssm set KokuliWeb Start SERVICE_AUTO_START
+        Write-Info "Windows service 'KokuliWeb' installed via nssm"
+        Write-Info "Start it with: nssm start KokuliWeb"
         return
     }
 
     # Fallback: try node-windows
     Write-Warn "nssm not found. Attempting to use node-windows..."
-    Push-Location $VerumHome
+    Push-Location $KokuliHome
     try {
         & npm install node-windows --save
         if ($LASTEXITCODE -ne 0) {
@@ -185,13 +189,13 @@ function Install-WindowsService {
             return
         }
 
-        $serviceScript = Join-Path $VerumHome "install" "install-service.js"
+        $serviceScript = Join-Path $KokuliHome "install" "install-service.js"
         $serviceContent = @"
 const { Service } = require('node-windows');
 const path = require('path');
 const svc = new Service({
-  name: 'Verum Web UI',
-  description: 'Verum adversarial validation web dashboard',
+  name: 'Kokuli Web UI',
+  description: 'Kokuli adversarial fracture engine web dashboard',
   script: path.join(__dirname, '..', 'dist', 'server', 'index.js'),
   workingDirectory: path.join(__dirname, '..'),
 });
@@ -211,8 +215,8 @@ svc.install();
 function Main {
     Write-Host ""
     Write-Host "  +=======================================+"
-    Write-Host "  |   Verum Installer                   |"
-    Write-Host "  |   Adversarial Validation Framework    |"
+    Write-Host "  |   Kokuli Installer                    |"
+    Write-Host "  |   Adversarial Fracture Engine          |"
     Write-Host "  +=======================================+"
     Write-Host ""
 
@@ -234,17 +238,17 @@ function Main {
 
     Write-Host ""
     Write-Info "============================================"
-    Write-Info "  Verum installed successfully!"
+    Write-Info "  Kokuli installed successfully!"
     Write-Info "============================================"
     Write-Host ""
     Write-Info "Next steps:"
-    Write-Info "  verum list           -- list available tests"
-    Write-Info "  verum suite all      -- run all test suites"
-    Write-Info "  verum report summary -- view latest report"
+    Write-Info "  kokuli list           -- list available tests"
+    Write-Info "  kokuli suite all      -- run all test suites"
+    Write-Info "  kokuli report summary -- view latest report"
     Write-Host ""
-    Write-Info "Web UI:    cd $VerumHome; npm run web  (or start the service)"
-    Write-Info "Docs:      $VerumHome\docs\"
-    Write-Info "Uninstall: powershell $VerumHome\install\uninstall.ps1"
+    Write-Info "Web UI:    cd $KokuliHome; npm run web  (or start the service)"
+    Write-Info "Docs:      $KokuliHome\docs\"
+    Write-Info "Uninstall: powershell $KokuliHome\install\uninstall.ps1"
     Write-Host ""
 }
 

@@ -15,7 +15,7 @@ interface FindingOverride {
 }
 
 interface FindingWorkflowMetadata {
-  // Per-finding workflow state — consumed by Verum Trace to show lifecycle
+  // Per-finding workflow state — consumed by Kokuli Trace to show lifecycle
   lastSeenAt: string;       // ISO-8601
   status: "open" | "muted" | "accepted_risk" | "resolved";
   assignee?: string;
@@ -59,4 +59,4 @@ Finding IDs are constructed as `{category}-{number}-{slug}`, e.g. `exfil-013-ben
 
 ## Loading
 
-The `engine/findingMetadata.ts` module reads and writes this file via `loadFindingMetadata()` and `saveFindingMetadata()`. Do not edit the JSON by hand while Verum is running — edits may be overwritten on the next write.
+The `engine/findingMetadata.ts` module reads and writes this file via `loadFindingMetadata()` and `saveFindingMetadata()`. Do not edit the JSON by hand while Kokuli is running — edits may be overwritten on the next write.

@@ -50,7 +50,7 @@ function row(overrides: Partial<BridgeRunRow> = {}): BridgeRunRow {
   };
 }
 
-async function withTempVerumRoot<T>(fn: (root: string) => Promise<T>): Promise<T> {
+async function withTempKokuliRoot<T>(fn: (root: string) => Promise<T>): Promise<T> {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "bridge-runs-"));
   try {
     return await fn(dir);
@@ -80,7 +80,7 @@ test("parseIndexLine drops forbidden fields even if present", () => {
     reason: "secret reason text",
     stdoutTail: "leak1",
     stderrTail: "leak2",
-    command: ["node", "verum.js"],
+    command: ["node", "kokuli.js"],
     authToken: "Bearer xyz",
   };
   const r = parseIndexLine(JSON.stringify(polluted));
@@ -187,7 +187,7 @@ test("applyFilters limit clamps to MAX_LIMIT", () => {
 // ── readBridgeIndex / listBridgeRuns ───────────────────────────────────────
 
 test("readBridgeIndex returns empty when file is missing", async () => {
-  await withTempVerumRoot(async (root) => {
+  await withTempKokuliRoot(async (root) => {
     const r = await readBridgeIndex(root);
     assert.equal(r.empty, true);
     assert.equal(r.rows.length, 0);
@@ -195,7 +195,7 @@ test("readBridgeIndex returns empty when file is missing", async () => {
 });
 
 test("readBridgeIndex skips malformed lines and counts them", async () => {
-  await withTempVerumRoot(async (root) => {
+  await withTempKokuliRoot(async (root) => {
     await writeIndex(root, [
       JSON.stringify(row({ runId: "20260426T120000Z-a-a-aaaaaa" })),
       "this is not json",
@@ -211,7 +211,7 @@ test("readBridgeIndex skips malformed lines and counts them", async () => {
 });
 
 test("listBridgeRuns applies filters end-to-end", async () => {
-  await withTempVerumRoot(async (root) => {
+  await withTempKokuliRoot(async (root) => {
     await writeIndex(root, [
       JSON.stringify(row({ runId: "20260426T100000Z-a-a-aaaaaa", caller: "ricky", status: "passed", startedAt: "2026-04-26T10:00:00.000Z" })),
       JSON.stringify(row({ runId: "20260426T110000Z-b-b-bbbbbb", caller: "ptah", status: "failed", startedAt: "2026-04-26T11:00:00.000Z" })),
@@ -228,7 +228,7 @@ test("listBridgeRuns applies filters end-to-end", async () => {
 // ── readBridgeRunDetail ────────────────────────────────────────────────────
 
 test("readBridgeRunDetail rejects path-traversal-style runIds", async () => {
-  await withTempVerumRoot(async (root) => {
+  await withTempKokuliRoot(async (root) => {
     assert.equal(await readBridgeRunDetail(root, "../etc/passwd"), null);
     assert.equal(await readBridgeRunDetail(root, "/absolute/path"), null);
     assert.equal(await readBridgeRunDetail(root, "../"), null);
@@ -237,14 +237,14 @@ test("readBridgeRunDetail rejects path-traversal-style runIds", async () => {
 });
 
 test("readBridgeRunDetail returns null for unknown runId", async () => {
-  await withTempVerumRoot(async (root) => {
+  await withTempKokuliRoot(async (root) => {
     await writeIndex(root, []); // empty
     assert.equal(await readBridgeRunDetail(root, "20260426T120000Z-manual-smoke-aaaaaa"), null);
   });
 });
 
 test("readBridgeRunDetail returns row + missing-files when archive dir absent", async () => {
-  await withTempVerumRoot(async (root) => {
+  await withTempKokuliRoot(async (root) => {
     const r = row({ runId: "20260426T120000Z-manual-smoke-zzzzzz" });
     await writeIndex(root, [JSON.stringify(r)]);
     const detail = await readBridgeRunDetail(root, r.runId);
@@ -258,7 +258,7 @@ test("readBridgeRunDetail returns row + missing-files when archive dir absent", 
 });
 
 test("readBridgeRunDetail reads + sanitizes BRIDGE_RESULT and ASSESSMENT", async () => {
-  await withTempVerumRoot(async (root) => {
+  await withTempKokuliRoot(async (root) => {
     const r = row({ runId: "20260426T120000Z-manual-smoke-yyyyyy" });
     await writeIndex(root, [JSON.stringify(r)]);
     const dir = path.join(root, r.reportDir);
@@ -271,7 +271,7 @@ test("readBridgeRunDetail reads + sanitizes BRIDGE_RESULT and ASSESSMENT", async
       durationMs: r.durationMs,
       status: "passed",
       summary: r.summary,
-      command: ["node", "verum.js", "--secret-flag", "TOKEN"],
+      command: ["node", "kokuli.js", "--secret-flag", "TOKEN"],
       stdoutTail: "should-be-dropped",
       exitCode: 0,
       signal: null,

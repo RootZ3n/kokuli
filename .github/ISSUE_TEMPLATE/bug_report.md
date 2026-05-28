@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Report a Verum defect using owned/local systems only
+about: Report a Kokuli defect using owned/local systems only
 title: "[Bug]: "
 labels: bug
 assignees: ""
@@ -13,7 +13,7 @@ assignees: ""
 - OS:
 - Node version:
 - npm version:
-- Verum version or commit:
+- Kokuli version or commit:
 
 ## Commands Run
 

@@ -1,6 +1,6 @@
-Verum — What It Does                                                                                                                       
+Kokuli — What It Does                                                                                                                       
                                                                                                                                                
-  Verum is a security testing framework for AI-powered products. You point it at any AI service with an HTTP API and it systematically tries 
+  Kokuli is a security testing framework for AI-powered products. You point it at any AI service with an HTTP API and it systematically tries 
   to break it — then tells you exactly what it found.                                                                                          
                                                                                                                                                
   Think of it like a penetration testing toolkit, but purpose-built for the unique attack surfaces that AI products expose.                    
@@ -16,7 +16,7 @@ Verum — What It Does
   - If kids use your product, can they manipulate it into generating harmful content?                                                          
   - Are your API endpoints exposing internal architecture to anyone who pokes around?                                                          
                                                                                                                                                
-  Verum tests all of this, automatically, with reproducible results.                                                                         
+  Kokuli tests all of this, automatically, with reproducible results.                                                                         
                                                                                                                                                
   What It Tests                                                                                                                                
                                                                                                                                                
@@ -93,14 +93,14 @@ Multi-Turn Attack Chains (4 tests)
 How It Works                                                                                                                                 
                                                                                                                                                
   1. Point it at a target:                                                                                                                     
-  verum target add my-product http://my-ai-service.com:8080                                                                                  
-  verum target set my-product                                                                                                                
+  kokuli target add my-product http://my-ai-service.com:8080                                                                                  
+  kokuli target set my-product                                                                                                                
                                                                                                                                                
   2. Run tests:                                                                                                                                
-  verum suite all                    # everything                                                                                            
-  verum suite child-safety           # just child safety                                                                                     
-  verum run health-info-leak         # single test                                                                                           
-  verum suite security --target staging   # override target                                                                                  
+  kokuli suite all                    # everything                                                                                            
+  kokuli suite child-safety           # just child safety                                                                                     
+  kokuli run health-info-leak         # single test                                                                                           
+  kokuli suite security --target staging   # override target                                                                                  
                                                                                                                                                
   3. Get results:                                                                                                                              
     [PASS] Educational Jailbreak — Request properly refused.                                                                                   
@@ -117,7 +117,7 @@ How It Works
 
 Transparency                                                                                                                                 
                                                                                                                                                
-  Every request Verum makes is logged to a receipt ledger:                                                                                   
+  Every request Kokuli makes is logged to a receipt ledger:                                                                                   
   - Which model processed each request                                                                                                         
   - Token counts (in/out)                                                                                                                      
   - Estimated cost                                                                                                                             
@@ -132,16 +132,16 @@ Transparency
   Target-agnostic. It's not tied to any specific AI product. Point it at OpenAI, Anthropic, your own self-hosted model, anything with an HTTP  
   API.                                                                                                                                         
                                                                                                                                                
-  Deterministic evaluation. No AI judging AI. Results are reproducible pattern matching and rule-based assertions. When Verum says FAIL, you 
+  Deterministic evaluation. No AI judging AI. Results are reproducible pattern matching and rule-based assertions. When Kokuli says FAIL, you 
   can see exactly which pattern triggered it.                                                                                                  
                                                                                                                                                
   Child safety as a first-class concern. Not a checkbox — it's the highest-priority test suite with the most tests. Built specifically because 
   one of our products (Magister, a learning platform) will be used by kids.                                                                    
                                                                                                                                                
   Multi-turn attacks. Most security testing sends one prompt and checks the response. Real attackers build context over multiple messages.     
-  Verum simulates that.                                                                                                                      
+  Kokuli simulates that.                                                                                                                      
                                                                                                                                                
-  Full endpoint scanning. Most AI security tools only test the chat endpoint. Verum probes every HTTP endpoint on your product — health      
+  Full endpoint scanning. Most AI security tools only test the chat endpoint. Kokuli probes every HTTP endpoint on your product — health      
   checks, session APIs, search, memory stores — because those are often the real vulnerabilities.                                              
                                                                                                                                                
   CLI-first with a web UI. Everything works from the terminal. The web dashboard (Kraken-themed deep-sea command center) is a companion for  
@@ -152,13 +152,13 @@ visual monitoring, not a requirement.
   - TypeScript, runs on Node.js 18+                                                                                                            
   - CLI-first, Express web dashboard                                                                                                           
   - Works on Linux, macOS, Windows                                                                                                             
-  - No external AI dependencies — Verum itself is pure deterministic logic                                                                   
+  - No external AI dependencies — Kokuli itself is pure deterministic logic                                                                   
   - All reports in JSON + Markdown                                                                                                             
   - Receipts and audit trail for every operation                                                                                               
                                                                                                                                                
   Real Findings From Our Own Testing                                                                                                           
                                                                                                                                                
-  When we ran Verum against our own products, it found:                                                                                      
+  When we ran Kokuli against our own products, it found:                                                                                      
   - Every API endpoint was accessible without authentication (16 endpoints wide open)                                                          
   - The memory store was leaking what appeared to be credit card number patterns                                                               
   - Module detail endpoints exposed server-side file paths                                                                                     
@@ -169,5 +169,5 @@ visual monitoring, not a requirement.
   All of these were real findings that we then fixed.                                                                                          
                                                                                                                                                
   ---                                                                                                                                          
-  That's the pitch. Verum hunts for the things that keep you up at night when you're about to ship an AI product to real people.      
+  That's the pitch. Kokuli hunts for the things that keep you up at night when you're about to ship an AI product to real people.      
 

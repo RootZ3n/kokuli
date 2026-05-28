@@ -36,11 +36,11 @@ function fakeExecutor(impl: (req: ExecutorRequest) => Partial<ExecutorResult>): 
   };
 }
 
-async function withTempVerumRoot<T>(fn: (root: string) => Promise<T>): Promise<T> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "verum-bridge-"));
+async function withTempKokuliRoot<T>(fn: (root: string) => Promise<T>): Promise<T> {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "kokuli-bridge-"));
   await fs.ensureDir(path.join(dir, "bin"));
   await fs.ensureDir(path.join(dir, "reports", "latest"));
-  await fs.writeFile(path.join(dir, "bin", "verum.js"), "#!/usr/bin/env node\n");
+  await fs.writeFile(path.join(dir, "bin", "kokuli.js"), "#!/usr/bin/env node\n");
   try {
     return await fn(dir);
   } finally {
@@ -50,12 +50,12 @@ async function withTempVerumRoot<T>(fn: (root: string) => Promise<T>): Promise<T
 
 test("smoke dryRun returns the planned command without executing", async () => {
   __resetBridgeForTests();
-  await withTempVerumRoot(async (root) => {
+  await withTempKokuliRoot(async (root) => {
     let executed = false;
     const result = await runBridge(
       { caller: "manual", target: "mushin-local", mode: "smoke", dryRun: true },
       {
-        verumRoot: root,
+        kokuliRoot: root,
         skipAssessmentRead: true,
         executor: fakeExecutor(() => {
           executed = true;
@@ -71,7 +71,7 @@ test("smoke dryRun returns the planned command without executing", async () => {
     assert.equal(result.mode, "smoke");
     assert.deepEqual(result.command, [
       "node",
-      path.join(root, "bin", "verum.js"),
+      path.join(root, "bin", "kokuli.js"),
       "run",
       "baseline-chat",
       "--target",
@@ -82,7 +82,7 @@ test("smoke dryRun returns the planned command without executing", async () => {
 
 test("suite dryRun maps suite name and uses argv array (no shell string)", async () => {
   __resetBridgeForTests();
-  await withTempVerumRoot(async (root) => {
+  await withTempKokuliRoot(async (root) => {
     const result = await runBridge(
       {
         caller: "squidley",
@@ -92,12 +92,12 @@ test("suite dryRun maps suite name and uses argv array (no shell string)", async
         reason: "pre-flight",
         dryRun: true,
       },
-      { verumRoot: root, skipAssessmentRead: true }
+      { kokuliRoot: root, skipAssessmentRead: true }
     );
     assert.equal(result.status, "queued");
     assert.deepEqual(result.command, [
       "node",
-      path.join(root, "bin", "verum.js"),
+      path.join(root, "bin", "kokuli.js"),
       "suite",
       "security",
       "--target",
@@ -112,7 +112,7 @@ test("suite dryRun maps suite name and uses argv array (no shell string)", async
 
 test("prompt-injection alias maps to the upstream security suite", async () => {
   __resetBridgeForTests();
-  await withTempVerumRoot(async (root) => {
+  await withTempKokuliRoot(async (root) => {
     const result = await runBridge(
       {
         caller: "ptah",
@@ -122,7 +122,7 @@ test("prompt-injection alias maps to the upstream security suite", async () => {
         reason: "lab probe",
         dryRun: true,
       },
-      { verumRoot: root, skipAssessmentRead: true }
+      { kokuliRoot: root, skipAssessmentRead: true }
     );
     assert.deepEqual(result.command?.slice(2), [
       "suite",
@@ -189,7 +189,7 @@ test("blocks suite=all when reason is missing", async () => {
 
 test("allows suite=all with a reason and applies the long timeout default", async () => {
   __resetBridgeForTests();
-  await withTempVerumRoot(async (root) => {
+  await withTempKokuliRoot(async (root) => {
     const planned = planCommand(
       {
         caller: "manual",
@@ -198,7 +198,7 @@ test("allows suite=all with a reason and applies the long timeout default", asyn
         suite: "all",
         reason: "nightly",
       },
-      { verumRoot: root }
+      { kokuliRoot: root }
     );
     assert.equal(planned.timeoutMs, DEFAULT_TIMEOUTS_MS.suiteAll);
   });
@@ -219,7 +219,7 @@ test("rejects testId with shell-injection-style characters", async () => {
 
 test("returns normalized result shape on a mocked successful run", async () => {
   __resetBridgeForTests();
-  await withTempVerumRoot(async (root) => {
+  await withTempKokuliRoot(async (root) => {
     const result = await runBridge(
       {
         caller: "manual",
@@ -227,7 +227,7 @@ test("returns normalized result shape on a mocked successful run", async () => {
         mode: "smoke",
       },
       {
-        verumRoot: root,
+        kokuliRoot: root,
         skipAssessmentRead: true,
         executor: fakeExecutor(() => ({
           exitCode: 0,
@@ -262,7 +262,7 @@ test("returns normalized result shape on a mocked successful run", async () => {
 
 test("propagates executor failure as status=failed", async () => {
   __resetBridgeForTests();
-  await withTempVerumRoot(async (root) => {
+  await withTempKokuliRoot(async (root) => {
     const result = await runBridge(
       {
         caller: "manual",
@@ -272,7 +272,7 @@ test("propagates executor failure as status=failed", async () => {
         reason: "ci",
       },
       {
-        verumRoot: root,
+        kokuliRoot: root,
         skipAssessmentRead: true,
         executor: fakeExecutor(() => ({
           exitCode: 1,
@@ -289,7 +289,7 @@ test("propagates executor failure as status=failed", async () => {
 
 test("timeout from executor produces status=error", async () => {
   __resetBridgeForTests();
-  await withTempVerumRoot(async (root) => {
+  await withTempKokuliRoot(async (root) => {
     const result = await runBridge(
       {
         caller: "manual",
@@ -299,7 +299,7 @@ test("timeout from executor produces status=error", async () => {
         maxRuntimeMs: 100,
       },
       {
-        verumRoot: root,
+        kokuliRoot: root,
         skipAssessmentRead: true,
         executor: fakeExecutor(() => ({
           exitCode: null,
@@ -316,12 +316,12 @@ test("timeout from executor produces status=error", async () => {
 
 test("report mode dispatches report summary, not run/suite", async () => {
   __resetBridgeForTests();
-  await withTempVerumRoot(async (root) => {
+  await withTempKokuliRoot(async (root) => {
     const captured: ExecutorRequest[] = [];
     const result = await runBridge(
       { caller: "manual", target: "mushin-local", mode: "report" },
       {
-        verumRoot: root,
+        kokuliRoot: root,
         skipAssessmentRead: true,
         executor: fakeExecutor((req) => {
           captured.push(req);
@@ -337,7 +337,7 @@ test("report mode dispatches report summary, not run/suite", async () => {
 
 test("blocks a second concurrent suite=all run", async () => {
   __resetBridgeForTests();
-  await withTempVerumRoot(async (root) => {
+  await withTempKokuliRoot(async (root) => {
     let resolveFirst: (v: ExecutorResult) => void = () => {};
     const slowExecutor: Executor = () =>
       new Promise<ExecutorResult>((resolve) => {
@@ -352,7 +352,7 @@ test("blocks a second concurrent suite=all run", async () => {
       reason: "nightly",
     };
     const firstPromise = runBridge(firstReq, {
-      verumRoot: root,
+      kokuliRoot: root,
       skipAssessmentRead: true,
       executor: slowExecutor,
     });
@@ -361,7 +361,7 @@ test("blocks a second concurrent suite=all run", async () => {
     await new Promise((r) => setImmediate(r));
 
     const second = await runBridge(firstReq, {
-      verumRoot: root,
+      kokuliRoot: root,
       skipAssessmentRead: true,
       executor: slowExecutor,
     });
@@ -452,10 +452,10 @@ test("buildRunId sanitizes a hostile caller string and never produces shell meta
 
 test("dryRun does not create an archive directory", async () => {
   __resetBridgeForTests();
-  await withTempVerumRoot(async (root) => {
+  await withTempKokuliRoot(async (root) => {
     const result = await runBridge(
       { caller: "manual", target: "mushin-local", mode: "smoke", dryRun: true },
-      { verumRoot: root, skipAssessmentRead: true }
+      { kokuliRoot: root, skipAssessmentRead: true }
     );
     assert.equal(result.status, "queued");
     assert.equal(result.reportDir, undefined);
@@ -467,11 +467,11 @@ test("dryRun does not create an archive directory", async () => {
 
 test("blocked validation does not create an archive directory", async () => {
   __resetBridgeForTests();
-  await withTempVerumRoot(async (root) => {
+  await withTempKokuliRoot(async (root) => {
     const result = await runBridge(
       // @ts-expect-error invalid caller
       { caller: "evil-bot", target: "mushin-local", mode: "smoke" },
-      { verumRoot: root }
+      { kokuliRoot: root }
     );
     assert.equal(result.status, "blocked");
     assert.equal(result.reportDir, undefined);
@@ -482,7 +482,7 @@ test("blocked validation does not create an archive directory", async () => {
 
 test("completed run with latest ASSESSMENT.json present archives it and writes BRIDGE_RESULT.json", async () => {
   __resetBridgeForTests();
-  await withTempVerumRoot(async (root) => {
+  await withTempKokuliRoot(async (root) => {
     // Pre-seed reports/latest with an ASSESSMENT.json so the bridge has
     // something to copy.
     const latestDir = path.join(root, "reports", "latest");
@@ -504,7 +504,7 @@ test("completed run with latest ASSESSMENT.json present archives it and writes B
         reason: "post-merge",
       },
       {
-        verumRoot: root,
+        kokuliRoot: root,
         executor: fakeExecutor(() => ({
           exitCode: 0,
           stdout: "  Summary:\n    PASS: 7  FAIL: 2  WARN: 0  Total: 9\n",
@@ -548,12 +548,12 @@ test("completed run with latest ASSESSMENT.json present archives it and writes B
 
 test("completed run with no latest ASSESSMENT.json still writes BRIDGE_RESULT.json", async () => {
   __resetBridgeForTests();
-  await withTempVerumRoot(async (root) => {
+  await withTempKokuliRoot(async (root) => {
     // Note: no ASSESSMENT.json pre-seeded.
     const result = await runBridge(
       { caller: "manual", target: "mushin-local", mode: "smoke" },
       {
-        verumRoot: root,
+        kokuliRoot: root,
         skipAssessmentRead: true,
         executor: fakeExecutor(() => ({
           exitCode: 0,
@@ -578,7 +578,7 @@ test("completed run with no latest ASSESSMENT.json still writes BRIDGE_RESULT.js
 
 test("archive failure does not demote a passed run", async () => {
   __resetBridgeForTests();
-  await withTempVerumRoot(async (root) => {
+  await withTempKokuliRoot(async (root) => {
     // Make reports/bridge a non-directory so ensureDir throws.
     const bridgeDir = path.join(root, "reports", "bridge");
     await fs.ensureDir(path.join(root, "reports"));
@@ -587,7 +587,7 @@ test("archive failure does not demote a passed run", async () => {
     const result = await runBridge(
       { caller: "manual", target: "mushin-local", mode: "smoke" },
       {
-        verumRoot: root,
+        kokuliRoot: root,
         skipAssessmentRead: true,
         executor: fakeExecutor(() => ({
           exitCode: 0,
@@ -605,7 +605,7 @@ test("archive failure does not demote a passed run", async () => {
 });
 
 test("archiveBridgeRun unit: copies known files and skips missing ones", async () => {
-  await withTempVerumRoot(async (root) => {
+  await withTempKokuliRoot(async (root) => {
     const latestDir = path.join(root, "reports", "latest");
     await fs.ensureDir(latestDir);
     await fs.writeJson(path.join(latestDir, "ASSESSMENT.json"), { summary: { total: 1 } });
@@ -623,14 +623,14 @@ test("archiveBridgeRun unit: copies known files and skips missing ones", async (
         critical: 0, high: 0, medium: 0, low: 0,
         inconclusive: 0, allInconclusive: false,
       },
-      command: ["node", "verum.js", "run", "baseline-chat"],
+      command: ["node", "kokuli.js", "run", "baseline-chat"],
       exitCode: 0,
       signal: null,
       timedOut: false,
       archive: { files: [], missingFiles: [] },
     };
 
-    const result = await archiveBridgeRun({ verumRoot: root, runId: meta.runId, metadata: meta });
+    const result = await archiveBridgeRun({ kokuliRoot: root, runId: meta.runId, metadata: meta });
 
     assert.ok(result.copiedFiles.includes("ASSESSMENT.json"));
     assert.ok(result.missingFiles.includes("SUMMARY.md"));
@@ -642,11 +642,11 @@ test("archiveBridgeRun unit: copies known files and skips missing ones", async (
 
 test("runId is propagated through to reportDir", async () => {
   __resetBridgeForTests();
-  await withTempVerumRoot(async (root) => {
+  await withTempKokuliRoot(async (root) => {
     const result = await runBridge(
       { caller: "manual", target: "mushin-local", mode: "smoke" },
       {
-        verumRoot: root,
+        kokuliRoot: root,
         skipAssessmentRead: true,
         runIdOverride: "20260426T030000Z-manual-smoke-deadbe",
         executor: fakeExecutor(() => ({ exitCode: 0, stdout: "[PASS]\n" })),
@@ -671,7 +671,7 @@ async function readIndex(root: string): Promise<BridgeIndexEntry[]> {
 
 test("completed bridge run appends one INDEX.jsonl line with required fields", async () => {
   __resetBridgeForTests();
-  await withTempVerumRoot(async (root) => {
+  await withTempKokuliRoot(async (root) => {
     const latestDir = path.join(root, "reports", "latest");
     await fs.ensureDir(latestDir);
     await fs.writeJson(path.join(latestDir, "ASSESSMENT.json"), {
@@ -688,7 +688,7 @@ test("completed bridge run appends one INDEX.jsonl line with required fields", a
         reason: "post-merge",
       },
       {
-        verumRoot: root,
+        kokuliRoot: root,
         executor: fakeExecutor(() => ({
           exitCode: 0,
           stdout: "  Summary:\n    PASS: 7  FAIL: 2  WARN: 0  Total: 9\n",
@@ -710,7 +710,7 @@ test("completed bridge run appends one INDEX.jsonl line with required fields", a
     assert.equal(typeof entry.durationMs, "number");
     assert.equal(entry.summary.failed, 2);
 
-    // Paths are RELATIVE to verumRoot
+    // Paths are RELATIVE to kokuliRoot
     assert.match(entry.reportDir, /^reports\/bridge\/\d{4}-\d{2}-\d{2}\/.+$/);
     assert.equal(entry.reportDir.startsWith("/"), false);
     assert.match(entry.reportPath!, /\/ASSESSMENT\.json$/);
@@ -721,7 +721,7 @@ test("completed bridge run appends one INDEX.jsonl line with required fields", a
 
 test("INDEX.jsonl entry omits reason / stdoutTail / stderrTail / command / secrets", async () => {
   __resetBridgeForTests();
-  await withTempVerumRoot(async (root) => {
+  await withTempKokuliRoot(async (root) => {
     await runBridge(
       {
         caller: "manual",
@@ -730,7 +730,7 @@ test("INDEX.jsonl entry omits reason / stdoutTail / stderrTail / command / secre
         reason: "this-is-a-secret-reason-string",
       },
       {
-        verumRoot: root,
+        kokuliRoot: root,
         skipAssessmentRead: true,
         executor: fakeExecutor(() => ({
           exitCode: 0,
@@ -758,10 +758,10 @@ test("INDEX.jsonl entry omits reason / stdoutTail / stderrTail / command / secre
 
 test("dryRun does not append to INDEX.jsonl", async () => {
   __resetBridgeForTests();
-  await withTempVerumRoot(async (root) => {
+  await withTempKokuliRoot(async (root) => {
     await runBridge(
       { caller: "manual", target: "mushin-local", mode: "smoke", dryRun: true },
-      { verumRoot: root, skipAssessmentRead: true }
+      { kokuliRoot: root, skipAssessmentRead: true }
     );
     const indexPath = path.join(root, BRIDGE_INDEX_PATH);
     assert.equal(await fs.pathExists(indexPath), false);
@@ -770,11 +770,11 @@ test("dryRun does not append to INDEX.jsonl", async () => {
 
 test("blocked validation request does not append to INDEX.jsonl", async () => {
   __resetBridgeForTests();
-  await withTempVerumRoot(async (root) => {
+  await withTempKokuliRoot(async (root) => {
     await runBridge(
       // @ts-expect-error invalid caller
       { caller: "evil", target: "mushin-local", mode: "smoke" },
-      { verumRoot: root }
+      { kokuliRoot: root }
     );
     const indexPath = path.join(root, BRIDGE_INDEX_PATH);
     assert.equal(await fs.pathExists(indexPath), false);
@@ -783,12 +783,12 @@ test("blocked validation request does not append to INDEX.jsonl", async () => {
 
 test("multiple bridge runs append multiple independently-parseable lines", async () => {
   __resetBridgeForTests();
-  await withTempVerumRoot(async (root) => {
+  await withTempKokuliRoot(async (root) => {
     for (let i = 0; i < 3; i++) {
       await runBridge(
         { caller: "manual", target: "mushin-local", mode: "smoke" },
         {
-          verumRoot: root,
+          kokuliRoot: root,
           skipAssessmentRead: true,
           executor: fakeExecutor(() => ({ exitCode: 0, stdout: "[PASS]\n" })),
         }
@@ -811,7 +811,7 @@ test("multiple bridge runs append multiple independently-parseable lines", async
 
 test("INDEX append failure does not demote a passed bridge run", async () => {
   __resetBridgeForTests();
-  await withTempVerumRoot(async (root) => {
+  await withTempKokuliRoot(async (root) => {
     // Pre-create INDEX.jsonl as a directory so appendFile fails.
     const indexPath = path.join(root, BRIDGE_INDEX_PATH);
     await fs.ensureDir(indexPath); // intentionally a dir, not a file
@@ -819,7 +819,7 @@ test("INDEX append failure does not demote a passed bridge run", async () => {
     const result = await runBridge(
       { caller: "manual", target: "mushin-local", mode: "smoke" },
       {
-        verumRoot: root,
+        kokuliRoot: root,
         skipAssessmentRead: true,
         executor: fakeExecutor(() => ({ exitCode: 0, stdout: "[PASS]\n" })),
       }
@@ -833,7 +833,7 @@ test("INDEX append failure does not demote a passed bridge run", async () => {
 });
 
 test("skipIndex test seam suppresses INDEX.jsonl writes", async () => {
-  await withTempVerumRoot(async (root) => {
+  await withTempKokuliRoot(async (root) => {
     const meta: BridgeRunMetadata = {
       runId: "test-skip-index",
       request: { caller: "manual", target: "mushin-local", mode: "smoke", reasonLength: 0 },
@@ -842,13 +842,13 @@ test("skipIndex test seam suppresses INDEX.jsonl writes", async () => {
       durationMs: 1,
       status: "passed",
       summary: { totalTests: 1, passed: 1, failed: 0, findings: 0, critical: 0, high: 0, medium: 0, low: 0, inconclusive: 0, allInconclusive: false },
-      command: ["node", "verum.js"],
+      command: ["node", "kokuli.js"],
       exitCode: 0,
       signal: null,
       timedOut: false,
       archive: { files: [], missingFiles: [] },
     };
-    const r = await archiveBridgeRun({ verumRoot: root, runId: meta.runId, metadata: meta, skipIndex: true });
+    const r = await archiveBridgeRun({ kokuliRoot: root, runId: meta.runId, metadata: meta, skipIndex: true });
     assert.equal(r.indexAppended, undefined);
     assert.equal(await fs.pathExists(path.join(root, BRIDGE_INDEX_PATH)), false);
   });

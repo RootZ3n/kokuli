@@ -1,24 +1,24 @@
-# Verum
+# Kokuli
 
-Verum helps teams test AI products they own before release. It runs deterministic adversarial probes for prompt injection, data leakage, unsafe behavior, exposed endpoints, and reliability failures, then writes reviewable evidence reports. Verum is for defensive validation of local, staging, or explicitly authorized systems.
+Kokuli is an adversarial fracture engine — it pressure-tests AI products you own before release. It runs deterministic adversarial probes for prompt injection, data leakage, unsafe behavior, exposed endpoints, and reliability failures, then writes reviewable evidence reports. Kokuli is for defensive fault discovery on local, staging, or explicitly authorized systems.
 
-Verum is the adversarial trust-testing layer in the release sequence:
+Kokuli is the adversarial fracture layer in the release sequence:
 
 1. Colosseum
 2. Crucible
-3. Verum
+3. Kokuli *(formerly Verum — renamed at this position in the sequence)*
 4. Aedis
 5. Squidley Public
 
-## What Verum Is
+## What Kokuli Is
 
-- Defensive AI trust-testing for systems you own or are explicitly authorized to test.
-- A deterministic adversarial probe runner for release-readiness checks.
+- Adversarial fracture engine for systems you own or are explicitly authorized to test.
+- A deterministic stress-probe runner for release-readiness checks.
 - A report and evidence generator for engineering review.
 - A beginner-friendly learning environment for safe red-team practice on owned systems.
 - A companion dashboard for triage, findings, and exported review artifacts.
 
-## What Verum Is Not
+## What Kokuli Is Not
 
 - Not an offensive hacking toolkit.
 - Not a public-internet scanner.
@@ -29,7 +29,7 @@ Verum is the adversarial trust-testing layer in the release sequence:
 
 ## What It Checks
 
-Verum focuses on AI product trust boundaries:
+Kokuli focuses on AI product trust boundaries:
 
 - Prompt injection and instruction hierarchy failures.
 - Data leakage, prompt leakage, and unsafe internal metadata exposure.
@@ -38,7 +38,7 @@ Verum focuses on AI product trust boundaries:
 - Reliability failures from malformed inputs and transport edge cases.
 - Reportable evidence, severity, confidence, and retest comparison.
 
-Results are deterministic rule evaluations. A Verum finding is a probe result or observed signal that needs engineering review; it is not a claim that a vulnerability is certified or exploited.
+Results are deterministic rule evaluations. A Kokuli finding is a probe result or observed signal that needs engineering review; it is not a claim that a vulnerability is certified or exploited.
 
 ## Install / Setup
 
@@ -57,7 +57,7 @@ npm run smoke
 Expected smoke output starts with:
 
 ```text
-[verum] Available tests:
+[kokuli] Available tests:
 ```
 
 Start the local web dashboard:
@@ -69,9 +69,9 @@ npm run web
 Expected web output includes:
 
 ```text
-[verum-web] Dashboard:  http://127.0.0.1:3000
-[verum-web] Atlantis:   http://127.0.0.1:3000/atlantis
-[verum-web] API:        http://127.0.0.1:3000/api
+[kokuli-web] Dashboard:  http://127.0.0.1:3000
+[kokuli-web] Atlantis:   http://127.0.0.1:3000/atlantis
+[kokuli-web] API:        http://127.0.0.1:3000/api
 ```
 
 Open `http://127.0.0.1:3000`.
@@ -86,7 +86,7 @@ This runs typecheck, build, logic tests, and smoke verification.
 
 ## Safe Defaults
 
-Verum is safe-by-default for public RC:
+Kokuli is safe-by-default for public RC:
 
 - The web server binds to `127.0.0.1` by default.
 - Live Armory / Break Me network operations are disabled unless explicitly enabled.
@@ -96,11 +96,11 @@ Verum is safe-by-default for public RC:
 
 ## Break Me / Armory
 
-The Break Me button is a guided defensive check for owned systems. It is designed to help a local operator ask, "What would Verum probe before I ship this?" without making live network activity the default.
+The Break Me button is a guided defensive check for owned systems. It is designed to help a local operator ask, "What would Kokuli fracture-test before I ship this?" without making live network activity the default.
 
 ### Simulation Mode
 
-Simulation is the default. It explains what Verum would check, records safe operator-facing output, and does not launch live network tools. This is the recommended first click for new users.
+Simulation is the default. It explains what Kokuli would check, records safe operator-facing output, and does not launch live network tools. This is the recommended first click for new users.
 
 ### Localhost Checks
 
@@ -114,10 +114,10 @@ Private lab checks are intended for RFC1918 or otherwise explicitly configured l
 
 | Variable | Purpose |
 |---|---|
-| `VERUM_ENABLE_NETWORK_OPS=1` | Enables live localhost/private-lab Armory checks. Without this, only simulation/dry-run behavior is allowed. |
-| `VERUM_BIND_ALL=1` | Allows the web server to bind `0.0.0.0`. Default is `127.0.0.1`. Use only on a controlled network. |
-| `VERUM_HOST=<ip>[,<ip>...]` | Comma-separated list of bind addresses. Default `127.0.0.1`. Use e.g. `127.0.0.1,100.x.y.z` for localhost + Tailscale. |
-| `VERUM_PORT=3000` | Overrides the web dashboard port. |
+| `KOKULI_ENABLE_NETWORK_OPS=1` | Enables live localhost/private-lab Armory checks. Without this, only simulation/dry-run behavior is allowed. (`VERUM_ENABLE_NETWORK_OPS` accepted as fallback.) |
+| `KOKULI_BIND_ALL=1` | Allows the web server to bind `0.0.0.0`. Default is `127.0.0.1`. Use only on a controlled network. (`VERUM_BIND_ALL` accepted as fallback.) |
+| `KOKULI_HOST=<ip>[,<ip>...]` | Comma-separated list of bind addresses. Default `127.0.0.1`. Use e.g. `127.0.0.1,100.x.y.z` for localhost + Tailscale. (`VERUM_HOST` accepted as fallback.) |
+| `KOKULI_PORT=3000` | Overrides the web dashboard port. (`VERUM_PORT` accepted as fallback.) |
 
 ### Ownership Confirmation
 
@@ -138,17 +138,17 @@ Reports are written under `reports/`. Armory receipts keep useful lab evidence s
 
 ### Redaction Limits
 
-Verum redacts common secrets before report write, including auth headers, cookies, API keys, private keys, `.env`-style assignments, obvious tokens, local absolute paths, long raw response bodies, and raw scanner output beyond structured summaries.
+Kokuli redacts common secrets before report write, including auth headers, cookies, API keys, private keys, `.env`-style assignments, obvious tokens, local absolute paths, long raw response bodies, and raw scanner output beyond structured summaries.
 
-Redaction is best-effort. Do not point Verum at systems or responses that intentionally return production secrets. Treat reports as sensitive engineering evidence.
+Redaction is best-effort. Do not point Kokuli at systems or responses that intentionally return production secrets. Treat reports as sensitive engineering evidence.
 
 ### What Results Mean
 
-Verum results mean a deterministic probe observed a signal worth review. A result can help prioritize engineering work, retesting, and release gates.
+Kokuli results mean a deterministic probe observed a signal worth review. A result can help prioritize engineering work, retesting, and release gates.
 
 ### What Results Do Not Prove
 
-Verum does not prove that a system is secure, compliant, or free of vulnerabilities. It does not certify exploitability. It does not replace code review, threat modeling, dependency review, production monitoring, or external security assessment.
+Kokuli does not prove that a system is secure, compliant, or free of vulnerabilities. It does not certify exploitability. It does not replace code review, threat modeling, dependency review, production monitoring, or external security assessment.
 
 ## Target Management
 
@@ -176,7 +176,7 @@ npm run dev -- suite security --target my-local-app
 
 ## Reports
 
-Verum writes JSON and Markdown reports for review. Common artifacts include:
+Kokuli writes JSON and Markdown reports for review. Common artifacts include:
 
 - `EXECUTIVE_SUMMARY.md`
 - `TECHNICAL_FINDINGS.md`
@@ -194,11 +194,11 @@ Report exports are for engineering review. They may contain sensitive target beh
 
 - **Colosseum:** agent trial harness.
 - **Crucible:** scoreboard and evidence viewer.
-- **Verum:** adversarial trust/probing layer.
+- **Kokuli:** adversarial fracture engine (stress/probing layer).
 - **Aedis:** governed build orchestration.
 - **Squidley Public:** broader AI control surface.
 
-Verum sits after trial and evidence collection and before governed build orchestration. Its job is to pressure-test trust boundaries and produce reviewable evidence before public exposure.
+Kokuli sits after trial and evidence collection and before governed build orchestration. Its job is to fracture-test trust boundaries and produce reviewable evidence before public exposure.
 
 ## Screenshots
 
@@ -236,7 +236,7 @@ npm run verify:release      # typecheck + build + test + smoke + diagnostic
 
 ## Trust Posture
 
-Verum reports evidence, not absolute security truth. Every trust-relevant
+Kokuli reports evidence, not absolute security truth. Every trust-relevant
 surface is explicit about what it knows and what it doesn't.
 
 ### No-evidence handling
@@ -356,7 +356,7 @@ npm run verify:release
 
 ## Bridge And Tracing
 
-Verum exposes an allowlisted bridge for sibling local apps and archives bridge runs under `reports/bridge/<date>/<runId>/`. For trace usage, see [`docs/RUNBOOK_VERUM_TRACE.md`](docs/RUNBOOK_VERUM_TRACE.md). Full bridge contract: [`docs/VERUM_BRIDGE.md`](docs/VERUM_BRIDGE.md).
+Kokuli exposes an allowlisted bridge for sibling local apps and archives bridge runs under `reports/bridge/<date>/<runId>/`. For trace usage, see [`docs/RUNBOOK_VERUM_TRACE.md`](docs/RUNBOOK_VERUM_TRACE.md). Full bridge contract: [`docs/VERUM_BRIDGE.md`](docs/VERUM_BRIDGE.md).
 
 ## Architecture
 

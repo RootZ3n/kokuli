@@ -1,4 +1,4 @@
-// Verum Bridge — narrow, allowlisted runner for Ptah / Squidley / Ricky / manual callers.
+// Kokuli Bridge — narrow, allowlisted runner for Ptah / Squidley / Ricky / manual callers.
 //
 // Stable contract:
 //   request:  BridgeRequest    (validated against allowlists)
@@ -8,7 +8,7 @@
 //   - Caller may only choose from allowlisted callers/targets/modes/suites
 //   - No arbitrary command strings: every dispatched command is a fixed argv array
 //   - No shell interpolation: spawn is invoked with shell=false (default)
-//   - cwd is locked to the Verum project root
+//   - cwd is locked to the Kokuli project root
 //   - dryRun returns the planned argv without executing
 //   - Concurrency: a single in-flight `suite all` is permitted; further `suite all`
 //     requests are blocked. Smoke and report runs are always permitted.
@@ -92,7 +92,7 @@ export interface BridgeResult {
   reportDir?: string;
   /**
    * Pointer to reports/latest/ASSESSMENT.json (or SUMMARY.md for `mode=report`)
-   * — useful for human review via `npm run web` or `verum report summary`.
+   * — useful for human review via `npm run web` or `kokuli report summary`.
    * Always points at the rolling latest snapshot, which subsequent runs will
    * overwrite. Consumers wanting durable evidence should use reportPath.
    */
@@ -137,8 +137,8 @@ export const ALLOWED_SUITES: ReadonlyArray<BridgeSuite> = [
   "all",
 ];
 
-// "prompt-injection" is a Verum-Bridge alias for the upstream "security" suite.
-const SUITE_TO_VERUM: Record<BridgeSuite, string> = {
+// "prompt-injection" is a Kokuli-Bridge alias for the upstream "security" suite.
+const SUITE_TO_KOKULI: Record<BridgeSuite, string> = {
   recon: "recon",
   security: "security",
   "prompt-injection": "security",
@@ -302,9 +302,9 @@ export interface PlannedCommand {
   timeoutMs: number;
 }
 
-export function planCommand(req: BridgeRequest, opts?: { verumRoot?: string }): PlannedCommand {
-  const root = opts?.verumRoot ?? defaultVerumRoot();
-  const cli = path.join(root, "bin", "verum.js");
+export function planCommand(req: BridgeRequest, opts?: { kokuliRoot?: string }): PlannedCommand {
+  const root = opts?.kokuliRoot ?? defaultKokuliRoot();
+  const cli = path.join(root, "bin", "kokuli.js");
   const target = req.target ?? DEFAULT_TARGET;
 
   switch (req.mode) {
@@ -314,7 +314,7 @@ export function planCommand(req: BridgeRequest, opts?: { verumRoot?: string }): 
         timeoutMs: req.maxRuntimeMs ?? DEFAULT_TIMEOUTS_MS.smoke,
       };
     case "suite": {
-      const suiteName = SUITE_TO_VERUM[req.suite as BridgeSuite];
+      const suiteName = SUITE_TO_KOKULI[req.suite as BridgeSuite];
       const defaultTimeout =
         req.suite === "all" ? DEFAULT_TIMEOUTS_MS.suiteAll : DEFAULT_TIMEOUTS_MS.suiteCategory;
       return {
@@ -335,15 +335,15 @@ export function planCommand(req: BridgeRequest, opts?: { verumRoot?: string }): 
   }
 }
 
-export function defaultVerumRoot(): string {
-  // Walk up from __dirname looking for the verum package.json. Robust whether the
+export function defaultKokuliRoot(): string {
+  // Walk up from __dirname looking for the kokuli package.json. Robust whether the
   // module is loaded from source (engine/bridge) or compiled (dist/engine/bridge).
   let dir = __dirname;
   for (let i = 0; i < 6; i++) {
     const pkgPath = path.join(dir, "package.json");
     try {
       const pkg = require(pkgPath) as { name?: string };
-      if (pkg && pkg.name === "verum") return dir;
+      if (pkg && (pkg.name === "kokuli" || pkg.name === "verum")) return dir;
     } catch {
       // not here, keep walking
     }
@@ -351,7 +351,7 @@ export function defaultVerumRoot(): string {
     if (parent === dir) break;
     dir = parent;
   }
-  // Fallback: assume cwd is project root (bin/verum.js chdirs to it on startup).
+  // Fallback: assume cwd is project root (bin/kokuli.js chdirs to it on startup).
   return process.cwd();
 }
 
@@ -468,8 +468,8 @@ interface AssessmentLite {
   verdict?: string;
 }
 
-async function readAssessment(verumRoot: string): Promise<AssessmentLite | null> {
-  const p = path.join(verumRoot, "reports", "latest", "ASSESSMENT.json");
+async function readAssessment(kokuliRoot: string): Promise<AssessmentLite | null> {
+  const p = path.join(kokuliRoot, "reports", "latest", "ASSESSMENT.json");
   try {
     if (!(await fs.pathExists(p))) return null;
     return (await fs.readJson(p)) as AssessmentLite;
@@ -519,7 +519,7 @@ function summarizeFromStdout(stdout: string): BridgeSummary {
 // --- Stable run ID + archive ---
 //
 // Bridge runs on Mushin write into the same `reports/latest/` directory that
-// the human dashboard and `verum report summary` use. That directory is
+// the human dashboard and `kokuli report summary` use. That directory is
 // overwritten on every test run, so a `reportPath` returned to a consumer
 // (Squidley follow-up, Ptah reflex, Ricky preflight) becomes stale within
 // minutes. The bridge therefore archives a curated snapshot of `reports/latest/`
@@ -614,7 +614,7 @@ export interface BridgeRunMetadata {
 }
 
 export interface ArchiveBridgeRunInput {
-  verumRoot: string;
+  kokuliRoot: string;
   runId: string;
   metadata: BridgeRunMetadata;
   /**
@@ -641,7 +641,7 @@ export interface ArchiveBridgeRunResult {
 // `reports/bridge/INDEX.jsonl` is a per-run, append-only ledger that lets
 // operators answer "show me bridge runs since X" without walking date dirs.
 // Lines are independently parseable JSON. Paths are stored RELATIVE to the
-// Verum root so the file is portable across machines.
+// Kokuli root so the file is portable across machines.
 //
 // The index never contains: stdoutTail, stderrTail, command, raw reason text,
 // env vars, auth tokens, or raw user input. Only the compact fields below.
@@ -660,29 +660,29 @@ export interface BridgeIndexEntry {
   finishedAt: string;
   durationMs: number;
   summary: BridgeSummary;
-  /** Relative to verumRoot, e.g. "reports/bridge/2026-04-26/<runId>". */
+  /** Relative to kokuliRoot, e.g. "reports/bridge/2026-04-26/<runId>". */
   reportDir: string;
-  /** Relative to verumRoot. May point at ASSESSMENT.json/SUMMARY.md/BRIDGE_RESULT.json. */
+  /** Relative to kokuliRoot. May point at ASSESSMENT.json/SUMMARY.md/BRIDGE_RESULT.json. */
   reportPath?: string;
-  /** Relative to verumRoot. Present only when the rolling latest pointer was set. */
+  /** Relative to kokuliRoot. Present only when the rolling latest pointer was set. */
   latestReportPath?: string;
 }
 
-function toRelative(verumRoot: string, absPath: string | undefined): string | undefined {
+function toRelative(kokuliRoot: string, absPath: string | undefined): string | undefined {
   if (!absPath) return undefined;
-  const rel = path.relative(verumRoot, absPath);
-  // Defensive: if relative path escapes verumRoot, drop it rather than persist
-  // a `..` in the index. (Caller paths are derived from verumRoot already, so
+  const rel = path.relative(kokuliRoot, absPath);
+  // Defensive: if relative path escapes kokuliRoot, drop it rather than persist
+  // a `..` in the index. (Caller paths are derived from kokuliRoot already, so
   // this should never happen in practice; the guard is belt-and-suspenders.)
   if (rel.startsWith("..")) return undefined;
   return rel;
 }
 
 export async function appendBridgeIndex(
-  verumRoot: string,
+  kokuliRoot: string,
   entry: BridgeIndexEntry,
 ): Promise<void> {
-  const filePath = path.join(verumRoot, BRIDGE_INDEX_PATH);
+  const filePath = path.join(kokuliRoot, BRIDGE_INDEX_PATH);
   await fs.ensureDir(path.dirname(filePath));
   const line = JSON.stringify(entry);
   await fs.appendFile(filePath, line + "\n", "utf8");
@@ -696,10 +696,10 @@ export async function appendBridgeIndex(
  * swallowed and counted in `missingFiles`.
  */
 export async function archiveBridgeRun(input: ArchiveBridgeRunInput): Promise<ArchiveBridgeRunResult> {
-  const { verumRoot, runId, metadata, latestReportPath, skipIndex } = input;
+  const { kokuliRoot, runId, metadata, latestReportPath, skipIndex } = input;
   const today = (metadata.startedAt || new Date().toISOString()).slice(0, 10); // YYYY-MM-DD
-  const reportDir = path.join(verumRoot, "reports", "bridge", today, runId);
-  const latestDir = path.join(verumRoot, "reports", "latest");
+  const reportDir = path.join(kokuliRoot, "reports", "bridge", today, runId);
+  const latestDir = path.join(kokuliRoot, "reports", "latest");
 
   await fs.ensureDir(reportDir);
 
@@ -746,9 +746,9 @@ export async function archiveBridgeRun(input: ArchiveBridgeRunInput): Promise<Ar
   let indexError: string | undefined;
   if (!skipIndex) {
     try {
-      const relReportDir = toRelative(verumRoot, reportDir);
-      const relReportPath = toRelative(verumRoot, reportPath);
-      const relLatestReportPath = toRelative(verumRoot, latestReportPath);
+      const relReportDir = toRelative(kokuliRoot, reportDir);
+      const relReportPath = toRelative(kokuliRoot, reportPath);
+      const relLatestReportPath = toRelative(kokuliRoot, latestReportPath);
       const entry: BridgeIndexEntry = {
         runId,
         caller: metadata.request.caller,
@@ -765,7 +765,7 @@ export async function archiveBridgeRun(input: ArchiveBridgeRunInput): Promise<Ar
         reportPath: relReportPath,
         latestReportPath: relLatestReportPath,
       };
-      await appendBridgeIndex(verumRoot, entry);
+      await appendBridgeIndex(kokuliRoot, entry);
       indexAppended = true;
     } catch (err) {
       indexError = err instanceof Error ? err.message : String(err);
@@ -784,7 +784,7 @@ export async function archiveBridgeRun(input: ArchiveBridgeRunInput): Promise<Ar
 
 export interface BridgeOptions {
   executor?: Executor;
-  verumRoot?: string;
+  kokuliRoot?: string;
   /** Test seam: skip reading reports/latest/ASSESSMENT.json after the run. */
   skipAssessmentRead?: boolean;
   /** Test seam: skip writing the per-run archive directory. */
@@ -823,8 +823,8 @@ export async function runBridge(
   }
 
   const req = validation.normalized;
-  const verumRoot = options.verumRoot ?? defaultVerumRoot();
-  const planned = planCommand(req, { verumRoot });
+  const kokuliRoot = options.kokuliRoot ?? defaultKokuliRoot();
+  const planned = planCommand(req, { kokuliRoot });
 
   // Concurrency guard
   if (req.mode === "suite" && req.suite === "all" && fullSweepActive()) {
@@ -882,7 +882,7 @@ export async function runBridge(
     const executor = options.executor ?? realExecutor;
     exec = await executor({
       argv: planned.argv,
-      cwd: verumRoot,
+      cwd: kokuliRoot,
       timeoutMs: planned.timeoutMs,
     });
   } finally {
@@ -916,18 +916,18 @@ export async function runBridge(
   const summary = summarizeFromStdout(exec.stdout);
   let latestReportPath: string | undefined;
   if (!options.skipAssessmentRead && req.mode === "suite") {
-    const assessment = await readAssessment(verumRoot);
+    const assessment = await readAssessment(kokuliRoot);
     if (assessment) {
       const fromAssessment = summarizeFromAssessment(assessment);
       summary.critical = fromAssessment.critical;
       summary.high = fromAssessment.high;
       summary.medium = fromAssessment.medium;
       summary.low = fromAssessment.low;
-      latestReportPath = path.join(verumRoot, "reports", "latest", "ASSESSMENT.json");
+      latestReportPath = path.join(kokuliRoot, "reports", "latest", "ASSESSMENT.json");
     }
   }
   if (req.mode === "report") {
-    const summaryMd = path.join(verumRoot, "reports", "latest", "SUMMARY.md");
+    const summaryMd = path.join(kokuliRoot, "reports", "latest", "SUMMARY.md");
     if (await fs.pathExists(summaryMd)) latestReportPath = summaryMd;
   }
 
@@ -987,7 +987,7 @@ export async function runBridge(
     };
     try {
       const arch = await archiveBridgeRun({
-        verumRoot,
+        kokuliRoot,
         runId: publicRunId,
         metadata: archiveMetadata,
         latestReportPath,
@@ -1047,8 +1047,8 @@ export function getAllowlist() {
 export function getHealth() {
   return {
     ok: true,
-    service: "verum-bridge",
-    verumPath: defaultVerumRoot(),
+    service: "kokuli-bridge",
+    kokuliPath: defaultKokuliRoot(),
     defaultTarget: DEFAULT_TARGET,
     allowedSuites: ALLOWED_SUITES,
     activeRuns: getActiveRuns().length,
