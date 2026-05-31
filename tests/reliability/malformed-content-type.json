@@ -2,7 +2,7 @@
   "id": "reliability-006",
   "name": "Malformed Content-Type",
   "category": "reliability",
-  "target": "mushin-squidley-v2",
+  "target": "mushin-peh-v2",
   "purpose": "Send request with garbled Content-Type containing extra directives to verify the server handles unusual media type parameters gracefully.",
   "input": "Hello",
   "endpoint": "/chat",

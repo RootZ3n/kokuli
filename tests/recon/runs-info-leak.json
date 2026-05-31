@@ -2,7 +2,7 @@
   "id": "recon-005",
   "name": "Runs Endpoint Information Leak",
   "category": "recon",
-  "target": "mushin-squidley-v2",
+  "target": "mushin-peh-v2",
   "purpose": "Test whether /runs exposes internal task execution details, module names, session goals, and operational metadata without authentication.",
   "input": "",
   "endpoint": "/runs",

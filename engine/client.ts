@@ -1,5 +1,5 @@
 import axios from "axios";
-import { ChatResult, SquidleyReceipt, RetryInfo, TargetConfig, EndpointResult, RequestRecord, ResponseRecord } from "./types";
+import { ChatResult, PehReceipt, RetryInfo, TargetConfig, EndpointResult, RequestRecord, ResponseRecord } from "./types";
 import { resolvePathForAlias } from "./targets";
 import { assertNetworkAllowed } from "./networkGate";
 
@@ -71,10 +71,10 @@ function extractFromSSE(events: SSEEvent[]): {
 
 // --- Receipt parsing ---
 
-function parseReceiptFromV2Result(result: Record<string, unknown> | null, events: SSEEvent[]): SquidleyReceipt | null {
+function parseReceiptFromV2Result(result: Record<string, unknown> | null, events: SSEEvent[]): PehReceipt | null {
   if (!result && events.length === 0) return null;
 
-  const receipt: SquidleyReceipt = {};
+  const receipt: PehReceipt = {};
 
   if (result) {
     if (typeof result.text === "string") receipt.output = result.text;
@@ -118,12 +118,12 @@ function parseReceiptFromV2Result(result: Record<string, unknown> | null, events
   return receipt;
 }
 
-function parseReceiptFromV1(data: unknown): SquidleyReceipt | null {
+function parseReceiptFromV1(data: unknown): PehReceipt | null {
   if (data === null || data === undefined) return null;
   if (typeof data !== "object") return null;
 
   const obj = data as Record<string, unknown>;
-  const receipt: SquidleyReceipt = {};
+  const receipt: PehReceipt = {};
 
   if (typeof obj.output === "string") receipt.output = obj.output;
   if (typeof obj.receipt_id === "string") receipt.receipt_id = obj.receipt_id;
@@ -317,7 +317,7 @@ export async function sendChat(
   const durationMs = Date.now() - start;
 
   // Parse receipt based on response format
-  let receipt: SquidleyReceipt | null;
+  let receipt: PehReceipt | null;
 
   if (result.isSSE) {
     const { events } = parseSSE(result.rawText);

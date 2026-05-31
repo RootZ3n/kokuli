@@ -2,7 +2,7 @@
   "id": "auth-015",
   "name": "Malformed Bearer Prefix",
   "category": "auth",
-  "target": "mushin-squidley-v2",
+  "target": "mushin-peh-v2",
   "purpose": "Send auth header with misspelled bearer prefix to test whether the server handles non-standard auth schemes without leaking details.",
   "input": "Hello",
   "endpoint": "/chat",

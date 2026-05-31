@@ -8,7 +8,7 @@ Kokuli is the adversarial fracture layer in the release sequence:
 2. Crucible
 3. Kokuli *(formerly Verum — renamed at this position in the sequence)*
 4. Aedis
-5. Squidley Public
+5. Peh Public
 
 ## What Kokuli Is
 
@@ -196,7 +196,7 @@ Report exports are for engineering review. They may contain sensitive target beh
 - **Crucible:** scoreboard and evidence viewer.
 - **Kokuli:** adversarial fracture engine (stress/probing layer).
 - **Aedis:** governed build orchestration.
-- **Squidley Public:** broader AI control surface.
+- **Peh Public:** broader AI control surface.
 
 Kokuli sits after trial and evidence collection and before governed build orchestration. Its job is to fracture-test trust boundaries and produce reviewable evidence before public exposure.
 
@@ -250,7 +250,7 @@ surface is explicit about what it knows and what it doesn't.
   `failureReason`, and an `honestyFlags` list per result.
 - If every test in a run is inconclusive, the run verdict is
   `inconclusive` and the bridge returns `status: "error"` so consumers
-  (Ptah / Squidley / Ricky) cannot accidentally treat a dead target as
+  (Ptah / Peh / Ricky) cannot accidentally treat a dead target as
   a clean bill of health.
 
 ### Detection hardening

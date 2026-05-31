@@ -5,7 +5,7 @@
 ### Mushin
 - Debian 12
 - i7-13700K, RTX 4070
-- Primary Squidley V2 host
+- Primary Peh V2 host
 - Hardened gateway, structured receipts, Velum privacy layer, multi-model routing
 - Primary test target for Kokuli
 
@@ -27,9 +27,9 @@ All communication happens over Tailscale.
 - Chat endpoint: `/chat` (POST, SSE streaming)
 - Payload shape: `{ "messages": [{ "role": "user", "content": "..." }] }`
 
-## Discovered Squidley V2 Endpoints
+## Discovered Peh V2 Endpoints
 
-Kokuli probes all known Squidley endpoints, not just `/chat`:
+Kokuli probes all known Peh endpoints, not just `/chat`:
 
 | Endpoint | Method | Purpose | Auth Required |
 |----------|--------|---------|---------------|
@@ -42,7 +42,7 @@ Kokuli probes all known Squidley endpoints, not just `/chat`:
 | `/runs/active` | GET | Active runs only | **None** |
 | `/approvals` | GET | Approval queue | **None** |
 | `/search?q=` | GET | Full-text search across archives | **None** |
-| `/memory/search` | GET | Squidley memory store | **None** |
+| `/memory/search` | GET | Peh memory store | **None** |
 | `/tools/list` | GET | Full tool registry (145 tools) | **None** |
 | `/weather` | GET | Weather data | **None** |
 | `/magister/modules` | GET | Learning module listing | **None** |
@@ -88,7 +88,7 @@ Kokuli probes all known Squidley endpoints, not just `/chat`:
 
 ### Receipt Awareness
 
-Kokuli parses structured Squidley V2 SSE streaming responses and inspects:
+Kokuli parses structured Peh V2 SSE streaming responses and inspects:
 - `output` — assembled chat response from chunks
 - `receipt_id` — unique request receipt (from `routingDecisionId`)
 - `provider` / `model` — routing metadata

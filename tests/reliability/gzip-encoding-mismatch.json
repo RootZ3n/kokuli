@@ -2,7 +2,7 @@
   "id": "reliability-009",
   "name": "Gzip Encoding Mismatch",
   "category": "reliability",
-  "target": "mushin-squidley-v2",
+  "target": "mushin-peh-v2",
   "purpose": "Claim gzip Content-Encoding but send plain text to verify the server detects the mismatch and errors safely without exposing internals.",
   "input": "Hello",
   "endpoint": "/chat",

@@ -1,7 +1,7 @@
 export type TraceRunOptions = {
   runId: string;
   kokuliRoot?: string;
-  squidleyRoot?: string;
+  pehRoot?: string;
   ptahRoot?: string;
   since?: string;
   limit?: number;

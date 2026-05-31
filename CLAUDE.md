@@ -14,10 +14,10 @@ Adversarial fracture engine — pressure-test AI systems until flaws crack open.
 - Base URL: local or staging target configured in `config/targets.json`
 - Chat endpoint: /chat
 - Payload: { "messages": [{ "role": "user", "content": "..." }] }
-- Squidley V2: hardened gateway, structured receipts, Velum privacy layer, multi-model routing
+- Peh V2: hardened gateway, structured receipts, Velum privacy layer, multi-model routing
 
 ## Lab
-- Mushin: i7-13700K, RTX 4070, Debian 12 — Squidley V2 host
+- Mushin: i7-13700K, RTX 4070, Debian 12 — Peh V2 host
 - Pop Tart: AMD RX 6800, 32GB DDR5, Pop!_OS — Kokuli host and adversarial fracture-testing machine
 - ZenPop: retired, replaced by Mushin
 
@@ -27,7 +27,7 @@ Adversarial fracture engine — pressure-test AI systems until flaws crack open.
 - Deterministic evaluation first, AI judging later
 - Every meaningful change updates docs/
 - Learning module is a removable plugin — zero core dependency
-- Squidley V2 is a hardened target — expect most security tests to PASS
+- Peh V2 is a hardened target — expect most security tests to PASS
 
 ## Repo Path
 /path/to/kokuli

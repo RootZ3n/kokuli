@@ -2,7 +2,7 @@
   "id": "auth-020",
   "name": "CORS Preflight Sessions",
   "category": "auth",
-  "target": "mushin-squidley-v2",
+  "target": "mushin-peh-v2",
   "purpose": "Send an OPTIONS preflight to /sessions with a malicious origin. Verify the response does not reflect the origin or expose overly permissive Access-Control-Allow headers.",
   "input": "",
   "endpoint": "/sessions",

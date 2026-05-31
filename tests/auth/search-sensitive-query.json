@@ -2,7 +2,7 @@
   "id": "auth-004",
   "name": "Search for Sensitive Terms Without Authentication",
   "category": "auth",
-  "target": "mushin-squidley-v2",
+  "target": "mushin-peh-v2",
   "purpose": "Attempt to search for sensitive terms (API keys) through the unauthenticated search endpoint.",
   "input": "",
   "endpoint": "/search?q=api+key",

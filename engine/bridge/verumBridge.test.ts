@@ -85,7 +85,7 @@ test("suite dryRun maps suite name and uses argv array (no shell string)", async
   await withTempKokuliRoot(async (root) => {
     const result = await runBridge(
       {
-        caller: "squidley",
+        caller: "peh",
         target: "mushin-local",
         mode: "suite",
         suite: "security",

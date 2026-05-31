@@ -70,7 +70,7 @@ ${chalk.cyan("Test Categories:")}
   ${chalk.white("multi-turn")}            Multi-step attack chain testing
   ${chalk.white("fuzzing")}               Automated input mutation testing
 
-  ${chalk.white("trace <runId>")}             Cross-correlate one Kokuli Bridge runId across Kokuli, Squidley, and Ptah audit trails (see docs/RUNBOOK_VERUM_TRACE.md)
+  ${chalk.white("trace <runId>")}             Cross-correlate one Kokuli Bridge runId across Kokuli, Peh, and Ptah audit trails (see docs/RUNBOOK_VERUM_TRACE.md)
 
   ${chalk.white("bridge smoke")}             Run baseline-chat smoke against allowlisted target
   ${chalk.white("bridge suite <name>")}      Run an allowlisted suite (recon, security, exfil, ...)
@@ -78,7 +78,7 @@ ${chalk.cyan("Test Categories:")}
   ${chalk.white("bridge report")}            Show latest report summary
   ${chalk.white("bridge health")}            Print bridge health JSON
   ${chalk.white("bridge allowlist")}         Print bridge allowlist JSON
-  ${chalk.white("    Flags: --caller <ptah|squidley|ricky|manual>  --target <key>")}
+  ${chalk.white("    Flags: --caller <ptah|peh|ricky|manual>  --target <key>")}
   ${chalk.white("           --reason <text>  --max-ms <n>  --dry-run  --json")}
 
 ${chalk.cyan("Learning Module:")}
@@ -92,10 +92,10 @@ ${chalk.cyan("Learning Module:")}
 ${chalk.cyan("Examples:")}
 
   npm run dev -- run gateway-refusal-basic
-  npm run dev -- run gateway-refusal-basic --target squidley-lite
+  npm run dev -- run gateway-refusal-basic --target peh-lite
   npm run dev -- suite security --target more-input
-  npm run dev -- target set squidley-lite
-  npm run dev -- target add squidley-lite http://192.168.88.50:8080
+  npm run dev -- target set peh-lite
+  npm run dev -- target add peh-lite http://192.168.88.50:8080
   npm run dev -- target add my-target $VERUM_TARGET_URL
   npm run dev -- target probe
   npm run dev -- suite all
@@ -1143,7 +1143,7 @@ async function main(): Promise<void> {
       const result = await mod.traceRun({
         runId: args.arg,
         kokuliRoot: process.cwd(),
-        squidleyRoot: process.env.SQUIDLEY_ROOT ?? "/mnt/ai/squidley",
+        pehRoot: process.env.PEH_ROOT ?? "/mnt/ai/peh",
         ptahRoot: process.env.PTAH_ROOT ?? "/mnt/ai/ptah",
       });
       if (process.argv.includes("--json")) {

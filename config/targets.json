@@ -1,9 +1,9 @@
 {
-  "defaultTarget": "mushin-squidley-v2",
+  "defaultTarget": "mushin-peh-v2",
   "targets": {
-    "mushin-squidley-v2": {
-      "id": "mushin-squidley-v2",
-      "name": "Mushin Squidley V2",
+    "mushin-peh-v2": {
+      "id": "mushin-peh-v2",
+      "name": "Mushin Peh V2",
       "baseUrl": "http://100.118.60.13:18791",
       "payloadFormat": "messages",
       "chatPath": "/chat",
@@ -12,14 +12,14 @@
         "chat": "/chat"
       },
       "auth": {},
-      "notes": "Primary Squidley V2 instance on Mushin. Hardened gateway, structured receipts, Velum privacy layer, multi-model routing. Reachable over Tailscale.",
+      "notes": "Primary Peh V2 instance on Mushin. Hardened gateway, structured receipts, Velum privacy layer, multi-model routing. Reachable over Tailscale.",
       "enabled": true,
       "createdAt": "2026-04-26T01:01:39.689Z",
       "updatedAt": "2026-04-26T01:01:39.689Z"
     },
-    "squidley-lite": {
-      "id": "squidley-lite",
-      "name": "Squidley Lite",
+    "peh-lite": {
+      "id": "peh-lite",
+      "name": "Peh Lite",
       "baseUrl": "http://192.168.88.50:8080",
       "payloadFormat": "messages",
       "chatPath": "/chat",
@@ -28,7 +28,7 @@
         "chat": "/chat"
       },
       "auth": {},
-      "notes": "Squidley Lite on laptop for portable testing",
+      "notes": "Peh Lite on laptop for portable testing",
       "enabled": true,
       "createdAt": "2026-04-26T01:01:39.689Z",
       "updatedAt": "2026-04-26T01:01:39.689Z"
@@ -60,7 +60,7 @@
         "chat": "/chat"
       },
       "auth": {},
-      "notes": "Primary Squidley V2 instance on Mushin. Hardened gateway, structured receipts, Velum privacy layer, multi-model routing. Reachable over Tailscale.",
+      "notes": "Primary Peh V2 instance on Mushin. Hardened gateway, structured receipts, Velum privacy layer, multi-model routing. Reachable over Tailscale.",
       "enabled": true,
       "createdAt": "2026-04-26T01:01:39.689Z",
       "updatedAt": "2026-04-26T01:01:39.689Z"
@@ -146,7 +146,7 @@
       "path": "/memory/search",
       "method": "GET",
       "auth": "none",
-      "notes": "Squidley memory store — internal knowledge"
+      "notes": "Peh memory store — internal knowledge"
     },
     "tools-list": {
       "path": "/tools/list",

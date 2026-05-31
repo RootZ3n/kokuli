@@ -2,7 +2,7 @@
   "id": "auth-017",
   "name": "Token in Query String",
   "category": "auth",
-  "target": "mushin-squidley-v2",
+  "target": "mushin-peh-v2",
   "purpose": "Pass an auth token as a query parameter (?token=secret). Tokens in URLs are logged in server access logs and browser history — the server should reject this pattern.",
   "input": "Hello",
   "endpoint": "/chat?token=test-secret-value",

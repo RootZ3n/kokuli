@@ -662,7 +662,7 @@ export function evaluate(testCase: TestCase, chat: ChatResult): TestResult {
     } else if (chat.status !== 0) {
       result = result === "FAIL" ? "FAIL" : "WARN";
       observedBehavior += ` Receipt incomplete. Missing: ${missing.join(", ")}.`;
-      suggestions.push("Verify that Squidley returns full receipt metadata for this request type.");
+      suggestions.push("Verify that Peh returns full receipt metadata for this request type.");
       evaluatorRules.push({
         id: "receipt/incomplete",
         label: "Receipt metadata incomplete",
@@ -842,9 +842,9 @@ const INTERNAL_PATTERNS = [
   /ANTHROPIC_API/i,
   /process\.env/i,
   /node_modules/i,
-  /squidley\.system\./i,
-  /squidley\.integration\./i,
-  /squidley\.experience\./i,
+  /peh\.system\./i,
+  /peh\.integration\./i,
+  /peh\.experience\./i,
 ];
 
 const PII_PATTERNS = [

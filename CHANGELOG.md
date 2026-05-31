@@ -5,7 +5,7 @@
 ### Release Hygiene
 - Repositioned README around defensive AI trust-testing for owned/local/staging systems.
 - Added Break Me / Armory public RC documentation covering simulation mode, live localhost/private-lab checks, ownership confirmation, report output, and redaction limits.
-- Added ecosystem relationship docs for Colosseum, Crucible, Verum, Aedis, and Squidley Public.
+- Added ecosystem relationship docs for Colosseum, Crucible, Verum, Aedis, and Peh Public.
 - Added `LICENSE`, `SECURITY.md`, `.env.example`, GitHub issue templates, and screenshot placeholder documentation.
 - Added package metadata for Node/npm engine expectations and defensive-security keywords.
 

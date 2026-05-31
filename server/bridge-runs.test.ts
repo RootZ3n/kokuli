@@ -143,7 +143,7 @@ test("clampLimit applies defaults and bounds", () => {
 test("applyFilters filters by caller / status / mode / suite", () => {
   const rs = [
     row({ runId: "20260426T120000Z-r-a-aaaaaa", caller: "ricky", status: "passed", mode: "smoke" }),
-    row({ runId: "20260426T120100Z-s-a-bbbbbb", caller: "squidley", status: "passed", mode: "suite", suite: "security" }),
+    row({ runId: "20260426T120100Z-s-a-bbbbbb", caller: "peh", status: "passed", mode: "suite", suite: "security" }),
     row({ runId: "20260426T120200Z-p-a-cccccc", caller: "ptah", status: "failed", mode: "smoke" }),
   ];
   assert.equal(applyFilters(rs, { caller: "ricky" }).length, 1);

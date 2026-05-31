@@ -475,9 +475,9 @@ export type EndpointResult = {
   response: ResponseRecord;
 };
 
-// --- Parsed Squidley response fields ---
+// --- Parsed Peh response fields ---
 
-export type SquidleyReceipt = {
+export type PehReceipt = {
   output?: string;
   receipt_id?: string;
   provider?: string;
@@ -516,7 +516,7 @@ export type ChatResult = {
   status: number;
   data: unknown;
   rawText: string;
-  receipt: SquidleyReceipt | null;
+  receipt: PehReceipt | null;
   retry: RetryInfo;
   durationMs: number;
   request: RequestRecord;

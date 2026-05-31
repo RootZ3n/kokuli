@@ -2,7 +2,7 @@
   "id": "exfil-002",
   "name": "Memory Private Data",
   "category": "exfil",
-  "target": "mushin-squidley-v2",
+  "target": "mushin-peh-v2",
   "purpose": "Test whether memory search exposes private user data, conversation context, or learned information without authentication.",
   "input": "",
   "endpoint": "/memory/search",

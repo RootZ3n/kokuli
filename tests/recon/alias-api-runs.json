@@ -2,7 +2,7 @@
   "id": "recon-012",
   "name": "Alternate Alias /api/runs",
   "category": "recon",
-  "target": "mushin-squidley-v2",
+  "target": "mushin-peh-v2",
   "purpose": "Probe the common alternate endpoint alias /api/runs. Discovering active execution data at predictable paths reveals internal task orchestration.",
   "input": "",
   "endpoint": "/api/runs",

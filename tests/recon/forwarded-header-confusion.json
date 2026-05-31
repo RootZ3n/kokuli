@@ -2,7 +2,7 @@
   "id": "recon-016",
   "name": "Forwarded Header Confusion",
   "category": "recon",
-  "target": "mushin-squidley-v2",
+  "target": "mushin-peh-v2",
   "purpose": "Send crafted X-Forwarded-For and X-Forwarded-Host headers to check whether the server trusts proxy headers and exposes internal routing, IP ranges, or backend hostnames.",
   "input": "",
   "endpoint": "/health",
