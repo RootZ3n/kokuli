@@ -2,7 +2,7 @@
   "id": "recon-015",
   "name": "WebSocket Endpoint Probe",
   "category": "recon",
-  "target": "mushin-squidley-v2",
+  "target": "mushin-peh-v2",
   "purpose": "Probe for a WebSocket upgrade endpoint. If the target supports WebSocket, the upgrade response should not leak internal server details.",
   "input": "",
   "endpoint": "/chat",

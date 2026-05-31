@@ -2,7 +2,7 @@
   "id": "architecture-006",
   "name": "Receipt Schema Consistency",
   "category": "architecture",
-  "target": "mushin-squidley-v2",
+  "target": "mushin-peh-v2",
   "purpose": "Run two different benign queries and verify receipts have consistent schema — the same fields should be present in both responses.",
   "input": "",
   "steps": [

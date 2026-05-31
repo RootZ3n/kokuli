@@ -1,6 +1,6 @@
 # Kokuli Bridge
 
-A narrow, allowlisted interface that lets **Ptah**, **Squidley**, and **Ricky/OpenClaw** request safety/security assessments from Kokuli without knowing Kokuli's internals.
+A narrow, allowlisted interface that lets **Ptah**, **Peh**, and **Ricky/OpenClaw** request safety/security assessments from Kokuli without knowing Kokuli's internals.
 
 The bridge is a small layer over the existing Kokuli CLI. There is **no new daemon**. The bridge spawns the same `node bin/kokuli.js …` commands you would type by hand, but only commands it has explicitly approved.
 
@@ -9,7 +9,7 @@ The bridge is a small layer over the existing Kokuli CLI. There is **no new daem
 Three different consumers want to run Kokuli for different reasons:
 
 - **Ptah** — when a lab agent does something suspicious (tool misuse, unsafe autonomous chain, unknown exposed endpoint), Ptah should be able to fire off a smoke or recon run as a reflex.
-- **Squidley** — governance/safety paths inside Squidley should be able to call Kokuli before enabling risky tool chains, before public-demo mode, or after Velum blocks suspicious input.
+- **Peh** — governance/safety paths inside Peh should be able to call Kokuli before enabling risky tool chains, before public-demo mode, or after Velum blocks suspicious input.
 - **Ricky / OpenClaw** — after code changes that touch safety, auth, prompt routing, memory, receipts, or tool execution, Ricky should run smoke first and a security suite second.
 
 Each consumer should call **one stable contract**, not embed Kokuli-specific argv strings.
@@ -20,7 +20,7 @@ Each consumer should call **one stable contract**, not embed Kokuli-specific arg
 - No shell interpolation — the executor uses `child_process.spawn` with `shell: false`.
 - Caller may only choose from allowlisted callers, targets, modes, suites, and tests.
 - `target` defaults to `mushin-local` (`http://127.0.0.1:18791`).
-- Tailscale targets are **refused** — they require `SQUIDLEY_AUTH_TOKEN` and that flow is not implemented in this pass.
+- Tailscale targets are **refused** — they require `PEH_AUTH_TOKEN` and that flow is not implemented in this pass.
 - `suite all` requires a non-empty `reason`.
 - Concurrency: only one `suite all` may run at a time; smoke and report are always allowed.
 - Stdout / stderr returned to the caller is capped at 4 KB per stream, ANSI-stripped.
@@ -30,7 +30,7 @@ Each consumer should call **one stable contract**, not embed Kokuli-specific arg
 
 ```json
 {
-  "caller": "ptah | squidley | ricky | manual",
+  "caller": "ptah | peh | ricky | manual",
   "target": "mushin-local",
   "mode":   "smoke | suite | test | report",
   "suite":  "recon | security | prompt-injection | child-safety | multi-turn | exfil | all",
@@ -204,7 +204,7 @@ Common ops queries via `jq`:
 tail -10 reports/bridge/INDEX.jsonl | jq
 
 # Runs for a specific caller
-jq -c 'select(.caller == "squidley")' reports/bridge/INDEX.jsonl
+jq -c 'select(.caller == "peh")' reports/bridge/INDEX.jsonl
 
 # Failures in the last day
 jq -c 'select(.status == "failed" and .startedAt > "'"$(date -u -d '1 day ago' +%FT%TZ)"'")' reports/bridge/INDEX.jsonl
@@ -230,7 +230,7 @@ Or call the JSON API directly:
 
 | Param | Values | Notes |
 |---|---|---|
-| `caller` | `ricky` / `squidley` / `ptah` / `manual` | Exact match. |
+| `caller` | `ricky` / `peh` / `ptah` / `manual` | Exact match. |
 | `status` | `passed` / `failed` / `blocked` / `error` / `timeout` / `unreachable` | Exact match. |
 | `mode` | `smoke` / `suite` / `test` / `report` | Exact match. |
 | `suite` | `security` / `prompt-injection` / `recon` / etc. | Exact match. |
@@ -278,7 +278,7 @@ Detail response (sanitized — never includes `command`, `stdoutTail`, `stderrTa
 `tools/verum-trace.mjs` is a tiny read-only CLI that joins one `runId` across the three audit trails the bridge ecosystem now writes:
 
 1. Kokuli's `reports/bridge/INDEX.jsonl` + `reports/bridge/<date>/<runId>/`
-2. Squidley's `state/verum/followups-<DATE>.jsonl`
+2. Peh's `state/verum/followups-<DATE>.jsonl`
 3. Ptah's `data/verum/reflex-<DATE>.jsonl`
 
 ```bash
@@ -291,7 +291,7 @@ node tools/verum-trace.mjs <runId> --json | jq
 # Override roots when running from a non-default workspace
 node tools/verum-trace.mjs <runId> \
     --verum-root    /path/to/kokuli \
-    --squidley-root /path/to/squidley \
+    --peh-root /path/to/peh \
     --ptah-root     /path/to/ptah
 
 # Filter old breadcrumbs out
@@ -318,7 +318,7 @@ Ptah:
   breadcrumbs: 1
   latest:      status=passed trigger=velum-block signature=velum-block:red ...
 
-Squidley:
+Peh:
   breadcrumbs: 0
 
 Summary:
@@ -407,7 +407,7 @@ node /path/to/kokuli/bin/kokuli.js bridge suite recon --caller ptah \
     --reason "follow-up after smoke pass"
 ```
 
-### Squidley — pre-flight before enabling risky tool chains
+### Peh — pre-flight before enabling risky tool chains
 
 Before flipping a tool surface on, run the prompt-injection + child-safety suites against the local instance:
 
@@ -416,11 +416,11 @@ HTTP:
 ```bash
 curl -sS -X POST http://localhost:3030/api/bridge/verum/run \
   -H 'Content-Type: application/json' \
-  -d '{"caller":"squidley","target":"mushin-local","mode":"suite","suite":"prompt-injection","reason":"pre-enable tool surface X"}'
+  -d '{"caller":"peh","target":"mushin-local","mode":"suite","suite":"prompt-injection","reason":"pre-enable tool surface X"}'
 
 curl -sS -X POST http://localhost:3030/api/bridge/verum/run \
   -H 'Content-Type: application/json' \
-  -d '{"caller":"squidley","target":"mushin-local","mode":"suite","suite":"child-safety","reason":"pre-public-demo gate"}'
+  -d '{"caller":"peh","target":"mushin-local","mode":"suite","suite":"child-safety","reason":"pre-public-demo gate"}'
 ```
 
 After a Velum block, request the report summary to capture state for the receipt:
@@ -428,7 +428,7 @@ After a Velum block, request the report summary to capture state for the receipt
 ```bash
 curl -sS -X POST http://localhost:3030/api/bridge/verum/run \
   -H 'Content-Type: application/json' \
-  -d '{"caller":"squidley","target":"mushin-local","mode":"report"}'
+  -d '{"caller":"peh","target":"mushin-local","mode":"report"}'
 ```
 
 ### Ricky / OpenClaw — post-change validation
@@ -473,7 +473,7 @@ The bridge always returns a structured response — it never throws to the calle
 
 ## What this does **not** do
 
-- Does **not** authenticate against the Tailscale Squidley target. To enable that, `config/targets.json:mushin-squidley-v2` would need an `auth` block and a `SQUIDLEY_AUTH_TOKEN` env var; this is intentionally out of scope.
+- Does **not** authenticate against the Tailscale Peh target. To enable that, `config/targets.json:mushin-peh-v2` would need an `auth` block and a `PEH_AUTH_TOKEN` env var; this is intentionally out of scope.
 - Does **not** run as a systemd service. The bridge is in-process: HTTP routes piggyback on `npm run web`, CLI runs spawn directly. A systemd service would be a follow-up once the contract is exercised in practice.
 - Does **not** stream progress. Every `run` call is synchronous from the caller's perspective: the bridge spawns Kokuli, waits, returns one response. For long sweeps the caller must be willing to block for up to `maxRuntimeMs`.
 

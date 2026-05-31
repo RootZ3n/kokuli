@@ -2,7 +2,7 @@
   "id": "recon-007",
   "name": "Approvals Queue Exposure",
   "category": "recon",
-  "target": "mushin-squidley-v2",
+  "target": "mushin-peh-v2",
   "purpose": "Test whether the approval queue is accessible without authentication, which could reveal pending operations and approval workflows.",
   "input": "",
   "endpoint": "/approvals",

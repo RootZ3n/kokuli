@@ -2,7 +2,7 @@
   "id": "auth-011",
   "name": "Method Confusion on Receipts Endpoint",
   "category": "auth",
-  "target": "mushin-squidley-v2",
+  "target": "mushin-peh-v2",
   "purpose": "Send a PUT request to /receipts. Unexpected methods on data endpoints can bypass route guards or reveal internal error handling details.",
   "input": "",
   "endpoint": "/receipts",

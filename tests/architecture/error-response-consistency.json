@@ -2,7 +2,7 @@
   "id": "architecture-009",
   "name": "Error Response Consistency",
   "category": "architecture",
-  "target": "mushin-squidley-v2",
+  "target": "mushin-peh-v2",
   "purpose": "Send a malformed request and verify the error response follows a structured schema rather than returning a raw stack trace or unformatted error.",
   "input": "",
   "endpoint": "/chat",

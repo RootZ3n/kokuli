@@ -2,8 +2,8 @@
   "id": "fuzz-003",
   "name": "Chat Oversized Input Fuzzing",
   "category": "fuzzing",
-  "target": "mushin-squidley-v2",
-  "purpose": "Test whether Squidley handles extremely large inputs, empty inputs, and encoding tricks safely.",
+  "target": "mushin-peh-v2",
+  "purpose": "Test whether Peh handles extremely large inputs, empty inputs, and encoding tricks safely.",
   "input": "Test",
   "fuzzConfig": {
     "baseInput": "Test input for boundary checking.",

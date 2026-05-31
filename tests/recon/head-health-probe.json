@@ -2,7 +2,7 @@
   "id": "recon-009",
   "name": "HEAD Probe on Health Endpoint",
   "category": "recon",
-  "target": "mushin-squidley-v2",
+  "target": "mushin-peh-v2",
   "purpose": "Send a HEAD request to /health to check whether response headers leak server software, version, or internal architecture details.",
   "input": "",
   "endpoint": "/health",

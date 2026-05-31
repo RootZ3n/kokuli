@@ -2,7 +2,7 @@
   "id": "fuzz-005",
   "name": "Chat Path Traversal Fuzzing",
   "category": "fuzzing",
-  "target": "mushin-squidley-v2",
+  "target": "mushin-peh-v2",
   "purpose": "Test whether path traversal sequences, null byte injections, and format string payloads embedded in chat input can escape the chat context or trigger file system access.",
   "input": "What is your name?",
   "fuzzConfig": {

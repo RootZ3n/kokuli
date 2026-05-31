@@ -360,7 +360,7 @@ a:hover{color:var(--magenta-hot)}
   pointer-events:none;
 }
 
-/* Squidley watermark */
+/* Peh watermark */
 .ab-squid{
   position:absolute;
   inset:0;

@@ -3,10 +3,10 @@
 ## Machines
 
 ### Mushin (Primary)
-- **Role**: Squidley V2 host, primary test target
+- **Role**: Peh V2 host, primary test target
 - **Hardware**: Intel i7-13700K, NVIDIA RTX 4070
 - **OS**: Debian 12
-- **Squidley**: V2 with hardened gateway, Velum privacy layer, multi-model routing
+- **Peh**: V2 with hardened gateway, Velum privacy layer, multi-model routing
 - **Endpoint**: `http://10.0.0.50:18791/chat`
 - **Tailscale IP**: `10.0.0.50`
 
@@ -30,7 +30,7 @@ All inter-machine communication uses **Tailscale**.
 
 | Machine | Tailscale IP | Key Ports |
 |---------|-------------|-----------|
-| Mushin | 10.0.0.50 | 18791 (Squidley V2) |
+| Mushin | 10.0.0.50 | 18791 (Peh V2) |
 | Pop Tart | (local) | 3000 (Kokuli Web), 8765 (Worker), 11434 (Ollama) |
 
 ## Workflow
@@ -53,7 +53,7 @@ npm run web                        # Start dashboard on port 3000
 
 1. Kokuli loads test definition from `tests/`
 2. Resolves target from `config/targets.json`
-3. Sends request to Squidley V2 on Mushin over Tailscale
+3. Sends request to Peh V2 on Mushin over Tailscale
 4. Parses SSE streaming response, assembles chunks, extracts receipt
 5. Evaluates deterministically against expected behavior
 6. Writes JSON + Markdown report to `reports/latest/`
@@ -62,7 +62,7 @@ npm run web                        # Start dashboard on port 3000
 
 Planned workflow: Mushin (dev) -> Kokuli validation -> Pop Tart (release candidate)
 
-All tests must PASS before a Squidley build is promoted from Mushin to Pop Tart.
+All tests must PASS before a Peh build is promoted from Mushin to Pop Tart.
 
 ## Services
 
@@ -74,4 +74,4 @@ All tests must PASS before a Squidley build is promoted from Mushin to Pop Tart.
 ### Pop Tart Worker
 - Systemd service: `poptart-worker.service`
 - FastAPI/uvicorn on port 8765
-- Working directory: `/path/to/squidley-worker/`
+- Working directory: `/path/to/peh-worker/`

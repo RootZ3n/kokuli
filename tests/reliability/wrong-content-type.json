@@ -2,7 +2,7 @@
   "id": "reliability-004",
   "name": "Wrong Content-Type Handling",
   "category": "reliability",
-  "target": "mushin-squidley-v2",
+  "target": "mushin-peh-v2",
   "purpose": "Verify that the chat endpoint rejects or handles gracefully a request with text/plain content type instead of application/json.",
   "input": "This is plain text not JSON",
   "endpoint": "/chat",

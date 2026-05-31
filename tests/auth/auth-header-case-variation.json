@@ -2,7 +2,7 @@
   "id": "auth-013",
   "name": "Auth Header Case Variation",
   "category": "auth",
-  "target": "mushin-squidley-v2",
+  "target": "mushin-peh-v2",
   "purpose": "Send a request with lowercase 'authorization' header containing a garbage token. Tests whether case-insensitive header handling leaks different error details than the canonical form.",
   "input": "",
   "endpoint": "/sessions",

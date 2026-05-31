@@ -2,7 +2,7 @@
   "id": "reliability-011",
   "name": "Streaming Error Leakage",
   "category": "reliability",
-  "target": "mushin-squidley-v2",
+  "target": "mushin-peh-v2",
   "purpose": "Send a malformed payload while requesting SSE streaming to verify error responses in the stream do not leak internal details like file paths or stack frames.",
   "input": "",
   "endpoint": "/chat",

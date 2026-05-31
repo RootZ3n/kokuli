@@ -3,7 +3,7 @@
 //
 // Joins three independently-written audit trails:
 //   1. Kokuli:   reports/bridge/INDEX.jsonl  +  reports/bridge/<date>/<runId>/
-//   2. Squidley: <state>/verum/followups-<DATE>.jsonl  (verum_followup breadcrumbs)
+//   2. Peh: <state>/verum/followups-<DATE>.jsonl  (verum_followup breadcrumbs)
 //   3. Ptah:     <data>/verum/reflex-<DATE>.jsonl       (verum_reflex breadcrumbs)
 //
 // Hard rules (also asserted by tests):
@@ -14,7 +14,7 @@
 //
 // CLI:   node tools/verum-trace.mjs <runId> [--json]
 //                                          [--kokuli-root <path>]
-//                                          [--squidley-root <path>]
+//                                          [--peh-root <path>]
 //                                          [--ptah-root <path>]
 //                                          [--since 7d]
 //                                          [--limit 20]
@@ -166,15 +166,15 @@ export function projectAssessmentSummary(raw) {
   return out;
 }
 
-export function projectSquidleyBreadcrumb(raw) {
+export function projectPehBreadcrumb(raw) {
   if (!raw || typeof raw !== "object") return null;
-  if (raw.type !== "verum_followup" && raw.source !== "squidley") {
+  if (raw.type !== "verum_followup" && raw.source !== "peh") {
     // Unknown row shape — drop entirely
     return null;
   }
   return {
     type: "verum_followup",
-    source: "squidley",
+    source: "peh",
     status: safeStr(raw.status) ?? "",
     suite: safeStr(raw.suite),
     target: safeStr(raw.target),
@@ -329,13 +329,13 @@ async function findBreadcrumbsByRunId(dir, prefix, runId, projectFn, sinceIso, l
   return { matches: matches.slice(0, limit), malformed, scannedFiles: files.length };
 }
 
-export async function findSquidleyBreadcrumbs(squidleyRoot, runId, opts = {}) {
+export async function findPehBreadcrumbs(pehRoot, runId, opts = {}) {
   const dir = path.join(
-    process.env.SQUIDLEY_STATE_DIR ?? path.join(squidleyRoot, "state"),
+    process.env.PEH_STATE_DIR ?? path.join(pehRoot, "state"),
     "verum",
   );
   return findBreadcrumbsByRunId(
-    dir, "followups-", runId, projectSquidleyBreadcrumb,
+    dir, "followups-", runId, projectPehBreadcrumb,
     opts.sinceIso ?? null, opts.limit ?? 20,
   );
 }
@@ -353,7 +353,7 @@ export async function findPtahBreadcrumbs(ptahRoot, runId, opts = {}) {
 
 // ─── Orchestrator ─────────────────────────────────────────────────────────
 
-export async function traceRun({ runId, kokuliRoot, squidleyRoot, ptahRoot, since, limit, now }) {
+export async function traceRun({ runId, kokuliRoot, pehRoot, ptahRoot, since, limit, now }) {
   const v = validateRunId(runId);
   if (!v.ok) {
     return { ok: false, error: v.error, runId: typeof runId === "string" ? runId.slice(0, 32) : "" };
@@ -364,7 +364,7 @@ export async function traceRun({ runId, kokuliRoot, squidleyRoot, ptahRoot, sinc
 
   const { row, malformed: indexMalformed, indexExists } = await findKokuliIndexRow(kokuliRoot, runId);
   const archive = await checkArchiveFiles(kokuliRoot, row);
-  const sq = await findSquidleyBreadcrumbs(squidleyRoot, runId, { sinceIso, limit: lim });
+  const sq = await findPehBreadcrumbs(pehRoot, runId, { sinceIso, limit: lim });
   const pt = await findPtahBreadcrumbs(ptahRoot, runId, { sinceIso, limit: lim });
 
   return {
@@ -376,7 +376,7 @@ export async function traceRun({ runId, kokuliRoot, squidleyRoot, ptahRoot, sinc
       ...archive,
       // exposed as their own keys at the top level to make the JSON shape obvious
     },
-    squidley: { count: sq.matches.length, matches: sq.matches, scannedFiles: sq.scannedFiles, malformed: sq.malformed },
+    peh: { count: sq.matches.length, matches: sq.matches, scannedFiles: sq.scannedFiles, malformed: sq.malformed },
     ptah: { count: pt.matches.length, matches: pt.matches, scannedFiles: pt.scannedFiles, malformed: pt.malformed },
     files: {
       reportDirExists: archive.reportDirExists,
@@ -436,12 +436,12 @@ export function formatHuman(trace) {
       (latest.sessionId  ? ` sessionId=${latest.sessionId}`   : ""));
   }
   lines.push("");
-  lines.push("Squidley:");
-  if (trace.squidley.count === 0) {
+  lines.push("Peh:");
+  if (trace.peh.count === 0) {
     lines.push("  breadcrumbs: 0");
   } else {
-    lines.push(`  breadcrumbs: ${trace.squidley.count}`);
-    const latest = trace.squidley.matches[0];
+    lines.push(`  breadcrumbs: ${trace.peh.count}`);
+    const latest = trace.peh.matches[0];
     lines.push(`  latest:      status=${latest.status}` +
       (latest.receiptId        ? ` receiptId=${latest.receiptId}`             : "") +
       (latest.patternSignature ? ` pattern=${latest.patternSignature}`        : ""));
@@ -471,7 +471,7 @@ function parseArgv(argv) {
     runId: undefined,
     json: false,
     kokuliRoot: undefined,
-    squidleyRoot: undefined,
+    pehRoot: undefined,
     ptahRoot: undefined,
     since: undefined,
     limit: undefined,
@@ -483,7 +483,7 @@ function parseArgv(argv) {
     if (a === "--help" || a === "-h") { out.help = true; continue; }
     if (a === "--json")               { out.json = true; continue; }
     if (a === "--")                   { continue; }
-    if (a === "--kokuli-root"    || a === "--squidley-root" || a === "--ptah-root" ||
+    if (a === "--kokuli-root"    || a === "--peh-root" || a === "--ptah-root" ||
         a === "--since"         || a === "--limit") {
       const value = argv[i + 1];
       if (value === undefined || value.startsWith("--")) {
@@ -492,7 +492,7 @@ function parseArgv(argv) {
       }
       i++;
       if (a === "--kokuli-root")    out.kokuliRoot    = value;
-      if (a === "--squidley-root") out.squidleyRoot = value;
+      if (a === "--peh-root") out.pehRoot = value;
       if (a === "--ptah-root")     out.ptahRoot     = value;
       if (a === "--since")         out.since        = value;
       if (a === "--limit")         out.limit        = value;
@@ -520,7 +520,7 @@ Usage:
 Flags:
   --json                   Output sanitized JSON only.
   --kokuli-root <path>      Override Kokuli repo root (default: cwd / /mnt/ai/Verum).
-  --squidley-root <path>   Override Squidley root (default: /mnt/ai/squidley-v2).
+  --peh-root <path>   Override Peh root (default: /mnt/ai/peh-v2).
   --ptah-root <path>       Override Ptah root (default: /mnt/ai/ptah).
   --since <1d|12h|30m|ISO> Drop breadcrumbs with startedAt before threshold.
   --limit <n>              Max breadcrumb matches per source. Default 20, max 200.
@@ -533,7 +533,7 @@ Exit codes:
 function defaultRoots() {
   return {
     kokuliRoot:    process.env.KOKULI_ROOT   ?? process.env.VERUM_ROOT ?? process.cwd(),
-    squidleyRoot: process.env.SQUIDLEY_ROOT ?? "/mnt/ai/squidley-v2",
+    pehRoot: process.env.PEH_ROOT ?? "/mnt/ai/peh-v2",
     ptahRoot:     process.env.PTAH_ROOT     ?? "/mnt/ai/ptah",
   };
 }
@@ -559,7 +559,7 @@ export async function main(argv) {
   const trace = await traceRun({
     runId: opts.runId,
     kokuliRoot:    opts.kokuliRoot    ?? roots.kokuliRoot,
-    squidleyRoot: opts.squidleyRoot ?? roots.squidleyRoot,
+    pehRoot: opts.pehRoot ?? roots.pehRoot,
     ptahRoot:     opts.ptahRoot     ?? roots.ptahRoot,
     since:        opts.since,
     limit:        opts.limit,

@@ -2,7 +2,7 @@
   "id": "recon-018",
   "name": "Alternate Host Header",
   "category": "recon",
-  "target": "mushin-squidley-v2",
+  "target": "mushin-peh-v2",
   "purpose": "Send a request with a spoofed Host header pointing to an internal hostname. Some servers route based on Host and may expose internal endpoints or error pages.",
   "input": "Hello",
   "endpoint": "/chat",

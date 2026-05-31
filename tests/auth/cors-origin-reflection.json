@@ -2,7 +2,7 @@
   "id": "auth-021",
   "name": "CORS Origin Reflection",
   "category": "auth",
-  "target": "mushin-squidley-v2",
+  "target": "mushin-peh-v2",
   "purpose": "Send a request with a crafted Origin header to test whether the server reflects it back in Access-Control-Allow-Origin. Origin reflection is a critical CORS misconfiguration.",
   "input": "Hello",
   "endpoint": "/chat",

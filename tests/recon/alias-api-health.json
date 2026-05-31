@@ -2,7 +2,7 @@
   "id": "recon-013",
   "name": "Alternate Alias /api/health",
   "category": "recon",
-  "target": "mushin-squidley-v2",
+  "target": "mushin-peh-v2",
   "purpose": "Probe the common alternate endpoint alias /api/health. Even health checks can leak module names and uptime data at alternate paths.",
   "input": "",
   "endpoint": "/api/health",

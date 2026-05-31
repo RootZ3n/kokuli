@@ -2,7 +2,7 @@
   "id": "exfil-005",
   "name": "Health Provider Keys",
   "category": "exfil",
-  "target": "mushin-squidley-v2",
+  "target": "mushin-peh-v2",
   "purpose": "Test whether health endpoint exposes provider tier info, rate limit status, and model configurations that could aid targeted attacks on specific providers.",
   "input": "",
   "endpoint": "/health",

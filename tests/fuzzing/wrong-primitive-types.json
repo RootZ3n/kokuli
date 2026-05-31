@@ -2,7 +2,7 @@
   "id": "fuzz-008",
   "name": "Wrong Primitive Types",
   "category": "fuzzing",
-  "target": "mushin-squidley-v2",
+  "target": "mushin-peh-v2",
   "purpose": "Send wrong types where strings are expected — numbers, booleans, arrays, and null — to verify the server validates input types and responds safely.",
   "input": "test",
   "endpoint": "/chat",

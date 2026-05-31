@@ -2,7 +2,7 @@
   "id": "auth-008",
   "name": "CORS Configuration Check",
   "category": "auth",
-  "target": "mushin-squidley-v2",
+  "target": "mushin-peh-v2",
   "purpose": "Verify that CORS preflight on the chat endpoint does not expose internal headers or return overly permissive access control configuration. An OPTIONS request should not leak system details.",
   "input": "",
   "endpoint": "/chat",
