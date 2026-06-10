@@ -1,0 +1,40 @@
+# Kokuli Web UI — deployable systemd unit (C4)
+#
+# This is a CONCRETE, ready-to-deploy unit with the lab's real paths filled in
+# (cf. verum-web.service, which is the template with %USER%/%INSTALL_DIR%/...
+# placeholders). It is NOT enabled by this repo — installing it is a manual,
+# deliberate operator step so the server stops being an orphan child of the
+# Hermes node process.
+#
+# Setup (run as root, adjust paths if your checkout differs from below):
+#   sudo cp install/verum-web.service.ready /etc/systemd/system/kokuli-web.service
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now kokuli-web.service
+#   systemctl status kokuli-web.service
+#   journalctl -u kokuli-web.service -f        # live logs (also reports/server.log)
+#
+# Paths below match the current Pop Tart deployment:
+#   user            = zen
+#   checkout        = /pehverse/repos/kokuli
+#   node binary     = /home/zen/.hermes/node/bin/node
+# If you deploy elsewhere, edit User, WorkingDirectory, the PATH, and ExecStart.
+# Build the dist first:  pnpm build  (or npm run build)
+
+[Unit]
+Description=Kokuli Web UI (dashboard + Atlantis + Armory + Bridge)
+After=network.target
+
+[Service]
+Type=simple
+User=zen
+WorkingDirectory=/pehverse/repos/kokuli
+Environment=NODE_ENV=production
+Environment=KOKULI_HOST=127.0.0.1
+Environment=KOKULI_PORT=3000
+Environment=PATH=/home/zen/.hermes/node/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/home/zen/.hermes/node/bin/node /pehverse/repos/kokuli/dist/server/index.js
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
