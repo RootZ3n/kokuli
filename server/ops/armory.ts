@@ -3,6 +3,7 @@ import path from "path";
 import axios from "axios";
 import { recordEntry } from "../../engine/ledger";
 import { logger } from "../../engine/logger";
+import { writeJsonAtomic } from "../../engine/fsAtomic";
 import { buildPortFindings, hasHttpCandidate, parseNmapOutput, summarizeSteps } from "./parser";
 import { getProfileDefinition } from "./profiles";
 import { sanitizeArmoryRawOutput, sanitizeReceiptArgs, targetClass, redactSensitiveText } from "./redaction";
@@ -269,13 +270,13 @@ async function saveStatus(): Promise<void> {
     } : null,
     lastRun,
   };
-  await fs.writeJson(statusPath(), status, { spaces: 2 });
+  await writeJsonAtomic(statusPath(), status, { spaces: 2 });
 }
 
 async function appendReceipt(receipt: ArmoryReceipt): Promise<void> {
   const receipts = await loadReceipts();
   receipts.push(receipt);
-  await fs.writeJson(receiptsPath(), receipts, { spaces: 2 });
+  await writeJsonAtomic(receiptsPath(), receipts, { spaces: 2 });
 }
 
 function createStep(id: string, title: string, whatIAmDoing: string, whyIAmDoingIt: string, riskNote: string): ArmoryRunStep {

@@ -1,6 +1,7 @@
 import fs from "fs-extra";
 import path from "path";
 import { ResultState } from "./types";
+import { writeJsonAtomic, writeJsonAtomicSync } from "./fsAtomic";
 
 export type TestExecutionStateRecord = {
   testId: string;
@@ -143,9 +144,8 @@ function loadExecutionStoreSync(): ExecutionStore {
 }
 
 function saveExecutionStoreSync(store: ExecutionStore): void {
-  fs.ensureDirSync(path.dirname(storePath()));
   store.updatedAt = new Date().toISOString();
-  fs.writeJsonSync(storePath(), store, { spaces: 2 });
+  writeJsonAtomicSync(storePath(), store, { spaces: 2 });
 }
 
 function markStaleIfNeeded(state: ResultState, startedAt?: string): ResultState {
@@ -166,9 +166,8 @@ export async function loadExecutionStore(): Promise<ExecutionStore> {
 }
 
 export async function saveExecutionStore(store: ExecutionStore): Promise<void> {
-  await fs.ensureDir(path.dirname(storePath()));
   store.updatedAt = new Date().toISOString();
-  await fs.writeJson(storePath(), store, { spaces: 2 });
+  await writeJsonAtomic(storePath(), store, { spaces: 2 });
 }
 
 export async function updateTestExecutionState(args: {

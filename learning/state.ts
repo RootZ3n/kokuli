@@ -1,6 +1,7 @@
 import fs from "fs-extra";
 import path from "path";
 import { PlayerState, XP_PER_LEVEL, levelFromXp } from "./types";
+import { writeJsonAtomic } from "../engine/fsAtomic";
 
 const STATE_PATH = path.join(process.cwd(), "learning", "data", "player.json");
 
@@ -24,7 +25,7 @@ export async function loadPlayerState(): Promise<PlayerState> {
 
 export async function savePlayerState(state: PlayerState): Promise<void> {
   state.level = levelFromXp(state.xp);
-  await fs.writeJson(STATE_PATH, state, { spaces: 2 });
+  await writeJsonAtomic(STATE_PATH, state, { spaces: 2 });
 }
 
 export function xpToNextLevel(state: PlayerState): number {
