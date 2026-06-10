@@ -12,6 +12,9 @@ import {
   BRIDGE_ARCHIVE_FILES,
   BRIDGE_INDEX_PATH,
   __resetBridgeForTests,
+  __addActiveRunForTests,
+  clearStaleActiveRuns,
+  getActiveRuns,
   ALLOWED_SUITES,
   DEFAULT_TIMEOUTS_MS,
   type Executor,
@@ -852,4 +855,64 @@ test("skipIndex test seam suppresses INDEX.jsonl writes", async () => {
     assert.equal(r.indexAppended, undefined);
     assert.equal(await fs.pathExists(path.join(root, BRIDGE_INDEX_PATH)), false);
   });
+});
+
+// --- C3: stale active-run recovery ---
+
+test("clearStaleActiveRuns removes entries older than the TTL and frees the sweep lock", async () => {
+  __resetBridgeForTests();
+  // Simulate a suite=all run whose process was killed before `finally` ran.
+  const staleStart = new Date(Date.now() - 20 * 60 * 1000).toISOString(); // 20 min ago
+  __addActiveRunForTests({
+    id: "stale-sweep",
+    caller: "ptah",
+    mode: "suite",
+    suite: "all",
+    startedAt: staleStart,
+  });
+  assert.equal(getActiveRuns().length, 1);
+
+  const cleared = clearStaleActiveRuns(); // default 10 min TTL
+  assert.equal(cleared.length, 1);
+  assert.equal(cleared[0].id, "stale-sweep");
+  assert.equal(getActiveRuns().length, 0);
+
+  __resetBridgeForTests();
+});
+
+test("clearStaleActiveRuns keeps fresh entries", async () => {
+  __resetBridgeForTests();
+  __addActiveRunForTests({
+    id: "fresh",
+    caller: "peh",
+    mode: "suite",
+    suite: "all",
+    startedAt: new Date().toISOString(),
+  });
+  const cleared = clearStaleActiveRuns();
+  assert.equal(cleared.length, 0);
+  assert.equal(getActiveRuns().length, 1);
+  __resetBridgeForTests();
+});
+
+test("a stale suite=all entry no longer blocks a new suite=all run", async () => {
+  __resetBridgeForTests();
+  __addActiveRunForTests({
+    id: "ghost",
+    caller: "ricky",
+    mode: "suite",
+    suite: "all",
+    startedAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+  });
+  // dryRun reaches the fullSweepActive() concurrency guard, which prunes stale
+  // entries first, so the request is no longer blocked.
+  const result = await runBridge({
+    caller: "ptah",
+    mode: "suite",
+    suite: "all",
+    reason: "post-unstuck sweep",
+    dryRun: true,
+  });
+  assert.notEqual(result.status, "blocked");
+  __resetBridgeForTests();
 });
