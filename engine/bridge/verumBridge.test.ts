@@ -15,6 +15,7 @@ import {
   __addActiveRunForTests,
   clearStaleActiveRuns,
   getActiveRuns,
+  buildChildEnv,
   ALLOWED_SUITES,
   DEFAULT_TIMEOUTS_MS,
   type Executor,
@@ -915,4 +916,32 @@ test("a stale suite=all entry no longer blocks a new suite=all run", async () =>
   });
   assert.notEqual(result.status, "blocked");
   __resetBridgeForTests();
+});
+
+// --- M4: spawn env is filtered to least privilege ---
+
+test("buildChildEnv strips provider secrets but keeps PATH and KOKULI_* vars", () => {
+  const source = {
+    PATH: "/usr/bin",
+    HOME: "/home/zen",
+    NODE_ENV: "production",
+    KOKULI_PORT: "3000",
+    VERUM_HOST: "127.0.0.1",
+    OPENAI_API_KEY: "sk-proj-shouldnotleak",
+    ANTHROPIC_API_KEY: "sk-ant-shouldnotleak",
+    AWS_SECRET_ACCESS_KEY: "shouldnotleak",
+    RANDOM_TOKEN: "shouldnotleak",
+  } as NodeJS.ProcessEnv;
+
+  const filtered = buildChildEnv(source);
+  assert.equal(filtered.PATH, "/usr/bin");
+  assert.equal(filtered.HOME, "/home/zen");
+  assert.equal(filtered.NODE_ENV, "production");
+  assert.equal(filtered.KOKULI_PORT, "3000");
+  assert.equal(filtered.VERUM_HOST, "127.0.0.1");
+
+  assert.equal(filtered.OPENAI_API_KEY, undefined);
+  assert.equal(filtered.ANTHROPIC_API_KEY, undefined);
+  assert.equal(filtered.AWS_SECRET_ACCESS_KEY, undefined);
+  assert.equal(filtered.RANDOM_TOKEN, undefined);
 });
