@@ -2,6 +2,7 @@ import fs from "fs-extra";
 import path from "path";
 import axios from "axios";
 import { recordEntry } from "../../engine/ledger";
+import { logger } from "../../engine/logger";
 import { buildPortFindings, hasHttpCandidate, parseNmapOutput, summarizeSteps } from "./parser";
 import { getProfileDefinition } from "./profiles";
 import { sanitizeArmoryRawOutput, sanitizeReceiptArgs, targetClass, redactSensitiveText } from "./redaction";
@@ -959,6 +960,82 @@ export async function resetArmory(): Promise<ArmoryStatus> {
   currentRunContext = null;
   await saveStatus();
   return getArmoryStatus();
+}
+
+/**
+ * H4 — recover an Armory run orphaned by a process crash.
+ *
+ * `currentRunContext` lives only in memory, so a SIGKILL/OOM mid-run leaves
+ * ARMORY_STATUS.json claiming a run is still "running" while the spawned nmap
+ * child is orphaned at the OS level. On startup (fresh process, so
+ * `currentRunContext` is null) we detect that persisted activeRun, mark it as a
+ * failed run, and clear it so the Armory reports idle instead of a phantom run.
+ *
+ * We cannot reliably reap the orphaned nmap (its PID died with the old
+ * process); it is bounded by the tool timeout. We log the detection so the
+ * operator can confirm nothing is still running.
+ */
+export async function recoverStaleArmoryRuns(): Promise<{ recovered: boolean; runId?: string }> {
+  if (currentRunContext) return { recovered: false }; // a live run owns this process
+  if (!(await fs.pathExists(statusPath()))) return { recovered: false };
+
+  let status: ArmoryStatus;
+  try {
+    status = (await fs.readJson(statusPath())) as ArmoryStatus;
+  } catch {
+    return { recovered: false };
+  }
+
+  const active = status.activeRun;
+  if (!active) return { recovered: false };
+
+  logger.warn(
+    "armory",
+    `Detected stale Armory run ${active.runId} (target ${active.target}) left by a previous process; marking failed. ` +
+      `Any spawned nmap child is orphaned and will exit on its own timeout — verify with 'pgrep nmap'.`,
+  );
+
+  const target: ArmoryTarget = {
+    kind: "url",
+    display: active.target,
+    host: active.target,
+    beginnerSafe: true,
+  };
+  const steps = active.steps ?? [];
+  for (const step of steps) {
+    if (step.status === "running" || step.status === "pending") {
+      failStep(step, "Run interrupted by process exit.", "The Kokuli process stopped before this step finished.");
+    }
+  }
+
+  const result = finalizeRun({
+    runId: active.runId,
+    profile: active.profile,
+    target,
+    safetyLevel: active.safetyLevel,
+    steps,
+    findings: [
+      createFinding({
+        title: "Stale Run Recovered After Restart",
+        category: "recommendations",
+        severity: "low",
+        confidence: "high",
+        explanation: "A previous Kokuli process exited while this Armory run was active, so it could not finish cleanly.",
+        fix: "Confirm no orphaned nmap process is still running (pgrep nmap), then start a fresh run if needed.",
+        evidence: [`Interrupted run: ${active.runId}`, `Started at: ${active.startedAt}`],
+      }),
+    ],
+    receipts: [],
+    startedAt: active.startedAt,
+    simulated: false,
+    state: "error",
+    humanExplanation: "Armory detected a run left active by a crashed or killed process and marked it failed on startup.",
+  });
+
+  lastRun = result;
+  currentRunContext = null;
+  await saveStatus();
+  return { recovered: true, runId: active.runId };
 }
 
 export async function runArmory(request: ArmoryRunRequest): Promise<ArmoryRunResult> {
