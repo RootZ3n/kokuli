@@ -18,6 +18,9 @@ import {
   runBridge,
   getAllowlist as getBridgeAllowlist,
   getHealth as getBridgeHealth,
+  getActiveRuns as getBridgeActiveRuns,
+  clearStaleActiveRuns as clearStaleBridgeRuns,
+  DEFAULT_ACTIVE_RUN_TTL_MS,
   type BridgeRequest,
 } from "../engine/bridge/verumBridge";
 import { listBridgeRuns, readBridgeRunDetail } from "./bridge-runs";
@@ -1095,6 +1098,24 @@ router.post("/bridge/kokuli/run", async (req: Request, res: Response) => {
   }
 });
 
+// GET /api/bridge/kokuli/active-runs — inspect the in-flight sweep lock (C3).
+router.get("/bridge/kokuli/active-runs", (_req: Request, res: Response) => {
+  const runs = getBridgeActiveRuns();
+  res.json({ count: runs.length, ttlMs: DEFAULT_ACTIVE_RUN_TTL_MS, activeRuns: runs });
+});
+
+// POST /api/bridge/kokuli/unstuck — clear stale active-run entries that a
+// crashed/killed run left behind, freeing a permanently-held suite=all lock.
+// Body: { ttlMs?: number } — entries older than ttlMs (default 10 min) cleared.
+router.post("/bridge/kokuli/unstuck", (req: Request, res: Response) => {
+  const body = (req.body && typeof req.body === "object" ? req.body : {}) as { ttlMs?: number };
+  const ttlMs = typeof body.ttlMs === "number" && Number.isFinite(body.ttlMs) && body.ttlMs >= 0
+    ? body.ttlMs
+    : undefined;
+  const cleared = clearStaleBridgeRuns(ttlMs);
+  res.json({ ok: true, clearedCount: cleared.length, cleared, remaining: getBridgeActiveRuns() });
+});
+
 // --- Backward-compatible /bridge/verum/* aliases ---
 
 router.get("/bridge/verum/health", (_req: Request, res: Response) => {
@@ -1103,6 +1124,20 @@ router.get("/bridge/verum/health", (_req: Request, res: Response) => {
 
 router.get("/bridge/verum/allowlist", (_req: Request, res: Response) => {
   res.json(getBridgeAllowlist());
+});
+
+router.get("/bridge/verum/active-runs", (_req: Request, res: Response) => {
+  const runs = getBridgeActiveRuns();
+  res.json({ count: runs.length, ttlMs: DEFAULT_ACTIVE_RUN_TTL_MS, activeRuns: runs });
+});
+
+router.post("/bridge/verum/unstuck", (req: Request, res: Response) => {
+  const body = (req.body && typeof req.body === "object" ? req.body : {}) as { ttlMs?: number };
+  const ttlMs = typeof body.ttlMs === "number" && Number.isFinite(body.ttlMs) && body.ttlMs >= 0
+    ? body.ttlMs
+    : undefined;
+  const cleared = clearStaleBridgeRuns(ttlMs);
+  res.json({ ok: true, clearedCount: cleared.length, cleared, remaining: getBridgeActiveRuns() });
 });
 
 router.post("/bridge/verum/run", async (req: Request, res: Response) => {

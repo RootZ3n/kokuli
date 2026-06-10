@@ -175,11 +175,56 @@ interface ActiveRun {
 
 const activeRuns = new Map<string, ActiveRun>();
 
+// TTL after which an in-flight run is considered stale (C3). If the Kokuli
+// process is killed (SIGKILL / OOM) mid-run, the `finally` that deletes the
+// entry never executes, so without a TTL `fullSweepActive()` would return true
+// forever and reject every later suite=all request. Configurable via
+// KOKULI_BRIDGE_RUN_TTL_MS; defaults to 10 minutes.
+//
+// Note: `activeRuns` is purely in-memory, so a process RESTART already clears
+// any leaked lock. The TTL + /unstuck endpoint exist for the in-process case
+// where the lock leaks without a restart (e.g. an unhandled rejection that
+// skipped the finally), and to give operators visibility/recovery.
+export const DEFAULT_ACTIVE_RUN_TTL_MS = 10 * 60 * 1000;
+
+function activeRunTtlMs(): number {
+  const raw = Number.parseInt(process.env.KOKULI_BRIDGE_RUN_TTL_MS ?? "", 10);
+  return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_ACTIVE_RUN_TTL_MS;
+}
+
+function isStale(run: ActiveRun, ttlMs: number, nowMs: number): boolean {
+  const startedMs = Date.parse(run.startedAt);
+  if (!Number.isFinite(startedMs)) return false;
+  return nowMs - startedMs > ttlMs;
+}
+
 export function getActiveRuns(): ActiveRun[] {
   return Array.from(activeRuns.values());
 }
 
+/**
+ * Remove active-run entries older than `ttlMs` (default 10 min) and return the
+ * ones that were cleared. Used on a leaked sweep lock so a new suite=all run is
+ * no longer blocked by a ghost entry.
+ */
+export function clearStaleActiveRuns(ttlMs: number = activeRunTtlMs()): ActiveRun[] {
+  const nowMs = Date.now();
+  const cleared: ActiveRun[] = [];
+  for (const [id, run] of activeRuns) {
+    if (isStale(run, ttlMs, nowMs)) {
+      activeRuns.delete(id);
+      cleared.push(run);
+    }
+  }
+  if (cleared.length) {
+    logger.warn("bridge", `Cleared ${cleared.length} stale active-run entr${cleared.length === 1 ? "y" : "ies"} (TTL ${ttlMs}ms).`);
+  }
+  return cleared;
+}
+
 function fullSweepActive(): boolean {
+  // A stale suite=all entry must not keep blocking new sweeps.
+  clearStaleActiveRuns();
   for (const r of activeRuns.values()) {
     if (r.mode === "suite" && r.suite === "all") return true;
   }
@@ -1051,4 +1096,9 @@ export function getHealth() {
 // Test-only helper to clear state between tests.
 export function __resetBridgeForTests(): void {
   activeRuns.clear();
+}
+
+// Test-only helper to inject an active run (e.g. a stale leaked entry).
+export function __addActiveRunForTests(run: ActiveRun): void {
+  activeRuns.set(run.id, run);
 }
