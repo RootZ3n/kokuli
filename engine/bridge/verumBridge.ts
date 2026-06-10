@@ -18,6 +18,7 @@ import { spawn, ChildProcess } from "child_process";
 import { randomBytes } from "crypto";
 import path from "path";
 import fs from "fs-extra";
+import { logger } from "../logger";
 
 // --- Public types ---
 
@@ -769,11 +770,7 @@ export async function archiveBridgeRun(input: ArchiveBridgeRunInput): Promise<Ar
       indexAppended = true;
     } catch (err) {
       indexError = err instanceof Error ? err.message : String(err);
-      try {
-        process.stderr.write(`[bridge] INDEX.jsonl append failed for ${runId}: ${indexError}\n`);
-      } catch {
-        /* swallow */
-      }
+      logger.error("bridge", `INDEX.jsonl append failed for ${runId}`, indexError);
     }
   }
 
@@ -997,11 +994,7 @@ export async function runBridge(
     } catch (archiveErr) {
       // Best-effort: never demote run status because archive failed.
       const msg = archiveErr instanceof Error ? archiveErr.message : String(archiveErr);
-      try {
-        process.stderr.write(`[bridge] archive failed for run ${publicRunId}: ${msg}\n`);
-      } catch {
-        /* swallow */
-      }
+      logger.error("bridge", `archive failed for run ${publicRunId}`, msg);
     }
   }
 

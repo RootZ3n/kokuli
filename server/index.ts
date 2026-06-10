@@ -3,6 +3,7 @@ import path from "path";
 import fs from "fs-extra";
 import apiRouter from "./api";
 import { apiErrorHandler } from "./api-errors";
+import { logger, tailLog } from "../engine/logger";
 
 const app = express();
 const PORT = parseInt(process.env.KOKULI_PORT || process.env.VERUM_PORT || process.env.KRAKZEN_PORT || "3000", 10);
@@ -123,6 +124,18 @@ app.get("/api/meta", (_req, res) => {
   });
 });
 
+// GET /api/meta/logs — tail of the server log file (last 100 lines).
+// Gives operators visibility into a detached background process (C1).
+app.get("/api/meta/logs", (req, res) => {
+  const limit = typeof req.query.limit === "string" ? parseInt(req.query.limit, 10) : 100;
+  const n = Number.isFinite(limit) && limit > 0 ? Math.min(limit, 1000) : 100;
+  try {
+    res.json({ entries: tailLog(n) });
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
+});
+
 app.use("/api", apiRouter);
 app.use(apiErrorHandler);
 
@@ -145,11 +158,11 @@ app.get("/", (_req, res) => {
 for (const host of HOSTS) {
   app.listen(PORT, host, () => {
     const displayHost = host === "0.0.0.0" ? "localhost" : host;
-    console.log(`[kokuli-web] Dashboard:  http://${displayHost}:${PORT}`);
-    console.log(`[kokuli-web] Atlantis:   http://${displayHost}:${PORT}/atlantis`);
-    console.log(`[kokuli-web] API:        http://${displayHost}:${PORT}/api`);
+    logger.info("kokuli-web", `Dashboard:  http://${displayHost}:${PORT}`);
+    logger.info("kokuli-web", `Atlantis:   http://${displayHost}:${PORT}/atlantis`);
+    logger.info("kokuli-web", `API:        http://${displayHost}:${PORT}/api`);
   });
 }
 if (BIND_ALL) {
-  console.log("[kokuli-web] Warning: KOKULI_BIND_ALL=1 (or VERUM_BIND_ALL=1) exposes the dashboard beyond localhost.");
+  logger.warn("kokuli-web", "KOKULI_BIND_ALL=1 (or VERUM_BIND_ALL=1) exposes the dashboard beyond localhost.");
 }
