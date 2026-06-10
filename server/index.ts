@@ -5,6 +5,7 @@ import apiRouter from "./api";
 import { apiErrorHandler } from "./api-errors";
 import { logger, tailLog } from "../engine/logger";
 import { loadLedger } from "../engine/ledger";
+import { recoverStaleArmoryRuns } from "./ops/armory";
 
 const app = express();
 const PORT = parseInt(process.env.KOKULI_PORT || process.env.VERUM_PORT || process.env.KRAKZEN_PORT || "3000", 10);
@@ -157,11 +158,27 @@ app.get("/", (_req, res) => {
 });
 
 // --- Startup reconciliation ---
-// Hydrate the ledger once at boot: converts a legacy JSON-array ledger to
-// JSONL and enforces the retention caps (H1/H2).
-void loadLedger().catch((err) => {
-  logger.error("kokuli-web", "Ledger initialization failed", err);
-});
+// In-memory state does not survive a restart, so reconcile persisted state
+// before serving traffic:
+//   - hydrate the ledger (legacy array -> JSONL + retention caps) (H1/H2)
+//   - mark any Armory run left "running" by a previous process as failed (H4)
+// The bridge's activeRuns map is purely in-memory, so a restart already clears
+// any leaked sweep lock — no disk reconciliation needed there (C3).
+void (async () => {
+  try {
+    await loadLedger();
+  } catch (err) {
+    logger.error("kokuli-web", "Ledger initialization failed", err);
+  }
+  try {
+    const recovered = await recoverStaleArmoryRuns();
+    if (recovered.recovered) {
+      logger.warn("kokuli-web", `Recovered stale Armory run ${recovered.runId} left by a previous process.`);
+    }
+  } catch (err) {
+    logger.error("kokuli-web", "Armory stale-run recovery failed", err);
+  }
+})();
 
 for (const host of HOSTS) {
   app.listen(PORT, host, () => {

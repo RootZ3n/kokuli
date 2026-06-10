@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "fs-extra";
 import os from "os";
 import path from "path";
-import { __resetArmoryForTests, __setArmoryRuntimeForTests, getArmoryStatus, killArmory, resetArmory, runArmory } from "./armory";
+import { __resetArmoryForTests, __setArmoryRuntimeForTests, getArmoryStatus, killArmory, recoverStaleArmoryRuns, resetArmory, runArmory } from "./armory";
 import { parseNmapOutput } from "./parser";
 import { __resetToolRunnerForTests } from "./toolRunner";
 
@@ -412,4 +412,75 @@ test("parser degrades safely on empty, partial, and unexpected nmap output", () 
   assert.equal(ambiguous.openPorts.length, 0);
   assert.equal(ambiguous.degraded, true);
   assert.ok(ambiguous.parserWarnings.length >= 1);
+});
+
+// --- H4: stale run recovery after a crash/restart ---
+
+test("recoverStaleArmoryRuns marks a persisted running run as failed on restart", async () => {
+  await withTempWorkspace(async () => {
+    __resetArmoryForTests();
+    __resetToolRunnerForTests();
+
+    // Simulate a previous process that crashed mid-run: ARMORY_STATUS.json
+    // still claims a run is active, but this fresh process has no in-memory
+    // currentRunContext.
+    const statusPath = path.join(process.cwd(), "reports", "latest", "ARMORY_STATUS.json");
+    await fs.ensureDir(path.dirname(statusPath));
+    await fs.writeJson(statusPath, {
+      updatedAt: new Date().toISOString(),
+      killSwitch: false,
+      locked: false,
+      networkOpsEnabled: false,
+      activeProcesses: 1,
+      state: "running",
+      message: "Armory is actively guiding a live run.",
+      activeRun: {
+        runId: "armory-ghost-123",
+        profile: "quick_scan",
+        target: "localhost:3000",
+        startedAt: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+        safetyLevel: 1,
+        state: "running",
+        steps: [
+          {
+            id: "safe-port-scan",
+            title: "Safe Port Scan",
+            whatIAmDoing: "",
+            whyIAmDoingIt: "",
+            whatIFound: "Pending",
+            whatItMeans: "Pending",
+            riskNote: "",
+            status: "running",
+          },
+        ],
+      },
+      lastRun: null,
+    }, { spaces: 2 });
+
+    const recovered = await recoverStaleArmoryRuns();
+    assert.equal(recovered.recovered, true);
+    assert.equal(recovered.runId, "armory-ghost-123");
+
+    // Status now reports idle with a failed lastRun, not a phantom running run.
+    const status = await getArmoryStatus();
+    assert.equal(status.activeRun, null);
+    assert.notEqual(status.state, "running");
+    assert.equal(status.lastRun?.runId, "armory-ghost-123");
+    assert.equal(status.lastRun?.state, "error");
+    // The running step was marked failed.
+    assert.equal(status.lastRun?.steps[0].status, "failed");
+
+    __resetArmoryForTests();
+  });
+});
+
+test("recoverStaleArmoryRuns is a no-op when there is no active run", async () => {
+  await withTempWorkspace(async () => {
+    __resetArmoryForTests();
+    __resetToolRunnerForTests();
+    // No status file at all.
+    const recovered = await recoverStaleArmoryRuns();
+    assert.equal(recovered.recovered, false);
+    __resetArmoryForTests();
+  });
 });
