@@ -72,12 +72,110 @@ export type LedgerSummary = {
   unknownModelHistorical: number;
 };
 
-const LEDGER_PATH = path.join(process.cwd(), "reports", "ledger.json");
+function ledgerPath(): string {
+  return path.join(process.cwd(), "reports", "ledger.json");
+}
 
-// In-memory session ledger
+// Retention caps (H1/H2). Read from env each time so tests can override.
+function maxEntries(): number {
+  const raw = Number.parseInt(process.env.LEDGER_MAX_ENTRIES ?? "", 10);
+  return Number.isFinite(raw) && raw > 0 ? raw : 10_000;
+}
+function retentionDays(): number {
+  const raw = Number.parseInt(process.env.LEDGER_RETENTION_DAYS ?? "", 10);
+  return Number.isFinite(raw) && raw > 0 ? raw : 90;
+}
+
+// In-memory session ledger, hydrated from disk on first access (loadLedger).
 const sessionEntries: LedgerEntry[] = [];
+let loaded = false;
+
+/** Parse a ledger file that is either legacy JSON array or JSONL (one entry/line). */
+function parseLedgerRaw(raw: string): { entries: LedgerEntry[]; wasLegacyArray: boolean } {
+  const trimmed = raw.trim();
+  if (!trimmed) return { entries: [], wasLegacyArray: false };
+  if (trimmed.startsWith("[")) {
+    // Legacy format: a single JSON array. Converted to JSONL on first load.
+    try {
+      const arr = JSON.parse(trimmed) as unknown;
+      return { entries: Array.isArray(arr) ? (arr as LedgerEntry[]) : [], wasLegacyArray: true };
+    } catch {
+      return { entries: [], wasLegacyArray: true };
+    }
+  }
+  const entries: LedgerEntry[] = [];
+  for (const line of trimmed.split("\n")) {
+    const l = line.trim();
+    if (!l) continue;
+    try {
+      entries.push(JSON.parse(l) as LedgerEntry);
+    } catch {
+      // Skip a malformed/torn line rather than failing the whole load.
+    }
+  }
+  return { entries, wasLegacyArray: false };
+}
+
+/** Enforce the documented retention caps: drop entries past the age window, then cap count. */
+function pruneEntries(entries: LedgerEntry[]): LedgerEntry[] {
+  const cutoff = Date.now() - retentionDays() * 24 * 60 * 60 * 1000;
+  const withinWindow = entries.filter((e) => {
+    const t = Date.parse(e.timestamp);
+    return !Number.isFinite(t) || t >= cutoff; // keep entries with unparseable timestamps
+  });
+  const max = maxEntries();
+  return withinWindow.length > max ? withinWindow.slice(withinWindow.length - max) : withinWindow;
+}
+
+/** Rewrite the on-disk ledger as JSONL (atomic). */
+function writeLedgerJsonl(entries: LedgerEntry[]): void {
+  const body = entries.map((e) => JSON.stringify(e)).join("\n");
+  const file = ledgerPath();
+  fs.ensureDirSync(path.dirname(file));
+  // Atomic .tmp + rename so a crash mid-write can't corrupt the ledger (M1).
+  const tmp = `${file}.tmp`;
+  fs.writeFileSync(tmp, entries.length ? body + "\n" : "");
+  fs.renameSync(tmp, file);
+}
+
+/**
+ * Hydrate `sessionEntries` from disk, enforce caps, and (if needed) convert a
+ * legacy JSON-array file to JSONL or rewrite a pruned file. Idempotent: only
+ * the first call reads disk; later calls are no-ops.
+ */
+export async function loadLedger(): Promise<LedgerEntry[]> {
+  if (loaded) return [...sessionEntries];
+  const file = ledgerPath();
+  if (await fs.pathExists(file)) {
+    let parsed: { entries: LedgerEntry[]; wasLegacyArray: boolean };
+    try {
+      parsed = parseLedgerRaw(await fs.readFile(file, "utf8"));
+    } catch {
+      parsed = { entries: [], wasLegacyArray: false };
+    }
+    const pruned = pruneEntries(parsed.entries);
+    sessionEntries.length = 0;
+    sessionEntries.push(...pruned);
+    // Rewrite when we converted a legacy array or actually dropped entries.
+    if (parsed.wasLegacyArray || pruned.length !== parsed.entries.length) {
+      try {
+        writeLedgerJsonl(pruned);
+      } catch {
+        // Non-fatal: in-memory state is still correct; disk stays as-is.
+      }
+    }
+  }
+  loaded = true;
+  return [...sessionEntries];
+}
+
+async function ensureLoaded(): Promise<void> {
+  if (!loaded) await loadLedger();
+}
 
 export async function recordEntry(entry: LedgerEntry): Promise<void> {
+  await ensureLoaded();
+
   // Stamp every new entry with the current schema version and compute the
   // unknown-provider / unknown-model / unknown-cost honesty flags. Old
   // entries already on disk keep their original shape — they're HISTORICAL.
@@ -94,33 +192,20 @@ export async function recordEntry(entry: LedgerEntry): Promise<void> {
   if (enriched.estimatedCostUsd === undefined) honestyFlags.add("UNKNOWN_COST");
   if (honestyFlags.size > 0) enriched.honestyFlags = Array.from(honestyFlags);
 
+  // H2: keep the in-memory session cache bounded — shift oldest out over cap.
   sessionEntries.push(enriched);
+  const max = maxEntries();
+  if (sessionEntries.length > max) sessionEntries.splice(0, sessionEntries.length - max);
 
-  await fs.ensureDir(path.dirname(LEDGER_PATH));
-
-  let existing: LedgerEntry[] = [];
-  if (await fs.pathExists(LEDGER_PATH)) {
-    try {
-      existing = await fs.readJson(LEDGER_PATH);
-      if (!Array.isArray(existing)) existing = [];
-    } catch {
-      existing = [];
-    }
-  }
-
-  existing.push(enriched);
-  await fs.writeJson(LEDGER_PATH, existing, { spaces: 2 });
+  // H1: O(1) append instead of read-whole-file + rewrite-whole-file.
+  const file = ledgerPath();
+  await fs.ensureDir(path.dirname(file));
+  await fs.appendFile(file, JSON.stringify(enriched) + "\n");
 }
 
 export async function getLedger(): Promise<LedgerEntry[]> {
-  if (!(await fs.pathExists(LEDGER_PATH))) return [];
-
-  try {
-    const data = await fs.readJson(LEDGER_PATH);
-    return Array.isArray(data) ? data : [];
-  } catch {
-    return [];
-  }
+  await ensureLoaded();
+  return [...sessionEntries];
 }
 
 export async function getLedgerSummary(): Promise<LedgerSummary> {
@@ -130,13 +215,21 @@ export async function getLedgerSummary(): Promise<LedgerSummary> {
 
 export async function clearLedger(): Promise<void> {
   sessionEntries.length = 0;
-  if (await fs.pathExists(LEDGER_PATH)) {
-    await fs.writeJson(LEDGER_PATH, [], { spaces: 2 });
+  loaded = true;
+  const file = ledgerPath();
+  if (await fs.pathExists(file)) {
+    await fs.writeFile(file, "");
   }
 }
 
 export function getSessionLedger(): LedgerEntry[] {
   return [...sessionEntries];
+}
+
+// Test-only: reset the lazy-load state between tests.
+export function __resetLedgerForTests(): void {
+  sessionEntries.length = 0;
+  loaded = false;
 }
 
 export function isHistoricalLedgerEntry(entry: LedgerEntry): boolean {
