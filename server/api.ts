@@ -21,6 +21,7 @@ import {
   type BridgeRequest,
 } from "../engine/bridge/verumBridge";
 import { listBridgeRuns, readBridgeRunDetail } from "./bridge-runs";
+import { logger } from "../engine/logger";
 import {
   createTarget,
   deleteTarget,
@@ -519,7 +520,7 @@ async function persistExecutedResults(
       persisted.push(finalized);
       previousByTestId.set(finalized.testId, finalized);
     } catch (persistErr) {
-      console.error(`[kokuli] Error persisting result for ${result.testId}:`, persistErr instanceof Error ? persistErr.stack : persistErr);
+      logger.error("kokuli-api", `Error persisting result for ${result.testId}`, persistErr);
       persisted.push(result);
     }
   }
@@ -527,7 +528,7 @@ async function persistExecutedResults(
   try {
     await writeAssessmentBundle({ target: targetKey, targetName, targetConfig });
   } catch (assessmentErr) {
-    console.error("[kokuli] Assessment bundle error (non-fatal):", assessmentErr instanceof Error ? assessmentErr.stack : assessmentErr);
+    logger.error("kokuli-api", "Assessment bundle error (non-fatal)", assessmentErr);
   }
   return persisted;
 }
@@ -655,7 +656,7 @@ router.post("/suite/:category", async (req: Request, res: Response) => {
         await recordTestResults(persisted, resolved.key);
         results.push(...persisted);
       } catch (entryErr) {
-        console.error(`[kokuli] Error running test ${entry.id}:`, entryErr instanceof Error ? entryErr.stack : entryErr);
+        logger.error("kokuli-api", `Error running test ${entry.id}`, entryErr);
         await updateTestExecutionState({ testId: entry.id, suiteId: category, state: "error" }).catch(() => undefined);
       }
     }
@@ -664,7 +665,7 @@ router.post("/suite/:category", async (req: Request, res: Response) => {
     try {
       await writeAssessmentBundle({ target: resolved.key, targetName: resolved.target.name, targetConfig: resolved.target, results });
     } catch (assessmentErr) {
-      console.error("[kokuli] Assessment bundle error (non-fatal):", assessmentErr instanceof Error ? assessmentErr.stack : assessmentErr);
+      logger.error("kokuli-api", "Assessment bundle error (non-fatal)", assessmentErr);
     }
 
     const pass = results.filter((r) => r.result === "PASS").length;
@@ -682,7 +683,7 @@ router.post("/suite/:category", async (req: Request, res: Response) => {
     if (category) {
       await updateSuiteExecutionState({ suiteId: category, state: "error" }).catch(() => undefined);
     }
-    console.error("[kokuli] Suite error:", err instanceof Error ? err.stack : err);
+    logger.error("kokuli-api", "Suite error", err);
     res.status(500).json({ error: String(err), stack: err instanceof Error ? err.stack : undefined });
   }
 });

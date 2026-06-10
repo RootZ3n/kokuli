@@ -15,6 +15,7 @@ import { generateFuzzPayloads } from "./fuzzer";
 import { writeAssessmentBundle, writeReport, writeSuiteSummary, writeTransparencyReport } from "./reportWriter";
 import { TestCase, TestResult, TargetConfig } from "./types";
 import { recordEntry, getLedgerSummary, getSessionLedger, computeSummary, LedgerEntry } from "./ledger";
+import { logger } from "./logger";
 import { handleLearningCommand } from "../learning/cli";
 import {
   runBridge,
@@ -1163,6 +1164,9 @@ async function main(): Promise<void> {
 }
 
 main().catch((error) => {
+  // Persist the crash to reports/server.log (file-only — the chalk line below
+  // is the foreground/terminal channel; the bridge runs the CLI detached).
+  logger.fileOnly("error", "kokuli-cli", "Fatal CLI error", error);
   console.error(chalk.red("[kokuli] Error:"), error instanceof Error ? error.message : error);
   process.exit(1);
 });
