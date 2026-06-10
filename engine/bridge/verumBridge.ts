@@ -420,6 +420,38 @@ export interface ExecutorResult {
 
 export type Executor = (req: ExecutorRequest) => Promise<ExecutorResult>;
 
+// M4 — least privilege for the spawned `node bin/kokuli.js` child. Passing the
+// full `process.env` would hand the child every provider API key loaded into
+// the parent. The child only needs PATH/HOME-class vars to run node, plus
+// Kokuli's own KOKULI_*/VERUM_* configuration. Everything else (provider
+// secrets, unrelated tokens) is withheld.
+const SAFE_ENV_KEYS: ReadonlySet<string> = new Set([
+  "PATH",
+  "HOME",
+  "NODE_ENV",
+  "TMPDIR",
+  "TEMP",
+  "TMP",
+  "LANG",
+  "LC_ALL",
+  "TZ",
+  "USER",
+  "LOGNAME",
+  "SHELL",
+  "PWD",
+]);
+
+export function buildChildEnv(source: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
+  const out: NodeJS.ProcessEnv = {};
+  for (const [key, value] of Object.entries(source)) {
+    if (value === undefined) continue;
+    if (SAFE_ENV_KEYS.has(key) || key.startsWith("KOKULI_") || key.startsWith("VERUM_")) {
+      out[key] = value;
+    }
+  }
+  return out;
+}
+
 export const realExecutor: Executor = (req) => {
   return new Promise((resolve) => {
     const [cmd, ...args] = req.argv;
@@ -428,7 +460,8 @@ export const realExecutor: Executor = (req) => {
       cwd: req.cwd,
       // shell=false (default) — no shell interpolation
       shell: false,
-      env: process.env,
+      // Least-privilege filtered env — no provider secrets bleed to the child.
+      env: buildChildEnv(),
       stdio: ["ignore", "pipe", "pipe"],
     });
 
