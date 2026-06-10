@@ -4,6 +4,7 @@ import fs from "fs-extra";
 import apiRouter from "./api";
 import { apiErrorHandler } from "./api-errors";
 import { logger, tailLog } from "../engine/logger";
+import { loadLedger } from "../engine/ledger";
 
 const app = express();
 const PORT = parseInt(process.env.KOKULI_PORT || process.env.VERUM_PORT || process.env.KRAKZEN_PORT || "3000", 10);
@@ -153,6 +154,13 @@ app.get("/bridge/runs", (_req, res) => {
 
 app.get("/", (_req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+// --- Startup reconciliation ---
+// Hydrate the ledger once at boot: converts a legacy JSON-array ledger to
+// JSONL and enforces the retention caps (H1/H2).
+void loadLedger().catch((err) => {
+  logger.error("kokuli-web", "Ledger initialization failed", err);
 });
 
 for (const host of HOSTS) {

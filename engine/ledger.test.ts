@@ -4,7 +4,20 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { computeSummary, isHistoricalLedgerEntry, LEDGER_SCHEMA_VERSION, LedgerEntry } from "./ledger";
+import fs from "fs-extra";
+import os from "os";
+import path from "path";
+import {
+  computeSummary,
+  isHistoricalLedgerEntry,
+  LEDGER_SCHEMA_VERSION,
+  LedgerEntry,
+  recordEntry,
+  loadLedger,
+  getLedger,
+  clearLedger,
+  __resetLedgerForTests,
+} from "./ledger";
 
 function entry(overrides: Partial<LedgerEntry> = {}): LedgerEntry {
   return {
@@ -20,6 +33,24 @@ function entry(overrides: Partial<LedgerEntry> = {}): LedgerEntry {
     gatewayBlocked: false,
     ...overrides,
   };
+}
+
+async function withTempCwd<T>(fn: (dir: string) => Promise<T>): Promise<T> {
+  const originalCwd = process.cwd();
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "kokuli-ledger-"));
+  await fs.ensureDir(path.join(dir, "reports"));
+  process.chdir(dir);
+  __resetLedgerForTests();
+  try {
+    return await fn(dir);
+  } finally {
+    process.chdir(originalCwd);
+    __resetLedgerForTests();
+  }
+}
+
+function nowIso(offsetMs = 0): string {
+  return new Date(Date.now() + offsetMs).toISOString();
 }
 
 test("ledger entry without schemaVersion is HISTORICAL", () => {
@@ -65,4 +96,112 @@ test("current entry without provider is flagged as unknownProviderCurrent (actio
   const summary = computeSummary([e]);
   assert.equal(summary.unknownProviderCurrent, 1);
   assert.equal(summary.unknownProviderHistorical, 0);
+});
+
+// --- H1: JSONL append-only + caps ---
+
+test("recordEntry appends JSONL and loadLedger reads it back", async () => {
+  await withTempCwd(async (dir) => {
+    for (let i = 0; i < 100; i++) {
+      await recordEntry(entry({ id: `e${i}`, timestamp: nowIso() }));
+    }
+    // File is JSONL: one JSON object per line, not a single array.
+    const raw = await fs.readFile(path.join(dir, "reports", "ledger.json"), "utf8");
+    const lines = raw.trim().split("\n");
+    assert.equal(lines.length, 100);
+    assert.doesNotThrow(() => JSON.parse(lines[0]));
+    assert.doesNotThrow(() => JSON.parse(lines[99]));
+
+    // A fresh load parses all 100.
+    __resetLedgerForTests();
+    const loaded = await loadLedger();
+    assert.equal(loaded.length, 100);
+  });
+});
+
+test("LEDGER_MAX_ENTRIES cap is enforced on load (oldest pruned)", async () => {
+  await withTempCwd(async (dir) => {
+    process.env.LEDGER_MAX_ENTRIES = "10";
+    try {
+      for (let i = 0; i < 25; i++) {
+        await recordEntry(entry({ id: `e${i}`, timestamp: nowIso() }));
+      }
+      __resetLedgerForTests();
+      const loaded = await loadLedger();
+      assert.equal(loaded.length, 10);
+      // Kept the newest 10 (e15..e24); oldest pruned.
+      assert.equal(loaded[0].id, "e15");
+      assert.equal(loaded[9].id, "e24");
+      // The on-disk file was rewritten to the capped set.
+      const raw = await fs.readFile(path.join(dir, "reports", "ledger.json"), "utf8");
+      assert.equal(raw.trim().split("\n").length, 10);
+    } finally {
+      delete process.env.LEDGER_MAX_ENTRIES;
+    }
+  });
+});
+
+test("LEDGER_RETENTION_DAYS drops entries past the age window on load", async () => {
+  await withTempCwd(async () => {
+    process.env.LEDGER_RETENTION_DAYS = "30";
+    try {
+      const old = entry({ id: "old", timestamp: nowIso(-60 * 24 * 60 * 60 * 1000) }); // 60d ago
+      const recent = entry({ id: "recent", timestamp: nowIso(-1 * 24 * 60 * 60 * 1000) }); // 1d ago
+      await recordEntry(old);
+      await recordEntry(recent);
+      __resetLedgerForTests();
+      const loaded = await loadLedger();
+      const ids = loaded.map((e) => e.id);
+      assert.deepEqual(ids, ["recent"]);
+    } finally {
+      delete process.env.LEDGER_RETENTION_DAYS;
+    }
+  });
+});
+
+test("legacy JSON-array ledger is converted to JSONL on first load", async () => {
+  await withTempCwd(async (dir) => {
+    const file = path.join(dir, "reports", "ledger.json");
+    const legacy = [entry({ id: "a", timestamp: nowIso() }), entry({ id: "b", timestamp: nowIso() })];
+    await fs.writeJson(file, legacy, { spaces: 2 });
+
+    __resetLedgerForTests();
+    const loaded = await loadLedger();
+    assert.equal(loaded.length, 2);
+
+    // File no longer starts with '[' — it was converted to JSONL.
+    const raw = (await fs.readFile(file, "utf8")).trim();
+    assert.ok(!raw.startsWith("["));
+    assert.equal(raw.split("\n").length, 2);
+  });
+});
+
+// --- H2: sessionEntries cap ---
+
+test("sessionEntries is capped at LEDGER_MAX_ENTRIES in memory", async () => {
+  await withTempCwd(async () => {
+    process.env.LEDGER_MAX_ENTRIES = "5";
+    try {
+      for (let i = 0; i < 12; i++) {
+        await recordEntry(entry({ id: `e${i}`, timestamp: nowIso() }));
+      }
+      // getLedger reflects the in-memory (capped) session cache.
+      const inMem = await getLedger();
+      assert.equal(inMem.length, 5);
+      assert.equal(inMem[0].id, "e7");
+      assert.equal(inMem[4].id, "e11");
+    } finally {
+      delete process.env.LEDGER_MAX_ENTRIES;
+    }
+  });
+});
+
+test("clearLedger empties memory and disk", async () => {
+  await withTempCwd(async (dir) => {
+    await recordEntry(entry({ id: "x", timestamp: nowIso() }));
+    await clearLedger();
+    assert.equal((await getLedger()).length, 0);
+    const raw = await fs.readFile(path.join(dir, "reports", "ledger.json"), "utf8");
+    assert.equal(raw.trim(), "");
+  });
 });
