@@ -723,5 +723,11 @@ function boot(){
 window.boot=boot;
 boot();
 </script>
+<!-- ── Backend wiring (loads AFTER the world engine so it can enhance the
+     first render). Order matters: api → scenes → guide → app. ────────── -->
+<script src="api.js"></script>
+<script src="scenes.js"></script>
+<script src="peh-guide.js"></script>
+<script src="app.js"></script>
 </body>
 </html>

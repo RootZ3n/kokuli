@@ -144,6 +144,12 @@ app.use(apiErrorHandler);
 app.use(express.static(path.join(__dirname, "public")));
 app.use("/reports", express.static(path.join(process.cwd(), "reports")));
 
+// The Investigation — Pehverse world engine (noir private-investigator UI).
+// Served straight from the repo's ui/ directory (it is NOT bundled into
+// dist/server/public). Same-origin with /api, so ui/api.js stays inside the
+// server's connect-src 'self' CSP. Reach it at /world (run on port 18800).
+app.use("/world", express.static(path.join(process.cwd(), "ui")));
+
 // HTML page routes
 app.get("/atlantis", (_req, res) => {
   res.sendFile(path.join(__dirname, "public", "atlantis.html"));
@@ -183,9 +189,10 @@ void (async () => {
 for (const host of HOSTS) {
   app.listen(PORT, host, () => {
     const displayHost = host === "0.0.0.0" ? "localhost" : host;
-    logger.info("kokuli-web", `Dashboard:  http://${displayHost}:${PORT}`);
-    logger.info("kokuli-web", `Atlantis:   http://${displayHost}:${PORT}/atlantis`);
-    logger.info("kokuli-web", `API:        http://${displayHost}:${PORT}/api`);
+    logger.info("kokuli-web", `Dashboard:     http://${displayHost}:${PORT}`);
+    logger.info("kokuli-web", `Investigation: http://${displayHost}:${PORT}/world`);
+    logger.info("kokuli-web", `Atlantis:      http://${displayHost}:${PORT}/atlantis`);
+    logger.info("kokuli-web", `API:           http://${displayHost}:${PORT}/api`);
   });
 }
 if (BIND_ALL) {
