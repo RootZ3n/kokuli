@@ -61,7 +61,7 @@ const state={
 const PRODUCT_REGISTRY=[
   {id:'kokuli', displayName:'The Investigation', tagline:'Every flaw leaves a trail',
    status:'public', order:4, accent:'#2563eb', accent2:'#b45309',
-   peh:'magnifier', defaultScene:'front-office',
+   peh:'magnifier', defaultScene:'the-station',
    // Kokuli's mascot art — Peh as private eye. Rendered by
    // renderPehGuide() as his in-world guide figure.
    mascotArt:'assets/peh-kokuli.png',
@@ -78,45 +78,45 @@ const PEH_DEFAULT_PRODUCT='kokuli';
 // is the hub map: its hotspots reach every location.
 const SCENE_REGISTRY={
   kokuli:[
-    {id:'front-office', title:'The Front Office', purpose:'Hub / overview', route:'/front-office',
-     desc:"The door's always open. Cases come in, evidence goes out.", peh:'magnifier',
+    {id:'the-station', title:'The Station', purpose:'Hub — police station', route:'/station',
+     desc:'The precinct. Badge on the desk, coffee on the burner. Every investigation starts and ends here.', peh:'magnifier',
      pehSlot:{x:50, y:52, anchor:'center', variant:'detective'}, hotspots:[
-      {id:'fo-overview',   label:'Case Overview',       x:50, y:44, workspace:'console',         greeting:"Welcome to the Front Office. Pull up a chair — every case starts here."},
-      {id:'fo-darkroom',   label:'The Dark Room',       x:22, y:40, scene:'dark-room',            greeting:"Step into the Dark Room — under red light, every detail shows."},
-      {id:'fo-interrog',   label:'Interrogation Room',  x:78, y:34, scene:'interrogation',        greeting:"The Interrogation Room. Hard questions, straight answers."},
-      {id:'fo-evidence',   label:'Evidence Locker',     x:18, y:66, scene:'evidence-locker',      greeting:"The Evidence Locker — every crack we've found, filed and dated."},
-      {id:'fo-stakeout',   label:'Stakeout Van',        x:82, y:62, scene:'stakeout-van',          greeting:"The Stakeout Van — eyes on the system 24/7."},
-      {id:'fo-caseboard',  label:'Case Board',          x:50, y:80, scene:'case-board',            greeting:"The Case Board. Every fracture connected — red string and all."}
+      {id:'st-overview',  label:'Case Overview',        x:50, y:44, workspace:'station-overview',       greeting:"Welcome to The Station. Pull up a chair — every case starts here."},
+      {id:'st-theatre',   label:'The Theatre',          x:30, y:30, scene:'the-theatre',                 greeting:"The Theatre — under the marquee lights, every fracture takes the stage."},
+      {id:'st-depot',     label:'The Train Depot',      x:75, y:28, scene:'the-train-depot',             greeting:"The Train Depot — pressure builds on the rails. Let's see what cracks."},
+      {id:'st-tower',     label:'The Radio Tower',      x:22, y:72, scene:'the-radio-tower',             greeting:"The Radio Tower — signals, static, and secrets in the airwaves."},
+      {id:'st-tenements', label:'The Tenements',        x:78, y:70, scene:'the-tenements',               greeting:"The Tenements — every tenant has a file. The evidence lives here."},
+      {id:'st-plaza',     label:'The Central Plaza',    x:50, y:78, scene:'the-central-plaza',           greeting:"The Central Plaza — the fountain where every thread meets. Red string and all."}
     ]},
-    {id:'dark-room', title:'The Dark Room', purpose:'Evidence analysis', route:'/dark-room',
-     desc:'Where the evidence gets developed. Under red light, every detail shows.', peh:'beaker',
-     pehSlot:{x:50, y:60, anchor:'center', variant:'analyst'}, hotspots:[
-      {id:'dr-analysis', label:'Analysis Workspace',    x:44, y:50, workspace:'darkroom-analysis', greeting:"Let's develop this evidence together — under red light, every flaw shows up clear as day."},
-      {id:'dr-hub',      label:'Back to Front Office',  x:82, y:78, scene:'front-office',           greeting:"Back to the office — follow me!"}
+    {id:'the-theatre', title:'The Theatre', purpose:'Fracture analysis', route:'/theatre',
+     desc:'Under the marquee lights, every flaw gets its moment on stage. Fracture analysis in the spotlight.', peh:'beaker',
+     pehSlot:{x:50, y:58, anchor:'center', variant:'analyst'}, hotspots:[
+      {id:'th-fractures', label:'Fracture Analysis',    x:44, y:50, workspace:'theatre-fractures',      greeting:"Spotlight on the cracks — fracture analysis under the marquee."},
+      {id:'th-station',   label:'Back to The Station',  x:82, y:78, scene:'the-station',                 greeting:"Back to the precinct — follow me!"}
     ]},
-    {id:'interrogation', title:'The Interrogation Room', purpose:'Pressure testing', route:'/interrogation',
-     desc:'Hard questions, no mercy. Every model faces the hot seat.', peh:'signal',
+    {id:'the-train-depot', title:'The Train Depot', purpose:'Pressure testing', route:'/train-depot',
+     desc:'Freight yards and cold steel. Every model rides the rails here — pressure testing with no mercy.', peh:'signal',
      pehSlot:{x:50, y:58, anchor:'center', variant:'interrogator'}, hotspots:[
-      {id:'ir-pressure', label:'Pressure Testing',      x:46, y:50, workspace:'interrogation-pressure', greeting:"Time for the hot seat. Hard questions, no mercy — let's see what cracks."},
-      {id:'ir-hub',      label:'Back to Front Office',  x:82, y:78, scene:'front-office',               greeting:"Back to the office — follow me!"}
+      {id:'td-pressure',  label:'Pressure Testing',    x:46, y:50, workspace:'depot-pressure',          greeting:"Full steam — pressure testing on the rails. Let's see what cracks under load."},
+      {id:'td-station',   label:'Back to The Station',  x:82, y:78, scene:'the-station',                  greeting:"Back to the precinct — follow me!"}
     ]},
-    {id:'evidence-locker', title:'The Evidence Locker', purpose:'Flaw catalogue', route:'/evidence-locker',
-     desc:'Every flaw, catalogued and filed. Nothing gets destroyed, nothing gets forgotten.', peh:'book',
-     pehSlot:{x:48, y:58, anchor:'center', variant:'archivist'}, hotspots:[
-      {id:'el-evidence', label:'Evidence & Receipts',    x:46, y:50, workspace:'locker-evidence',    greeting:"Every crack we've found, filed and dated — the evidence never lies."},
-      {id:'el-hub',      label:'Back to Front Office',   x:82, y:78, scene:'front-office',             greeting:"Back to the office — follow me!"}
-    ]},
-    {id:'stakeout-van', title:'The Stakeout Van', purpose:'Live monitoring', route:'/stakeout-van',
-     desc:'Outside, watching, waiting. Live monitoring of what the system does when nobody\'s looking.', peh:'gear',
+    {id:'the-radio-tower', title:'The Radio Tower', purpose:'Live monitoring', route:'/radio-tower',
+     desc:'Comms and signals. The tower watches the airwaves — live monitoring of what the system whispers.', peh:'gear',
      pehSlot:{x:52, y:58, anchor:'center', variant:'lookout'}, hotspots:[
-      {id:'sv-monitor', label:'Live Monitoring',         x:46, y:50, workspace:'stakeout-monitoring', greeting:"Eyes on the system 24/7 — what it does when nobody's watching tells the real story."},
-      {id:'sv-hub',     label:'Back to Front Office',    x:82, y:78, scene:'front-office',              greeting:"Back to the office — follow me!"}
+      {id:'rt-monitor',   label:'Live Monitoring',     x:46, y:50, workspace:'tower-monitoring',        greeting:"Ears on the airwaves 24/7 — every signal, every anomaly, every whisper."},
+      {id:'rt-station',   label:'Back to The Station',  x:82, y:78, scene:'the-station',                  greeting:"Back to the precinct — follow me!"}
     ]},
-    {id:'case-board', title:'The Case Board', purpose:'Fracture map', route:'/case-board',
-     desc:'Red string, pinned photos, connected dots. The full picture of every fracture.', peh:'star',
+    {id:'the-tenements', title:'The Tenements', purpose:'Evidence & records', route:'/tenements',
+     desc:'Every tenant has a file. Every flaw, catalogued and filed. Nothing gets destroyed here.', peh:'book',
+     pehSlot:{x:48, y:58, anchor:'center', variant:'archivist'}, hotspots:[
+      {id:'te-evidence',  label:'Evidence & Records',  x:46, y:50, workspace:'tenements-evidence',      greeting:"Every crack filed and dated — the evidence never lies. The Tenements remember everything."},
+      {id:'te-station',   label:'Back to The Station',  x:82, y:78, scene:'the-station',                  greeting:"Back to the precinct — follow me!"}
+    ]},
+    {id:'the-central-plaza', title:'The Central Plaza', purpose:'Fracture map', route:'/central-plaza',
+     desc:'The fountain at the center of it all. Red string, connected dots — the full picture of every fracture.', peh:'star',
      pehSlot:{x:50, y:60, anchor:'center', variant:'profiler'}, hotspots:[
-      {id:'cb-fractures', label:'Fracture Map',           x:46, y:50, workspace:'caseboard-fractures', greeting:"See the pattern? Red string connects every fracture — the full picture."},
-      {id:'cb-hub',       label:'Back to Front Office',   x:82, y:78, scene:'front-office',              greeting:"Back to the office — follow me!"}
+      {id:'cp-fractures', label:'Fracture Map',        x:46, y:50, workspace:'plaza-caseboard',          greeting:"See the pattern? Every thread meets at the fountain. The full picture — red string and all."},
+      {id:'cp-station',   label:'Back to The Station',  x:82, y:78, scene:'the-station',                  greeting:"Back to the precinct — follow me!"}
     ]}
   ]
 };
@@ -127,12 +127,12 @@ const SCENE_REGISTRY={
 // Front Office overview console; kind:'placeholder' is a "coming soon" stub
 // that still links to its related coordination console via relatedTab.
 const WORKSPACE_REGISTRY={
-  'console':                  {product:'kokuli', title:'Case Overview',       kind:'deck',        route:'/front-office',     dock:'fullscreen', peh:'magnifier'},
-  'darkroom-analysis':        {product:'kokuli', title:'Analysis',            kind:'placeholder', route:'/dark-room',         dock:'right', peh:'beaker',   relatedTab:'fractures',  blurb:'Fracture analysis panel coming soon — evidence development and flaw identification will live here.'},
-  'interrogation-pressure':   {product:'kokuli', title:'Pressure Testing',    kind:'placeholder', route:'/interrogation',     dock:'right', peh:'signal',   relatedTab:'pressure',   blurb:'Pressure testing panel coming soon — adversarial probes and model stress tests will live here.'},
-  'locker-evidence':          {product:'kokuli', title:'Evidence & Receipts', kind:'placeholder', route:'/evidence-locker',   dock:'right', peh:'book',     relatedTab:'evidence',   blurb:'Evidence panel coming soon — flaw catalogue, receipts, and crack history will live here.'},
-  'stakeout-monitoring':      {product:'kokuli', title:'Live Monitoring',     kind:'placeholder', route:'/stakeout-van',      dock:'right', peh:'gear',     relatedTab:'monitoring', blurb:'Live monitoring panel coming soon — real-time system watch and anomaly detection will live here.'},
-  'caseboard-fractures':      {product:'kokuli', title:'Fracture Map',        kind:'placeholder', route:'/case-board',        dock:'bottom', peh:'star',    relatedTab:'fractures',  blurb:'Fracture map panel coming soon — connected dots, red string, and the full picture of every flaw.'}
+  'station-overview':     {product:'kokuli', title:'Case Overview',       kind:'deck',        route:'/station',        dock:'fullscreen', peh:'magnifier'},
+  'theatre-fractures':    {product:'kokuli', title:'Fracture Analysis',   kind:'placeholder', route:'/theatre',        dock:'right', peh:'beaker',   relatedTab:'fractures',  blurb:'Fracture analysis panel coming soon — spotlight on the cracks, evidence development under the marquee.'},
+  'depot-pressure':       {product:'kokuli', title:'Pressure Testing',    kind:'placeholder', route:'/train-depot',    dock:'right', peh:'signal',   relatedTab:'pressure',   blurb:'Pressure testing panel coming soon — adversarial probes and model stress tests on the rails.'},
+  'tower-monitoring':     {product:'kokuli', title:'Live Monitoring',     kind:'placeholder', route:'/radio-tower',    dock:'right', peh:'gear',     relatedTab:'monitoring', blurb:'Live monitoring panel coming soon — signal interception and anomaly detection from the tower.'},
+  'tenements-evidence':   {product:'kokuli', title:'Evidence & Records',  kind:'placeholder', route:'/tenements',      dock:'right', peh:'book',     relatedTab:'evidence',   blurb:'Evidence panel coming soon — flaw catalogue, tenant files, and crack history in the Tenements.'},
+  'plaza-caseboard':      {product:'kokuli', title:'Fracture Map',        kind:'placeholder', route:'/central-plaza',  dock:'bottom', peh:'star',    relatedTab:'fractures',  blurb:'Fracture map panel coming soon — every thread meets at the fountain. Red string and the full picture.'}
 };
 
 // ── Registry lookups ───────────────────────────────────────────────────
@@ -640,18 +640,18 @@ function renderPehDevSwitcher(active){
 const KOKULI_FLAW_TYPES=['Boundary Violations','Prompt Injection','Logic Drift','Hallucination Chains','Context Window Overflow','Adversarial Repetition','Safety Bypass'];
 function renderCaseOverviewConsole(){
   const cards=[
-    {ws:'darkroom-analysis',      scene:'dark-room',       glyph:'beaker',  title:'Dark Room',         desc:'Evidence development — under red light, every flaw shows up clear as day.'},
-    {ws:'interrogation-pressure', scene:'interrogation',    glyph:'signal',  title:'Interrogation',     desc:'Pressure testing — hard questions, no mercy. Every model faces the hot seat.'},
-    {ws:'locker-evidence',        scene:'evidence-locker',  glyph:'book',    title:'Evidence Locker',   desc:'Flaw catalogue — every crack found, filed and dated. The evidence never lies.'},
-    {ws:'stakeout-monitoring',    scene:'stakeout-van',     glyph:'gear',    title:'Stakeout Van',      desc:'Live monitoring — eyes on the system 24/7. What it does when nobody\'s watching.'},
-    {ws:'caseboard-fractures',    scene:'case-board',       glyph:'star',    title:'Case Board',        desc:'Fracture map — red string connects every flaw. See the pattern?'}
+    {ws:'theatre-fractures',    scene:'the-theatre',       glyph:'beaker',  title:'The Theatre',       desc:'Fracture analysis — under the marquee lights, every flaw takes the stage.'},
+    {ws:'depot-pressure',       scene:'the-train-depot',   glyph:'signal',  title:'The Train Depot',   desc:'Pressure testing — full steam, no mercy. Every model rides the rails.'},
+    {ws:'tenements-evidence',   scene:'the-tenements',     glyph:'book',    title:'The Tenements',     desc:'Evidence & records — every tenant has a file. Nothing gets destroyed.'},
+    {ws:'tower-monitoring',     scene:'the-radio-tower',   glyph:'gear',    title:'The Radio Tower',   desc:'Live monitoring — ears on the airwaves 24/7. Every signal, every anomaly.'},
+    {ws:'plaza-caseboard',      scene:'the-central-plaza', glyph:'star',    title:'The Central Plaza', desc:'Fracture map — the fountain where every thread meets. Red string and all.'}
   ];
   return `<div class="inv-console">
     <div class="inv-hero">
       <span class="inv-hero-mark" aria-hidden="true">🔍</span>
       <div>
-        <h2>Welcome to the Front Office</h2>
-        <p>I'm Kokuli — I hunt down every flaw until cracks show. Every case starts here: pull up a chair, pick a room, or tap the map. I've seen models tougher than this one crack under pressure.</p>
+        <h2>Welcome to The Station</h2>
+        <p>I'm Kokuli — I hunt down every flaw until cracks show. Every case starts at the precinct: grab your badge, pick a location, or tap the map. I've seen models tougher than this one crack under pressure.</p>
       </div>
     </div>
     <h3 class="inv-section-title">Investigation areas</h3>
