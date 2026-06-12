@@ -84,6 +84,17 @@ npm run verify:release
 
 This runs typecheck, build, logic tests, and smoke verification.
 
+## Quick Start
+
+```bash
+pnpm install
+pnpm build
+pnpm test          # runs 232 vitest tests
+pnpm typecheck
+```
+
+Ready to go. See below for target configuration, dashboard use, and full suite execution.
+
 ## Safe Defaults
 
 Kokuli is safe-by-default for public RC:
