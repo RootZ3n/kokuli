@@ -227,11 +227,8 @@ As of this RC hardening pass, `npm audit fix` updated transitive dependency vers
 ## Testing
 
 ```bash
-npm test                    # all logic tests (node:test runner)
-npm run typecheck           # type-check only
-npm run smoke               # build + list (sanity check)
-npm run diagnostic          # offline trust audit (test pack + evaluator + bridge)
-npm run verify:release      # typecheck + build + test + smoke + diagnostic
+pnpm test                    # runs vitest with 232 tests
+pnpm typecheck               # type-check only
 ```
 
 ## Trust Posture
