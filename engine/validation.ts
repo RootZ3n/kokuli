@@ -115,6 +115,14 @@ function isString(value: unknown): value is string {
   return typeof value === "string";
 }
 
+function isNonEmptyString(value: unknown): value is string {
+  return isString(value) && value.trim().length > 0;
+}
+
+function isNonEmptyArray<T = unknown>(value: unknown): value is T[] {
+  return Array.isArray(value) && value.length > 0;
+}
+
 function hasAnyExpectedBehavior(t: TestCase): boolean {
   const eb = t.expectedBehavior || {};
   return Object.values(eb).some((value) => value !== undefined && value !== null);
@@ -188,18 +196,18 @@ export function validateTest(test: LoadedTest): ValidationIssue[] {
     issues.push({ testId: id, filePath, severity, code, message });
   };
 
-  if (!isString(raw.id) || !raw.id.trim()) {
+  if (!isNonEmptyString(raw.id)) {
     push("error", "MISSING_ID", "test JSON is missing the 'id' field");
   }
-  if (!isString(raw.name) || !raw.name.trim()) {
+  if (!isNonEmptyString(raw.name)) {
     push("error", "MISSING_NAME", "test JSON is missing the 'name' field");
   }
-  if (!isString(raw.category) || !raw.category.trim()) {
+  if (!isNonEmptyString(raw.category)) {
     push("error", "MISSING_CATEGORY", "test JSON is missing the 'category' field");
   } else if (!VALID_CATEGORIES.includes(raw.category)) {
     push("error", "INVALID_CATEGORY", `category '${raw.category}' is not one of: ${VALID_CATEGORIES.join(", ")}`);
   }
-  if (!isString(raw.purpose) || !raw.purpose.trim()) {
+  if (!isNonEmptyString(raw.purpose)) {
     push("warning", "MISSING_PURPOSE", "test has no purpose — operators cannot review intent");
   }
   if (!isString(raw.severity) || !VALID_SEVERITIES.includes(raw.severity as Severity)) {
@@ -212,9 +220,9 @@ export function validateTest(test: LoadedTest): ValidationIssue[] {
   }
 
   // Multi-turn / fuzz / endpoint shape gating
-  const hasSteps = Array.isArray(raw.steps) && raw.steps.length > 0;
+  const hasSteps = isNonEmptyArray(raw.steps);
   const hasFuzz = !!raw.fuzzConfig;
-  const declaresEndpoint = isString(raw.endpoint) && raw.endpoint.length > 0;
+  const declaresEndpoint = isNonEmptyString(raw.endpoint);
   const isEndpointOnly = declaresEndpoint && raw.endpoint !== "/chat";
   const isChatEndpointTest = declaresEndpoint && raw.endpoint === "/chat";
 
@@ -241,7 +249,7 @@ export function validateTest(test: LoadedTest): ValidationIssue[] {
     } else if (!VALID_AGGREGATION_MODES.includes(agg.mode)) {
       push("error", "INVALID_AGGREGATION_MODE", `multiTurnAggregation.mode '${agg.mode}' is not one of ${VALID_AGGREGATION_MODES.join(", ")}`);
     } else if (agg.mode === "custom") {
-      if (!Array.isArray(agg.requiredTurnEvidence) || agg.requiredTurnEvidence.length === 0) {
+      if (!isNonEmptyArray(agg.requiredTurnEvidence)) {
         push("error", "MISSING_REQUIRED_TURN_EVIDENCE", "multiTurnAggregation.mode='custom' requires a non-empty requiredTurnEvidence array");
       } else {
         for (const entry of agg.requiredTurnEvidence as Array<{ turn?: unknown; kind?: unknown }>) {
@@ -277,10 +285,10 @@ export function validateTest(test: LoadedTest): ValidationIssue[] {
 
   if (hasFuzz) {
     const fc = raw.fuzzConfig!;
-    if (!isString(fc.baseInput) || fc.baseInput.trim().length === 0) {
+    if (!isNonEmptyString(fc.baseInput)) {
       push("error", "FUZZ_NO_BASE_INPUT", "fuzzConfig.baseInput is empty");
     }
-    if (!Array.isArray(fc.mutations) || fc.mutations.length === 0) {
+    if (!isNonEmptyArray(fc.mutations)) {
       push("error", "FUZZ_NO_MUTATIONS", "fuzzConfig.mutations must list at least one mutation");
     }
     if (typeof fc.iterations !== "number" || !Number.isFinite(fc.iterations) || fc.iterations <= 0) {
@@ -314,7 +322,7 @@ export function validateTest(test: LoadedTest): ValidationIssue[] {
     //                     proves (e.g. auth posture, status class)
     const noBody = !raw.body;
     const noHeaders = !raw.headers || Object.keys(raw.headers).length === 0;
-    const noInput = !isString(raw.input) || !raw.input.trim();
+    const noInput = !isNonEmptyString(raw.input);
     if (noInput && noBody && noHeaders) {
       const meta = raw as { noPayloadExpected?: unknown; probeType?: unknown; expectedEvidence?: unknown };
       const declared = meta.noPayloadExpected === true;
