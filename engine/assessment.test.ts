@@ -570,6 +570,12 @@ test("plain language report explains the run in simple deterministic terms", asy
   assert.match(markdown, /## What To Do Next/);
 });
 
+test("deriveFindings returns empty array for empty input", async () => {
+  const findings = await deriveFindings([], []);
+  assert.equal(findings.length, 0);
+  assert.deepEqual(findings, []);
+});
+
 test("assistant share package is ready to paste into external assistants", async () => {
   const assessment = await buildDashboardAssessment({
     target: "demo-target",
