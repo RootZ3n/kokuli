@@ -9,6 +9,7 @@ import os from "os";
 import path from "path";
 import {
   computeSummary,
+  getLedgerStats,
   isHistoricalLedgerEntry,
   LEDGER_SCHEMA_VERSION,
   LedgerEntry,
@@ -375,4 +376,41 @@ test("filterLedger returns empty array when no entries match", async () => {
     const result = await filterLedger({ result: "FAIL", target: "demo", dateRange: { from: "2099-01-01T00:00:00.000Z" } });
     assert.equal(result.length, 0);
   });
+});
+
+// --- getLedgerStats ---
+
+test("getLedgerStats returns all zeros for empty array", () => {
+  const stats = getLedgerStats([]);
+  assert.deepEqual(stats, { total: 0, pass: 0, fail: 0, warn: 0, totalCostUsd: 0, avgDurationMs: 0 });
+});
+
+test("getLedgerStats counts pass/fail/warn correctly", () => {
+  const entries: LedgerEntry[] = [
+    entry({ id: "p1", result: "PASS", durationMs: 50, estimatedCostUsd: 0.01 }),
+    entry({ id: "p2", result: "PASS", durationMs: 60, estimatedCostUsd: 0.02 }),
+    entry({ id: "f1", result: "FAIL", durationMs: 100, estimatedCostUsd: 0.03 }),
+    entry({ id: "w1", result: "WARN", durationMs: 30, estimatedCostUsd: 0.005 }),
+  ];
+  const stats = getLedgerStats(entries);
+  assert.equal(stats.total, 4);
+  assert.equal(stats.pass, 2);
+  assert.equal(stats.fail, 1);
+  assert.equal(stats.warn, 1);
+  assert.equal(stats.totalCostUsd, 0.065);
+  assert.equal(stats.avgDurationMs, 60); // (50 + 60 + 100 + 30) / 4
+});
+
+test("getLedgerStats handles missing cost and single entry", () => {
+  const entries: LedgerEntry[] = [
+    entry({ id: "s1", result: "FAIL", durationMs: 200 }),
+    // estimatedCostUsd omitted — defaults to undefined
+  ];
+  const stats = getLedgerStats(entries);
+  assert.equal(stats.total, 1);
+  assert.equal(stats.pass, 0);
+  assert.equal(stats.fail, 1);
+  assert.equal(stats.warn, 0);
+  assert.equal(stats.totalCostUsd, 0);
+  assert.equal(stats.avgDurationMs, 200);
 });

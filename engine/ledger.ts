@@ -267,6 +267,46 @@ export function isHistoricalLedgerEntry(entry: LedgerEntry): boolean {
   return entry.schemaVersion === undefined;
 }
 
+export type LedgerStats = {
+  total: number;
+  pass: number;
+  fail: number;
+  warn: number;
+  totalCostUsd: number;
+  avgDurationMs: number;
+};
+
+/**
+ * Compute lightweight statistics over an array of ledger entries.
+ * Returns counts (total/pass/fail/warn), total cost in USD, and average
+ * duration in milliseconds (0 when entries is empty).
+ */
+export function getLedgerStats(entries: LedgerEntry[]): LedgerStats {
+  let pass = 0;
+  let fail = 0;
+  let warn = 0;
+  let totalCostUsd = 0;
+  let totalDurationMs = 0;
+
+  for (const entry of entries) {
+    if (entry.result === "PASS") pass++;
+    else if (entry.result === "FAIL") fail++;
+    else if (entry.result === "WARN") warn++;
+
+    totalCostUsd += entry.estimatedCostUsd ?? 0;
+    totalDurationMs += entry.durationMs;
+  }
+
+  return {
+    total: entries.length,
+    pass,
+    fail,
+    warn,
+    totalCostUsd,
+    avgDurationMs: entries.length > 0 ? totalDurationMs / entries.length : 0,
+  };
+}
+
 export function computeSummary(entries: LedgerEntry[]): LedgerSummary {
   const summary: LedgerSummary = {
     totalRequests: entries.length,
