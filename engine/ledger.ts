@@ -213,6 +213,34 @@ export async function getLedgerSummary(): Promise<LedgerSummary> {
   return computeSummary(entries);
 }
 
+export type LedgerFilter = {
+  result?: "PASS" | "FAIL" | "WARN";
+  target?: string;
+  dateRange?: {
+    from?: string; // ISO date string
+    to?: string;   // ISO date string
+  };
+};
+
+/**
+ * Filter ledger entries by an optional result, target, and/or date range.
+ * Returns a shallow copy of matching entries (modifying them won't affect the
+ * in-memory ledger). All filter fields are optional — omit a field to skip it.
+ */
+export async function filterLedger(filter: LedgerFilter): Promise<LedgerEntry[]> {
+  const entries = await getLedger();
+  return entries.filter((entry) => {
+    if (filter.result !== undefined && entry.result !== filter.result) return false;
+    if (filter.target !== undefined && entry.target !== filter.target) return false;
+    if (filter.dateRange) {
+      const ts = new Date(entry.timestamp).getTime();
+      if (filter.dateRange.from !== undefined && ts < new Date(filter.dateRange.from).getTime()) return false;
+      if (filter.dateRange.to !== undefined && ts > new Date(filter.dateRange.to).getTime()) return false;
+    }
+    return true;
+  });
+}
+
 export async function clearLedger(): Promise<void> {
   sessionEntries.length = 0;
   loaded = true;

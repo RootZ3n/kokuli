@@ -12,9 +12,11 @@ import {
   isHistoricalLedgerEntry,
   LEDGER_SCHEMA_VERSION,
   LedgerEntry,
+  LedgerFilter,
   recordEntry,
   loadLedger,
   getLedger,
+  filterLedger,
   clearLedger,
   __resetLedgerForTests,
 } from "./ledger";
@@ -203,5 +205,174 @@ test("clearLedger empties memory and disk", async () => {
     assert.equal((await getLedger()).length, 0);
     const raw = await fs.readFile(path.join(dir, "reports", "ledger.json"), "utf8");
     assert.equal(raw.trim(), "");
+  });
+});
+
+// --- filterLedger ---
+
+function makeFilterEntry(overrides: Partial<LedgerEntry> = {}): LedgerEntry {
+  return {
+    id: "f1",
+    timestamp: "2026-06-01T12:00:00.000Z",
+    testId: "filter-test",
+    target: "demo",
+    endpoint: "/chat",
+    method: "POST",
+    durationMs: 50,
+    httpStatus: 200,
+    result: "PASS",
+    gatewayBlocked: false,
+    schemaVersion: LEDGER_SCHEMA_VERSION,
+    ...overrides,
+  };
+}
+
+async function seedFilterFixtures(): Promise<void> {
+  await recordEntry(makeFilterEntry({ id: "pass-demo", result: "PASS", target: "demo", timestamp: "2026-06-01T12:00:00.000Z" }));
+  await recordEntry(makeFilterEntry({ id: "fail-demo", result: "FAIL", target: "demo", timestamp: "2026-06-02T12:00:00.000Z" }));
+  await recordEntry(makeFilterEntry({ id: "warn-demo", result: "WARN", target: "demo", timestamp: "2026-06-03T12:00:00.000Z" }));
+  await recordEntry(makeFilterEntry({ id: "pass-staging", result: "PASS", target: "staging", timestamp: "2026-06-04T12:00:00.000Z" }));
+  await recordEntry(makeFilterEntry({ id: "fail-staging", result: "FAIL", target: "staging", timestamp: "2026-06-05T12:00:00.000Z" }));
+}
+
+test("filterLedger without options returns all entries", async () => {
+  await withTempCwd(async () => {
+    await seedFilterFixtures();
+    const result = await filterLedger({});
+    assert.equal(result.length, 5);
+  });
+});
+
+test("filterLedger by result PASS", async () => {
+  await withTempCwd(async () => {
+    await seedFilterFixtures();
+    const result = await filterLedger({ result: "PASS" });
+    assert.equal(result.length, 2);
+    assert.ok(result.every((e) => e.result === "PASS"));
+  });
+});
+
+test("filterLedger by result FAIL", async () => {
+  await withTempCwd(async () => {
+    await seedFilterFixtures();
+    const result = await filterLedger({ result: "FAIL" });
+    assert.equal(result.length, 2);
+    assert.ok(result.every((e) => e.result === "FAIL"));
+  });
+});
+
+test("filterLedger by result WARN", async () => {
+  await withTempCwd(async () => {
+    await seedFilterFixtures();
+    const result = await filterLedger({ result: "WARN" });
+    assert.equal(result.length, 1);
+    assert.equal(result[0].id, "warn-demo");
+  });
+});
+
+test("filterLedger by target", async () => {
+  await withTempCwd(async () => {
+    await seedFilterFixtures();
+    const result = await filterLedger({ target: "staging" });
+    assert.equal(result.length, 2);
+    assert.ok(result.every((e) => e.target === "staging"));
+  });
+});
+
+test("filterLedger by target with no matches", async () => {
+  await withTempCwd(async () => {
+    await seedFilterFixtures();
+    const result = await filterLedger({ target: "nonexistent" });
+    assert.equal(result.length, 0);
+  });
+});
+
+test("filterLedger by dateRange.from only", async () => {
+  await withTempCwd(async () => {
+    await seedFilterFixtures();
+    // Entries after 2026-06-03T12:00:00Z
+    const result = await filterLedger({ dateRange: { from: "2026-06-03T12:00:00.001Z" } });
+    assert.equal(result.length, 2);
+    assert.deepEqual(
+      result.map((e) => e.id).sort(),
+      ["fail-staging", "pass-staging"]
+    );
+  });
+});
+
+test("filterLedger by dateRange.to only", async () => {
+  await withTempCwd(async () => {
+    await seedFilterFixtures();
+    // Entries before 2026-06-03T12:00:00Z
+    const result = await filterLedger({ dateRange: { to: "2026-06-03T11:59:59.999Z" } });
+    assert.equal(result.length, 2);
+    assert.deepEqual(
+      result.map((e) => e.id).sort(),
+      ["fail-demo", "pass-demo"]
+    );
+  });
+});
+
+test("filterLedger by dateRange.from and to", async () => {
+  await withTempCwd(async () => {
+    await seedFilterFixtures();
+    // Entries on 2026-06-02 (inclusive)
+    const result = await filterLedger({ dateRange: { from: "2026-06-02T00:00:00.000Z", to: "2026-06-02T23:59:59.999Z" } });
+    assert.equal(result.length, 1);
+    assert.equal(result[0].id, "fail-demo");
+  });
+});
+
+test("filterLedger combines result + target", async () => {
+  await withTempCwd(async () => {
+    await seedFilterFixtures();
+    const result = await filterLedger({ result: "FAIL", target: "staging" });
+    assert.equal(result.length, 1);
+    assert.equal(result[0].id, "fail-staging");
+  });
+});
+
+test("filterLedger combines result + dateRange", async () => {
+  await withTempCwd(async () => {
+    await seedFilterFixtures();
+    // PASS entries after 2026-06-03
+    const result = await filterLedger({ result: "PASS", dateRange: { from: "2026-06-03T12:00:00.001Z" } });
+    assert.equal(result.length, 1);
+    assert.equal(result[0].id, "pass-staging");
+  });
+});
+
+test("filterLedger combines target + dateRange", async () => {
+  await withTempCwd(async () => {
+    await seedFilterFixtures();
+    // demo-targeted entries before 2026-06-03
+    const result = await filterLedger({ target: "demo", dateRange: { to: "2026-06-03T11:59:59.999Z" } });
+    assert.equal(result.length, 2);
+    assert.deepEqual(
+      result.map((e) => e.id).sort(),
+      ["fail-demo", "pass-demo"]
+    );
+  });
+});
+
+test("filterLedger combines result + target + dateRange", async () => {
+  await withTempCwd(async () => {
+    await seedFilterFixtures();
+    // WARN, demo, on 2026-06-03
+    const result = await filterLedger({
+      result: "WARN",
+      target: "demo",
+      dateRange: { from: "2026-06-03T00:00:00.000Z", to: "2026-06-03T23:59:59.999Z" },
+    });
+    assert.equal(result.length, 1);
+    assert.equal(result[0].id, "warn-demo");
+  });
+});
+
+test("filterLedger returns empty array when no entries match", async () => {
+  await withTempCwd(async () => {
+    await seedFilterFixtures();
+    const result = await filterLedger({ result: "FAIL", target: "demo", dateRange: { from: "2099-01-01T00:00:00.000Z" } });
+    assert.equal(result.length, 0);
   });
 });
