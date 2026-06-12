@@ -376,4 +376,4 @@ Kokuli exposes an allowlisted bridge for sibling local apps and archives bridge 
 
 ## License
 
-See [`LICENSE`](LICENSE).
+MIT License
