@@ -18,6 +18,7 @@ import {
   loadLedger,
   getLedger,
   filterLedger,
+  getEntriesByResult,
   clearLedger,
   __resetLedgerForTests,
 } from "./ledger";
@@ -413,4 +414,40 @@ test("getLedgerStats handles missing cost and single entry", () => {
   assert.equal(stats.warn, 0);
   assert.equal(stats.totalCostUsd, 0);
   assert.equal(stats.avgDurationMs, 200);
+});
+
+// --- getEntriesByResult ---
+
+test("getEntriesByResult returns only entries matching the given result", async () => {
+  await withTempCwd(async () => {
+    await recordEntry(makeFilterEntry({ id: "a-pass", result: "PASS", timestamp: nowIso() }));
+    await recordEntry(makeFilterEntry({ id: "b-fail", result: "FAIL", timestamp: nowIso() }));
+    await recordEntry(makeFilterEntry({ id: "c-pass", result: "PASS", timestamp: nowIso() }));
+    await recordEntry(makeFilterEntry({ id: "d-warn", result: "WARN", timestamp: nowIso() }));
+
+    const passes = await getEntriesByResult("PASS");
+    assert.equal(passes.length, 2);
+    assert.ok(passes.every((e) => e.result === "PASS"));
+    assert.deepEqual(passes.map((e) => e.id).sort(), ["a-pass", "c-pass"]);
+
+    const fails = await getEntriesByResult("FAIL");
+    assert.equal(fails.length, 1);
+    assert.equal(fails[0].id, "b-fail");
+
+    const warns = await getEntriesByResult("WARN");
+    assert.equal(warns.length, 1);
+    assert.equal(warns[0].id, "d-warn");
+  });
+});
+
+test("getEntriesByResult returns empty array when no entries match", async () => {
+  await withTempCwd(async () => {
+    await recordEntry(makeFilterEntry({ id: "only-pass", result: "PASS", timestamp: nowIso() }));
+
+    const fails = await getEntriesByResult("FAIL");
+    assert.equal(fails.length, 0);
+
+    const warns = await getEntriesByResult("WARN");
+    assert.equal(warns.length, 0);
+  });
 });

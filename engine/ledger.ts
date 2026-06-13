@@ -241,6 +241,15 @@ export async function filterLedger(filter: LedgerFilter): Promise<LedgerEntry[]>
   });
 }
 
+/**
+ * Get all ledger entries that match a given result (PASS / FAIL / WARN).
+ * Returns a shallow copy of matching entries from the session cache.
+ */
+export async function getEntriesByResult(result: "PASS" | "FAIL" | "WARN"): Promise<LedgerEntry[]> {
+  await ensureLoaded();
+  return sessionEntries.filter((entry) => entry.result === result);
+}
+
 export async function clearLedger(): Promise<void> {
   sessionEntries.length = 0;
   loaded = true;
