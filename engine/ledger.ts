@@ -51,6 +51,8 @@ export type LedgerEntry = {
   unknownCost?: boolean;
   /** Optional honesty chip list (lifted from the corresponding TestResult). */
   honestyFlags?: string[];
+  /** Optional entry type label (e.g. "injection", "jailbreak", "boundary"). */
+  type?: string;
 };
 
 export type LedgerSummary = {
@@ -248,6 +250,15 @@ export async function filterLedger(filter: LedgerFilter): Promise<LedgerEntry[]>
 export async function getEntriesByResult(result: "PASS" | "FAIL" | "WARN"): Promise<LedgerEntry[]> {
   await ensureLoaded();
   return sessionEntries.filter((entry) => entry.result === result);
+}
+
+/**
+ * Get all ledger entries that match a given type label (e.g. "injection", "jailbreak").
+ * Returns a shallow copy of matching entries from the session cache.
+ */
+export async function getEntriesByType(type: string): Promise<LedgerEntry[]> {
+  await ensureLoaded();
+  return sessionEntries.filter((entry) => entry.type === type);
 }
 
 export async function clearLedger(): Promise<void> {

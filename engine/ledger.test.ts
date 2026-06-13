@@ -19,6 +19,7 @@ import {
   getLedger,
   filterLedger,
   getEntriesByResult,
+  getEntriesByType,
   clearLedger,
   __resetLedgerForTests,
 } from "./ledger";
@@ -449,5 +450,47 @@ test("getEntriesByResult returns empty array when no entries match", async () =>
 
     const warns = await getEntriesByResult("WARN");
     assert.equal(warns.length, 0);
+  });
+});
+
+// --- getEntriesByType ---
+
+test("getEntriesByType returns only entries matching the given type", async () => {
+  await withTempCwd(async () => {
+    await recordEntry(makeFilterEntry({ id: "a-injection", type: "injection", timestamp: nowIso() }));
+    await recordEntry(makeFilterEntry({ id: "b-jailbreak", type: "jailbreak", timestamp: nowIso() }));
+    await recordEntry(makeFilterEntry({ id: "c-injection", type: "injection", timestamp: nowIso() }));
+    await recordEntry(makeFilterEntry({ id: "d-boundary", type: "boundary", timestamp: nowIso() }));
+
+    const injections = await getEntriesByType("injection");
+    assert.equal(injections.length, 2);
+    assert.ok(injections.every((e) => e.type === "injection"));
+    assert.deepEqual(injections.map((e) => e.id).sort(), ["a-injection", "c-injection"]);
+
+    const jailbreaks = await getEntriesByType("jailbreak");
+    assert.equal(jailbreaks.length, 1);
+    assert.equal(jailbreaks[0].id, "b-jailbreak");
+
+    const boundaries = await getEntriesByType("boundary");
+    assert.equal(boundaries.length, 1);
+    assert.equal(boundaries[0].id, "d-boundary");
+  });
+});
+
+test("getEntriesByType returns empty array when no entries match", async () => {
+  await withTempCwd(async () => {
+    await recordEntry(makeFilterEntry({ id: "x-injection", type: "injection", timestamp: nowIso() }));
+
+    const result = await getEntriesByType("jailbreak");
+    assert.equal(result.length, 0);
+  });
+});
+
+test("getEntriesByType returns empty array when no entries have a type field", async () => {
+  await withTempCwd(async () => {
+    await recordEntry(makeFilterEntry({ id: "no-type", timestamp: nowIso() }));
+
+    const result = await getEntriesByType("injection");
+    assert.equal(result.length, 0);
   });
 });
