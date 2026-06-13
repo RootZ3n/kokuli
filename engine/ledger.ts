@@ -261,6 +261,29 @@ export async function getEntriesByType(type: string): Promise<LedgerEntry[]> {
   return sessionEntries.filter((entry) => entry.type === type);
 }
 
+export type SearchCriteria = {
+  type?: string;
+  result?: string;
+  fromDate?: string;
+  toDate?: string;
+};
+
+/**
+ * Filter ledger entries by multiple optional criteria (AND logic).
+ * Returns a shallow copy of matching entries from the session cache.
+ * Omit any field to skip that filter; omit all fields to return every entry.
+ */
+export async function searchEntries(criteria: SearchCriteria): Promise<LedgerEntry[]> {
+  await ensureLoaded();
+  return sessionEntries.filter((entry) => {
+    if (criteria.type !== undefined && entry.type !== criteria.type) return false;
+    if (criteria.result !== undefined && entry.result !== criteria.result) return false;
+    if (criteria.fromDate !== undefined && new Date(entry.timestamp).getTime() < new Date(criteria.fromDate).getTime()) return false;
+    if (criteria.toDate !== undefined && new Date(entry.timestamp).getTime() > new Date(criteria.toDate).getTime()) return false;
+    return true;
+  });
+}
+
 export async function clearLedger(): Promise<void> {
   sessionEntries.length = 0;
   loaded = true;

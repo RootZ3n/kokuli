@@ -20,6 +20,7 @@ import {
   filterLedger,
   getEntriesByResult,
   getEntriesByType,
+  searchEntries,
   clearLedger,
   __resetLedgerForTests,
 } from "./ledger";
@@ -491,6 +492,66 @@ test("getEntriesByType returns empty array when no entries have a type field", a
     await recordEntry(makeFilterEntry({ id: "no-type", timestamp: nowIso() }));
 
     const result = await getEntriesByType("injection");
+    assert.equal(result.length, 0);
+  });
+});
+
+// --- searchEntries ---
+
+test("searchEntries with type only returns entries matching that type", async () => {
+  await withTempCwd(async () => {
+    await recordEntry(makeFilterEntry({ id: "inj-pass", type: "injection", result: "PASS", timestamp: "2026-06-01T12:00:00.000Z" }));
+    await recordEntry(makeFilterEntry({ id: "inj-fail", type: "injection", result: "FAIL", timestamp: "2026-06-02T12:00:00.000Z" }));
+    await recordEntry(makeFilterEntry({ id: "jail-pass", type: "jailbreak", result: "PASS", timestamp: "2026-06-03T12:00:00.000Z" }));
+
+    const result = await searchEntries({ type: "injection" });
+    assert.equal(result.length, 2);
+    assert.ok(result.every((e) => e.type === "injection"));
+    assert.deepEqual(result.map((e) => e.id).sort(), ["inj-fail", "inj-pass"]);
+  });
+});
+
+test("searchEntries with type + result returns entries matching both", async () => {
+  await withTempCwd(async () => {
+    await recordEntry(makeFilterEntry({ id: "inj-pass", type: "injection", result: "PASS", timestamp: nowIso() }));
+    await recordEntry(makeFilterEntry({ id: "inj-fail", type: "injection", result: "FAIL", timestamp: nowIso() }));
+    await recordEntry(makeFilterEntry({ id: "jail-pass", type: "jailbreak", result: "PASS", timestamp: nowIso() }));
+
+    const result = await searchEntries({ type: "injection", result: "PASS" });
+    assert.equal(result.length, 1);
+    assert.equal(result[0].id, "inj-pass");
+  });
+});
+
+test("searchEntries with date range returns entries within range", async () => {
+  await withTempCwd(async () => {
+    await recordEntry(makeFilterEntry({ id: "early", type: "injection", result: "PASS", timestamp: "2026-06-01T12:00:00.000Z" }));
+    await recordEntry(makeFilterEntry({ id: "middle", type: "injection", result: "FAIL", timestamp: "2026-06-03T12:00:00.000Z" }));
+    await recordEntry(makeFilterEntry({ id: "late", type: "jailbreak", result: "PASS", timestamp: "2026-06-05T12:00:00.000Z" }));
+
+    const result = await searchEntries({ fromDate: "2026-06-02T00:00:00.000Z", toDate: "2026-06-04T00:00:00.000Z" });
+    assert.equal(result.length, 1);
+    assert.equal(result[0].id, "middle");
+  });
+});
+
+test("searchEntries with no criteria returns all entries", async () => {
+  await withTempCwd(async () => {
+    await recordEntry(makeFilterEntry({ id: "a", type: "injection", result: "PASS", timestamp: nowIso() }));
+    await recordEntry(makeFilterEntry({ id: "b", type: "jailbreak", result: "FAIL", timestamp: nowIso() }));
+    await recordEntry(makeFilterEntry({ id: "c", result: "WARN", timestamp: nowIso() }));
+
+    const result = await searchEntries({});
+    assert.equal(result.length, 3);
+  });
+});
+
+test("searchEntries with non-matching criteria returns empty array", async () => {
+  await withTempCwd(async () => {
+    await recordEntry(makeFilterEntry({ id: "inj-pass", type: "injection", result: "PASS", timestamp: nowIso() }));
+    await recordEntry(makeFilterEntry({ id: "jail-fail", type: "jailbreak", result: "FAIL", timestamp: nowIso() }));
+
+    const result = await searchEntries({ type: "boundary", result: "PASS" });
     assert.equal(result.length, 0);
   });
 });
