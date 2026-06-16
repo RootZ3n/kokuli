@@ -41,17 +41,10 @@ learning/data/player.json
 .codex/
 
 # Local secrets / runtime state
-.env
-.env.*
-*.env
-*.env.*
-*.key
-*.pem
 *.token
 *.secret
 *.backup
 *.bak
-.aedis/
 state/
 receipts/
 **/state/
@@ -61,7 +54,6 @@ receipts/
 *.db-wal
 *.sqlite
 *.sqlite3
-*.log
 *.mp3
 *.wav
 *.webm
