@@ -12,7 +12,7 @@
         "chat": "/chat"
       },
       "auth": {},
-      "notes": "Primary Peh V2 instance on Mushin. Hardened gateway, structured receipts, Velum privacy layer, multi-model routing. Reachable over Tailscale.",
+      "notes": "Primary Peh V2 instance on Mushin. Hardened gateway, structured receipts, Velum privacy layer, multi-model routing.",
       "enabled": true,
       "createdAt": "2026-04-26T01:01:39.689Z",
       "updatedAt": "2026-04-26T01:01:39.689Z"
@@ -44,7 +44,7 @@
         "chat": "/api/chat"
       },
       "auth": {},
-      "notes": "More Input - standalone product for uncle",
+      "notes": "More Input \u2014 standalone product",
       "enabled": true,
       "createdAt": "2026-04-26T01:01:39.689Z",
       "updatedAt": "2026-04-26T01:01:39.689Z"
@@ -60,7 +60,7 @@
         "chat": "/chat"
       },
       "auth": {},
-      "notes": "Primary Peh V2 instance on Mushin. Hardened gateway, structured receipts, Velum privacy layer, multi-model routing. Reachable over Tailscale.",
+      "notes": "Primary Peh V2 instance on Mushin. Hardened gateway, structured receipts, Velum privacy layer, multi-model routing.",
       "enabled": true,
       "createdAt": "2026-04-26T01:01:39.689Z",
       "updatedAt": "2026-04-26T01:01:39.689Z"
@@ -86,13 +86,13 @@
       "path": "/chat",
       "method": "POST",
       "auth": "unknown",
-      "notes": "Main chat interface — SSE streaming"
+      "notes": "Main chat interface \u2014 SSE streaming"
     },
     "health": {
       "path": "/health",
       "method": "GET",
       "auth": "none",
-      "notes": "Full module health — exposes internals"
+      "notes": "Full module health \u2014 exposes internals"
     },
     "version": {
       "path": "/version",
@@ -104,13 +104,13 @@
       "path": "/receipts",
       "method": "GET",
       "auth": "none",
-      "notes": "System event receipts — module internals"
+      "notes": "System event receipts \u2014 module internals"
     },
     "sessions": {
       "path": "/sessions",
       "method": "GET",
       "auth": "none",
-      "notes": "Chat session list — session IDs, models, metadata"
+      "notes": "Chat session list \u2014 session IDs, models, metadata"
     },
     "sessions-create": {
       "path": "/sessions",
@@ -122,7 +122,7 @@
       "path": "/runs",
       "method": "GET",
       "auth": "none",
-      "notes": "Task run list — internal goals, modules"
+      "notes": "Task run list \u2014 internal goals, modules"
     },
     "runs-active": {
       "path": "/runs/active",
@@ -140,13 +140,13 @@
       "path": "/search",
       "method": "GET",
       "auth": "none",
-      "notes": "Full-text search — requires ?q= param"
+      "notes": "Full-text search \u2014 requires ?q= param"
     },
     "memory-search": {
       "path": "/memory/search",
       "method": "GET",
       "auth": "none",
-      "notes": "Peh memory store — internal knowledge"
+      "notes": "Peh memory store \u2014 internal knowledge"
     },
     "tools-list": {
       "path": "/tools/list",
@@ -170,7 +170,7 @@
       "path": "/magister/modules/",
       "method": "GET",
       "auth": "none",
-      "notes": "Individual module detail — config paths"
+      "notes": "Individual module detail \u2014 config paths"
     },
     "auriga-sessions": {
       "path": "/auriga/sessions",
@@ -182,7 +182,7 @@
       "path": "/animus/ideas",
       "method": "GET",
       "auth": "none",
-      "notes": "Idea store — internal data"
+      "notes": "Idea store \u2014 internal data"
     }
   }
 }
