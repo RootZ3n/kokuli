@@ -45,13 +45,13 @@ Results are deterministic rule evaluations. A Kokuli finding is a probe result o
 Prerequisites:
 
 - Node.js 18 or newer.
-- pnpm.
+- npm.
 - A local, staging, or explicitly authorized target.
 
 ```bash
-pnpm install
-pnpm run build
-pnpm run smoke
+npm install
+npm run build
+npm run smoke
 ```
 
 Expected smoke output starts with:
@@ -63,7 +63,7 @@ Expected smoke output starts with:
 Start the local web dashboard:
 
 ```bash
-pnpm run web
+npm run web
 ```
 
 Expected web output includes:
@@ -79,7 +79,7 @@ Open `http://127.0.0.1:3000`.
 Run the full local release check:
 
 ```bash
-pnpm run verify:release
+npm run verify:release
 ```
 
 This runs typecheck, build, logic tests, and smoke verification.
@@ -89,10 +89,10 @@ This runs typecheck, build, logic tests, and smoke verification.
 ```bash
 git clone <repo-url> kokuli
 cd kokuli
-pnpm install
-pnpm run build
-pnpm test          # runs 232 vitest tests
-pnpm run typecheck
+npm install
+npm run build
+npm test          # runs 260 tests
+npm run typecheck
 ```
 
 Ready to go. See below for target configuration, dashboard use, and full suite execution.
@@ -168,23 +168,23 @@ Kokuli does not prove that a system is secure, compliant, or free of vulnerabili
 Targets are local operator-controlled configurations. Use local or staging systems you own:
 
 ```bash
-pnpm run dev -- target add my-local-app http://127.0.0.1:8080 --chat /api/chat
-pnpm run dev -- target set my-local-app
-pnpm run dev -- target probe
+npm run dev -- target add my-local-app http://127.0.0.1:8080 --chat /api/chat
+npm run dev -- target set my-local-app
+npm run dev -- target probe
 ```
 
 Run a suite:
 
 ```bash
-pnpm run dev -- suite security
-pnpm run dev -- suite child-safety
-pnpm run dev -- run baseline-chat
+npm run dev -- suite security
+npm run dev -- suite child-safety
+npm run dev -- run baseline-chat
 ```
 
 Override target for one command:
 
 ```bash
-pnpm run dev -- suite security --target my-local-app
+npm run dev -- suite security --target my-local-app
 ```
 
 ## Reports
@@ -221,7 +221,7 @@ Placeholder: [`docs/screenshots/README.md`](docs/screenshots/README.md)
 
 ## Cross-Platform Notes
 
-The core CLI and web dashboard are Node-based and intended to run anywhere Node.js 18+ and pnpm are available.
+The core CLI and web dashboard are Node-based and intended to run anywhere Node.js 18+ and npm are available.
 
 This RC has been verified in the current Linux workspace. Do not treat Windows PowerShell support as verified until it is tested and documented on Windows.
 
@@ -232,16 +232,16 @@ Linux service/systemd setup belongs in advanced deployment docs, not the beginne
 Run:
 
 ```bash
-pnpm audit --audit-level=moderate
+npm audit --audit-level=moderate
 ```
 
-As of this RC hardening pass, `pnpm audit fix` updated transitive dependency versions for axios/follow-redirects, brace-expansion, and path-to-regexp, and `pnpm audit --audit-level=moderate` reports zero known vulnerabilities.
+As of this RC hardening pass, `npm audit fix` updated transitive dependency versions for axios/follow-redirects, brace-expansion, and path-to-regexp, and `npm audit --audit-level=moderate` reports zero known vulnerabilities.
 
 ## Testing
 
 ```bash
-pnpm test                    # runs vitest with 232 tests
-pnpm typecheck               # type-check only
+npm test                    # runs 260 tests
+npm typecheck               # type-check only
 ```
 
 ## Trust Posture
@@ -328,7 +328,7 @@ honesty flag.
 
 ### Diagnostic gates
 
-`scripts/verum-diagnostic.mjs` (wired into `pnpm run verify:release`)
+`scripts/kokuli-diagnostic.mjs` (wired into `npm run verify:release`)
 audits the test pack and trust surfaces offline. It exits non-zero on:
 
 - duplicate test IDs
@@ -351,17 +351,17 @@ audits the test pack and trust surfaces offline. It exits non-zero on:
 - current-schema ledger entries with unknown provider/model and no
   honesty flag
 
-Run `pnpm run diagnostic` (or the full `pnpm run verify:release`) before
+Run `npm run diagnostic` (or the full `npm run verify:release`) before
 any release tag.
 
 ## Development Commands
 
 ```bash
-pnpm run typecheck
-pnpm run build
-pnpm run test
-pnpm run smoke
-pnpm run verify:release
+npm run typecheck
+npm run build
+npm run test
+npm run smoke
+npm run verify:release
 ```
 
 ## Bridge And Tracing

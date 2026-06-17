@@ -1,133 +1,65 @@
 # Security Policy
 
-## Scope
+## Supported Versions
 
-Kokuli is a defensive AI fracture-testing tool for systems you own or are explicitly authorized to test. Do not use Kokuli against public internet systems, third-party services, or production systems without clear written authorization.
+| Version | Supported |
+|---------|-----------|
+| 0.1.x   | ✅ |
+
+## Reporting a Vulnerability
+
+Open a private security advisory on GitHub or contact the maintainer directly.
 
 ## Safe Defaults
 
-- Web server default bind: `127.0.0.1`. Set `KOKULI_HOST` (comma-separated list; `VERUM_HOST` accepted as fallback) to additionally bind a Tailscale or other trusted interface.
-- Live Armory / Break Me network operations require `KOKULI_ENABLE_NETWORK_OPS=1` (`VERUM_ENABLE_NETWORK_OPS` accepted as fallback).
-- Live checks require explicit ownership confirmation.
-- Public IP and public domain live checks are blocked in the public RC line.
-- Armory receipts redact and summarize evidence before report write.
+- Bind to **`127.0.0.1`** only by default (loopback). Operator must explicitly set `KOKULI_HOST=0.0.0.0` for network exposure.
+- **No authentication.** Access control is bind-layer-only. Anyone who can reach the port can use all endpoints.
+- For external exposure (Tailscale, public), place behind a **reverse proxy** (nginx, Caddy, Traefik) with operator-supplied authentication and TLS.
+- Rate limiting: **120 req/min** (read) and **60 req/min** (write) per IP.
+- CSP and security headers applied to all responses.
+- Same-origin policy enforced; CORS is disabled by default.
+- Express body limit of **1 MB** prevents large payload DoS.
+- Network operations require explicit opt-in via `KOKULI_ENABLE_NETWORK_OPS=1` and `KOKULI_OWNERSHIP_CONFIRMED=1`.
+- NetworkGate SSRF protection blocks non-private outbound targets unless both flags are set.
 
-## Deployment posture: lab-only
+## Security Controls
 
-Kokuli is a lab-only tool. The web server has no authentication gates and no per-route localhost restrictions: anything that can reach the bind address can use the API. Limit network exposure at the bind layer (default `127.0.0.1`, optionally a Tailscale IP) and your operating system firewall — do not place Kokuli on an untrusted network.
+### Network Gate
+`engine/networkGate.ts` enforces dual-flag SSRF protection: loopback/RFC1918/RFC6598/ULA/link-local/`.local` are allowed by default; everything else is refused unless `KOKULI_ENABLE_NETWORK_OPS=1` and `KOKULI_OWNERSHIP_CONFIRMED=1` are both set.
 
-## Reporting A Vulnerability
+### Command Injection Prevention
+- Armory's `toolRunner.ts` uses `spawn` with `shell: false` and an allowlist of nmap flags.
+- Bridge uses `spawn(shell=false)` with no shell interpolation.
+- All user input is validated against allowlists.
 
-For the public RC, report security issues through a private maintainer channel or a private GitHub security advisory if available. Do not publish exploit details or sensitive report artifacts publicly.
+### Redaction
+`server/ops/redaction.ts` scrubs Authorization headers, Bearer tokens, API keys, cookies, private keys, file paths, and large base64 tokens from all evidence before report write.
 
-Please include:
+### Path Traversal
+Reports and bridge run data use `process.cwd()` roots. No arbitrary filesystem access.
 
-- Affected version or commit.
-- Reproduction steps using only owned/local targets.
-- Expected behavior.
-- Actual behavior.
-- Whether any report artifact contained sensitive data.
+## Scope
 
-## Report Handling
+The following are considered in-scope for security review:
 
-Kokuli reports can contain sensitive engineering evidence even after redaction. Treat `reports/` output as confidential unless it has been reviewed and intentionally sanitized for sharing.
-
-## Dependency Audit Status
-
-As of the RC hardening pass on 2026-04-30:
-
-- `npm audit fix` updated vulnerable transitive packages for axios/follow-redirects, brace-expansion, and path-to-regexp.
-- `npm audit --audit-level=moderate` reports zero known vulnerabilities.
-
-Keep running:
-
-```bash
-npm audit --audit-level=moderate
-```
-
-before release tagging.
-
----
-
-## Audit Summary — 2026-05-04
-
-> **Note (2026-05-10):** The `VERUM_API_TOKEN` gate and the per-route loopback checks described below were removed as part of moving Kokuli (then Verum) to a lab-only deployment posture. The audit record is retained for history. Current access control is bind-layer only (see *Safe Defaults* above).
-
-
-### Scope
-Full security audit of Kokuli v0.2.0 (then named Verum) focusing on authentication, authorization, injection hardening, and SSRF protection. The following findings were identified and resolved.
-
-### Issues Fixed
-
-#### 1. 🔴 Critical — Report endpoints were open without authentication (CVE-class)
-**Files:** `server/api.ts`, `server/access.ts`
-**Severity:** Critical
-**Finding:** `/api/reports/summary`, `/api/dashboard`, and `/api/reports/latest` used only `requireLocalAccess()` (loopback check). Since Kokuli binds to `127.0.0.1` by default, any local user or local process could read full assessment reports and test results without any token. This exposed all test results, target configs, and findings to any local actor.
-
-**Fix:** Added a new `requireAuth()` middleware (token-only, no localhost restriction) and applied it to all report endpoints. The `requireLocalAccess` ops routes (ops/run, ops/kill, ops/reset) continue to require both localhost origin AND valid token.
-
-Additionally changed `apiTokenMatches()` to fail-closed when VERUM_API_TOKEN is unset (previously it returned `true` with no token set, which could mislead operators).
-
-#### 2. 🔴 Critical — Timing attack on token comparison
-**File:** `server/access.ts`
-**Severity:** High
-**Finding:** Token comparison used `===` which is not constant-time. A skilled attacker who can measure response time differences could potentially guess the token character-by-character.
-
-**Fix:** Added `timingSafeEqual()` using char-by-char XOR accumulation — constant time regardless of where the mismatch occurs.
-
-#### 3. 🟡 Medium — No authentication status indicator
-**File:** `server/access.ts`
-**Finding:** No `isAuthEnabled()` function existed to let operators or tooling query whether VERUM_API_TOKEN is configured.
-
-**Fix:** Added `export function isAuthEnabled(): boolean` — returns true only when VERUM_API_TOKEN is set in the environment.
-
-### Auth Architecture (Post-Fix)
-
-| Route | Auth Required |
-|---|---|
-| `GET /api/meta` | None (public, server info only) |
-| `GET /health` | None (public health check) |
-| `GET /api/tests` | None (localhost only by bind) |
-| `GET /api/targets`, `POST /api/targets` | None (localhost only by bind) |
-| `POST /api/targets/resolve`, `/api/targets/probe` | None (localhost only by bind; internal network gate blocks non-private targets) |
-| `GET /api/reports/summary` | **VERUM_API_TOKEN** (token auth from any IP) |
-| `GET /api/dashboard` | **VERUM_API_TOKEN** (token auth from any IP) |
-| `GET /api/reports/latest` | **VERUM_API_TOKEN** (token auth from any IP) |
-| `GET/DELETE /api/transparency` | None (session ledger, operator use only) |
-| `POST /api/ops/run` | **localhost + VERUM_API_TOKEN** |
-| `POST /api/ops/kill` | **localhost + VERUM_API_TOKEN** |
-| `POST /api/ops/reset` | **localhost + VERUM_API_TOKEN** |
-| `POST /api/bridge/verum/run` | None (allowlist enforcement, narrow bridge contract) |
-| `GET /api/bridge/runs` | None (read-only, no secrets) |
-| `GET /api/bridge/runs/:runId` | None (read-only, no secrets) |
-
-### Other Security Controls Verified
-
-- **Rate limiting:** 120 req/min (read), 60 req/min (write) per IP — works at the API level before routing.
-- **CSP headers:** `default-src 'self'; script-src 'self' 'unsafe-inline'` etc. — blocks XSS from external sources.
-- **SSRF protection:** `NetworkGate` in `engine/networkGate.ts` enforces `VERUM_ENABLE_NETWORK_OPS=1` + `VERUM_OWNERSHIP_CONFIRMED=1` for non-private outbound targets. Armory `safety.ts` further restricts to localhost/private IPs only unless `advancedMode=true`.
-- **Command injection:** Armory's `toolRunner.ts` uses `spawn` with `shell: false` and an allowlist of nmap flags. Bridge uses `spawn(shell=false)` with no shell interpolation. All user input is validated against allowlists in `verumBridge.ts`.
-- **Redaction:** `server/ops/redaction.ts` scrubs Authorization headers, Bearer tokens, API keys, cookies, private keys, file paths, and large base64 tokens from all evidence before report write.
-- **Path traversal:** Reports and bridge run data use `process.cwd()` roots. No arbitrary filesystem access.
-- **Express body limit:** `express.json({ limit: "1mb" })` prevents large payload DoS.
-- **Static file serving:** Only `server/public/` is served. `reports/` is protected by `requireLocalAccess` on a separate mount point.
-- **Token generation:** When VERUM_API_TOKEN is unset, the server no longer silently operates in "open mode" for authenticated routes. The operator must explicitly set a token.
-
-### Recommended Operator Configuration
-
-```bash
-# For live Armory ops (network probing of your own lab):
-KOKULI_ENABLE_NETWORK_OPS=1
-KOKULI_OWNERSHIP_CONFIRMED=1
-
-# Start Kokuli
-systemctl --user start kokuli-web
-```
+- Authentication and authorization bypass
+- SSRF via NetworkGate or target resolution
+- Command injection via armory tool execution
+- Secret leakage in reports, logs, or API responses
+- Path traversal in file operations
 
 ### Test Results
-All 149 logic tests pass, including:
-- `access.test.ts` — loopback detection, fail-closed token, constant-time comparison
+
+The test suite includes coverage for:
 - `armory.test.ts` — guardrails, kill switch, SSRF blocks, dry-run simulation
-- `api.test.ts` — token gate enforcement, ops route protection
+- `api.test.ts` — rate limiting, route protection
 - `redaction.test.ts` — Authorization/Bearer/cookie redaction
 - `verumBridge.test.ts` — allowlist enforcement, shell metachar rejection, argv isolation
+
+## Dependencies
+
+`npm audit --audit-level=moderate` reports no known vulnerabilities as of the last check.
+
+## Disclosure Policy
+
+We follow responsible disclosure. Please report vulnerabilities privately before public disclosure.

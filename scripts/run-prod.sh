@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cd /mnt/ai/Verum
+cd "$(dirname "$0")/.."
 export NODE_ENV=production
 
 if [ -f .env ]; then
