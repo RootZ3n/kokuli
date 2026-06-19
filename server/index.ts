@@ -3,6 +3,7 @@ import path from "path";
 import fs from "fs-extra";
 import { velumExpress } from "velum-ai/adapters/express";
 import apiRouter from "./api";
+import pingRouter from "./kokuli-ping";
 import { apiErrorHandler } from "./api-errors";
 import { logger, tailLog } from "../engine/logger";
 import { loadLedger } from "../engine/ledger";
@@ -121,6 +122,9 @@ app.use("/api", rateLimiter);
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
+
+// GET /kokuli/ping — simple liveness check
+app.use("/", pingRouter);
 
 app.get("/api/meta", (_req, res) => {
   res.json({
