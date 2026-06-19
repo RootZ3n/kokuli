@@ -1,6 +1,6 @@
 # Kokuli Bridge
 
-A narrow, allowlisted interface that lets **Ptah**, **Peh**, and **Ricky/OpenClaw** request safety/security assessments from Kokuli without knowing Kokuli's internals.
+A narrow, allowlisted interface that lets **the Mechanic**, **Peh**, and **Ricky/OpenClaw** request safety/security assessments from Kokuli without knowing Kokuli's internals.
 
 The bridge is a small layer over the existing Kokuli CLI. There is **no new daemon**. The bridge spawns the same `node bin/kokuli.js …` commands you would type by hand, but only commands it has explicitly approved.
 
@@ -8,7 +8,7 @@ The bridge is a small layer over the existing Kokuli CLI. There is **no new daem
 
 Three different consumers want to run Kokuli for different reasons:
 
-- **Ptah** — when a lab agent does something suspicious (tool misuse, unsafe autonomous chain, unknown exposed endpoint), Ptah should be able to fire off a smoke or recon run as a reflex.
+- **the Mechanic** — when a lab agent does something suspicious (tool misuse, unsafe autonomous chain, unknown exposed endpoint), the Mechanic should be able to fire off a smoke or recon run as a reflex.
 - **Peh** — governance/safety paths inside Peh should be able to call Kokuli before enabling risky tool chains, before public-demo mode, or after Velum blocks suspicious input.
 - **Ricky / OpenClaw** — after code changes that touch safety, auth, prompt routing, memory, receipts, or tool execution, Ricky should run smoke first and a security suite second.
 
@@ -30,7 +30,7 @@ Each consumer should call **one stable contract**, not embed Kokuli-specific arg
 
 ```json
 {
-  "caller": "ptah | peh | ricky | manual",
+  "caller": "mechanic | peh | ricky | manual",
   "target": "mushin-local",
   "mode":   "smoke | suite | test | report",
   "suite":  "recon | security | prompt-injection | child-safety | multi-turn | exfil | all",
@@ -82,7 +82,7 @@ Each consumer should call **one stable contract**, not embed Kokuli-specific arg
 
 | Field | Stable across future runs? | When to use |
 |---|---|---|
-| `reportPath` | **Yes** — points into `reports/bridge/<date>/<runId>/`. | Consumers persisting evidence per Velum incident, per Ricky preflight, per Ptah reflex. |
+| `reportPath` | **Yes** — points into `reports/bridge/<date>/<runId>/`. | Consumers persisting evidence per Velum incident, per Ricky preflight, per the Mechanic reflex. |
 | `latestReportPath` | **No** — points at `reports/latest/ASSESSMENT.json`, which any test run will overwrite. | Operator humans using the dashboard or `kokuli report summary`. |
 
 Consumers should store `runId` and `reportPath`, not `latestReportPath`. If you need both, they're both returned.
@@ -230,7 +230,7 @@ Or call the JSON API directly:
 
 | Param | Values | Notes |
 |---|---|---|
-| `caller` | `ricky` / `peh` / `ptah` / `manual` | Exact match. |
+| `caller` | `ricky` / `peh` / `mechanic` / `manual` | Exact match. |
 | `status` | `passed` / `failed` / `blocked` / `error` / `timeout` / `unreachable` | Exact match. |
 | `mode` | `smoke` / `suite` / `test` / `report` | Exact match. |
 | `suite` | `security` / `prompt-injection` / `recon` / etc. | Exact match. |
@@ -279,7 +279,7 @@ Detail response (sanitized — never includes `command`, `stdoutTail`, `stderrTa
 
 1. Kokuli's `reports/bridge/INDEX.jsonl` + `reports/bridge/<date>/<runId>/`
 2. Peh's `state/verum/followups-<DATE>.jsonl`
-3. Ptah's `data/verum/reflex-<DATE>.jsonl`
+3. the Mechanic's `data/verum/reflex-<DATE>.jsonl`
 
 ```bash
 # Human-readable trace
@@ -292,7 +292,7 @@ node tools/verum-trace.mjs <runId> --json | jq
 node tools/verum-trace.mjs <runId> \
     --verum-root    /path/to/kokuli \
     --peh-root /path/to/peh \
-    --ptah-root     /path/to/ptah
+    --mechanic-root     /path/to/mechanic
 
 # Filter old breadcrumbs out
 node tools/verum-trace.mjs <runId> --since 7d --limit 50
@@ -303,18 +303,18 @@ The tool is **strictly read-only**: it never executes a bridge run, never writes
 Human-mode example:
 
 ```text
-Kokuli Trace: 20260426T110956Z-ptah-smoke-4f5e42
+Kokuli Trace: 20260426T110956Z-mechanic-smoke-4f5e42
 
 Kokuli:
   status:     passed
-  caller:     ptah
+  caller:     mechanic
   mode:       smoke
   duration:   2856 ms
-  reportDir:  reports/bridge/2026-04-26/20260426T110956Z-ptah-smoke-4f5e42
-  reportPath: reports/bridge/2026-04-26/20260426T110956Z-ptah-smoke-4f5e42/ASSESSMENT.json
+  reportDir:  reports/bridge/2026-04-26/20260426T110956Z-mechanic-smoke-4f5e42
+  reportPath: reports/bridge/2026-04-26/20260426T110956Z-mechanic-smoke-4f5e42/ASSESSMENT.json
   files:      reportDir=yes BRIDGE_RESULT.json=yes ASSESSMENT.json=yes
 
-Ptah:
+the Mechanic:
   breadcrumbs: 1
   latest:      status=passed trigger=velum-block signature=velum-block:red ...
 
@@ -324,7 +324,7 @@ Peh:
 Summary:
   tests=1 passed=1 failed=0 findings=0 critical=0 high=0
 
-Dashboard: http://localhost:3030/bridge/runs   (then click 20260426T110956Z-ptah-sm…)
+Dashboard: http://localhost:3030/bridge/runs   (then click 20260426T110956Z-mechanic-sm…)
 ```
 
 Exit codes: `0` on a successful trace (regardless of whether matches were found), `2` on bad CLI usage / invalid runId.
@@ -386,24 +386,24 @@ Output is always JSON.
 
 ## Examples
 
-### Ptah — reflex check after suspicious behavior
+### the Mechanic — reflex check after suspicious behavior
 
-When Ptah detects a lab agent doing something off-pattern, fire a smoke first, then recon if smoke is clean:
+When the Mechanic detects a lab agent doing something off-pattern, fire a smoke first, then recon if smoke is clean:
 
 HTTP:
 
 ```bash
 curl -sS -X POST http://localhost:3030/api/bridge/verum/run \
   -H 'Content-Type: application/json' \
-  -d '{"caller":"ptah","target":"mushin-local","mode":"smoke","reason":"agent flagged unknown endpoint"}'
+  -d '{"caller":"mechanic","target":"mushin-local","mode":"smoke","reason":"agent flagged unknown endpoint"}'
 ```
 
 CLI:
 
 ```bash
-node /path/to/kokuli/bin/kokuli.js bridge smoke --caller ptah \
+node /path/to/kokuli/bin/kokuli.js bridge smoke --caller mechanic \
     --reason "agent flagged unknown endpoint"
-node /path/to/kokuli/bin/kokuli.js bridge suite recon --caller ptah \
+node /path/to/kokuli/bin/kokuli.js bridge suite recon --caller mechanic \
     --reason "follow-up after smoke pass"
 ```
 

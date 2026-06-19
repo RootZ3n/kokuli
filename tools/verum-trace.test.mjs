@@ -12,10 +12,10 @@ import {
   projectBridgeResult,
   projectAssessmentSummary,
   projectPehBreadcrumb,
-  projectPtahBreadcrumb,
+  projectMechanicBreadcrumb,
   findKokuliIndexRow,
   findPehBreadcrumbs,
-  findPtahBreadcrumbs,
+  findMechanicBreadcrumbs,
   traceRun,
   formatHuman,
   main,
@@ -46,13 +46,13 @@ function indexRow(overrides = {}) {
 async function withTempKokuliRoots(fn) {
   const kokuliRoot = await fs.mkdtemp(path.join(os.tmpdir(), "ktrace-v-"));
   const pehRoot = await fs.mkdtemp(path.join(os.tmpdir(), "ktrace-sq-"));
-  const ptahRoot = await fs.mkdtemp(path.join(os.tmpdir(), "ktrace-pt-"));
+  const mechanicRoot = await fs.mkdtemp(path.join(os.tmpdir(), "ktrace-pt-"));
   try {
-    return await fn({ kokuliRoot, pehRoot, ptahRoot });
+    return await fn({ kokuliRoot, pehRoot, mechanicRoot });
   } finally {
     await fs.rm(kokuliRoot, { recursive: true, force: true });
     await fs.rm(pehRoot, { recursive: true, force: true });
-    await fs.rm(ptahRoot, { recursive: true, force: true });
+    await fs.rm(mechanicRoot, { recursive: true, force: true });
   }
 }
 
@@ -78,8 +78,8 @@ async function writePehBreadcrumb(pehRoot, date, lines) {
     lines.map(l => typeof l === "string" ? l : JSON.stringify(l)).join("\n") + (lines.length ? "\n" : ""));
 }
 
-async function writePtahBreadcrumb(ptahRoot, date, lines) {
-  const dir = path.join(ptahRoot, "data", "verum");
+async function writeMechanicBreadcrumb(mechanicRoot, date, lines) {
+  const dir = path.join(mechanicRoot, "data", "verum");
   await fs.mkdir(dir, { recursive: true });
   await fs.writeFile(path.join(dir, `reflex-${date}.jsonl`),
     lines.map(l => typeof l === "string" ? l : JSON.stringify(l)).join("\n") + (lines.length ? "\n" : ""));
@@ -178,7 +178,7 @@ test("projectAssessmentSummary returns findingsCount and never the raw findings 
   assert.equal(JSON.stringify(r).includes("severity"), false);
 });
 
-test("projectPehBreadcrumb / projectPtahBreadcrumb whitelist fields", () => {
+test("projectPehBreadcrumb / projectMechanicBreadcrumb whitelist fields", () => {
   const sq = projectPehBreadcrumb({
     type: "verum_followup", source: "peh",
     status: "passed", suite: "prompt-injection", target: "mushin-local",
@@ -197,8 +197,8 @@ test("projectPehBreadcrumb / projectPtahBreadcrumb whitelist fields", () => {
   }
   assert.equal(sq.runId, RUN_ID);
 
-  const pt = projectPtahBreadcrumb({
-    type: "verum_reflex", source: "ptah",
+  const pt = projectMechanicBreadcrumb({
+    type: "verum_reflex", source: "mechanic",
     status: "passed", mode: "smoke", target: "mushin-local",
     eventId: "step-1", sessionId: "task-1",
     trigger: "velum-block", signature: "velum-block:red",
@@ -210,7 +210,7 @@ test("projectPehBreadcrumb / projectPtahBreadcrumb whitelist fields", () => {
   });
   const blob2 = JSON.stringify(pt);
   for (const banned of ["stdoutTail", "stderrTail", '"command":', "rawShell", "taskRaw", "rm -rf /", "authToken", "Bearer"]) {
-    assert.equal(blob2.includes(banned), false, `ptah leaked: ${banned}`);
+    assert.equal(blob2.includes(banned), false, `mechanic leaked: ${banned}`);
   }
 });
 
@@ -242,7 +242,7 @@ test("findKokuliIndexRow finds matching row and skips malformed lines", async ()
   });
 });
 
-// ─── findPehBreadcrumbs / findPtahBreadcrumbs ─────────────────────────
+// ─── findPehBreadcrumbs / findMechanicBreadcrumbs ─────────────────────────
 
 test("findPehBreadcrumbs matches by runId, sorted newest first", async () => {
   await withTempKokuliRoots(async ({ pehRoot }) => {
@@ -257,25 +257,25 @@ test("findPehBreadcrumbs matches by runId, sorted newest first", async () => {
   });
 });
 
-test("findPtahBreadcrumbs matches similarly and respects limit", async () => {
-  await withTempKokuliRoots(async ({ ptahRoot }) => {
-    await writePtahBreadcrumb(ptahRoot, "2026-04-26", [
-      { type: "verum_reflex", source: "ptah", runId: RUN_ID, status: "scheduled", startedAt: "2026-04-26T12:00:00.000Z" },
-      { type: "verum_reflex", source: "ptah", runId: RUN_ID, status: "passed", startedAt: "2026-04-26T12:00:02.000Z" },
+test("findMechanicBreadcrumbs matches similarly and respects limit", async () => {
+  await withTempKokuliRoots(async ({ mechanicRoot }) => {
+    await writeMechanicBreadcrumb(mechanicRoot, "2026-04-26", [
+      { type: "verum_reflex", source: "mechanic", runId: RUN_ID, status: "scheduled", startedAt: "2026-04-26T12:00:00.000Z" },
+      { type: "verum_reflex", source: "mechanic", runId: RUN_ID, status: "passed", startedAt: "2026-04-26T12:00:02.000Z" },
     ]);
-    const r = await findPtahBreadcrumbs(ptahRoot, RUN_ID, { limit: 1 });
+    const r = await findMechanicBreadcrumbs(mechanicRoot, RUN_ID, { limit: 1 });
     assert.equal(r.matches.length, 1);
     assert.equal(r.matches[0].status, "passed");
   });
 });
 
 test("breadcrumb finders apply since filter", async () => {
-  await withTempKokuliRoots(async ({ ptahRoot }) => {
-    await writePtahBreadcrumb(ptahRoot, "2026-04-26", [
-      { type: "verum_reflex", source: "ptah", runId: RUN_ID, status: "old", startedAt: "2026-04-25T00:00:00.000Z" },
-      { type: "verum_reflex", source: "ptah", runId: RUN_ID, status: "new", startedAt: "2026-04-26T12:00:00.000Z" },
+  await withTempKokuliRoots(async ({ mechanicRoot }) => {
+    await writeMechanicBreadcrumb(mechanicRoot, "2026-04-26", [
+      { type: "verum_reflex", source: "mechanic", runId: RUN_ID, status: "old", startedAt: "2026-04-25T00:00:00.000Z" },
+      { type: "verum_reflex", source: "mechanic", runId: RUN_ID, status: "new", startedAt: "2026-04-26T12:00:00.000Z" },
     ]);
-    const r = await findPtahBreadcrumbs(ptahRoot, RUN_ID, { sinceIso: "2026-04-26T00:00:00.000Z", limit: 50 });
+    const r = await findMechanicBreadcrumbs(mechanicRoot, RUN_ID, { sinceIso: "2026-04-26T00:00:00.000Z", limit: 50 });
     assert.equal(r.matches.length, 1);
     assert.equal(r.matches[0].status, "new");
   });
@@ -284,13 +284,13 @@ test("breadcrumb finders apply since filter", async () => {
 // ─── traceRun ──────────────────────────────────────────────────────────────
 
 test("traceRun rejects an unsafe runId before any I/O", async () => {
-  const r = await traceRun({ runId: "../etc/passwd", kokuliRoot: "/", pehRoot: "/", ptahRoot: "/" });
+  const r = await traceRun({ runId: "../etc/passwd", kokuliRoot: "/", pehRoot: "/", mechanicRoot: "/" });
   assert.equal(r.ok, false);
   assert.match(r.error, /forbidden path/);
 });
 
-test("traceRun finds Kokuli + Peh + Ptah for a real runId", async () => {
-  await withTempKokuliRoots(async ({ kokuliRoot, pehRoot, ptahRoot }) => {
+test("traceRun finds Kokuli + Peh + the Mechanic for a real runId", async () => {
+  await withTempKokuliRoots(async ({ kokuliRoot, pehRoot, mechanicRoot }) => {
     await writeIndex(kokuliRoot, [indexRow()]);
     await writeArchive(kokuliRoot, RUN_ID, {
       "BRIDGE_RESULT.json": {
@@ -309,17 +309,17 @@ test("traceRun finds Kokuli + Peh + Ptah for a real runId", async () => {
     await writePehBreadcrumb(pehRoot, "2026-04-26", [
       { type: "verum_followup", source: "peh", runId: RUN_ID, status: "passed", startedAt: "2026-04-26T12:00:01.000Z", receiptId: "rcpt-1" },
     ]);
-    await writePtahBreadcrumb(ptahRoot, "2026-04-26", [
-      { type: "verum_reflex", source: "ptah", runId: RUN_ID, status: "passed", startedAt: "2026-04-26T12:00:01.000Z", trigger: "velum-block", eventId: "step-1" },
+    await writeMechanicBreadcrumb(mechanicRoot, "2026-04-26", [
+      { type: "verum_reflex", source: "mechanic", runId: RUN_ID, status: "passed", startedAt: "2026-04-26T12:00:01.000Z", trigger: "velum-block", eventId: "step-1" },
     ]);
-    const trace = await traceRun({ runId: RUN_ID, kokuliRoot, pehRoot, ptahRoot });
+    const trace = await traceRun({ runId: RUN_ID, kokuliRoot, pehRoot, mechanicRoot });
     assert.equal(trace.ok, true);
     assert.equal(trace.runId, RUN_ID);
     assert.equal(trace.verum.row.status, "passed");
     assert.equal(trace.verum.bridgeResultExists, true);
     assert.equal(trace.verum.assessmentExists, true);
     assert.equal(trace.peh.count, 1);
-    assert.equal(trace.ptah.count, 1);
+    assert.equal(trace.mechanic.count, 1);
 
     const blob = JSON.stringify(trace);
     for (const banned of ["stdoutTail", "stderrTail", '"command":', "leak"]) {
@@ -329,19 +329,19 @@ test("traceRun finds Kokuli + Peh + Ptah for a real runId", async () => {
 });
 
 test("traceRun returns clean 'not found' sections when runId has no matches anywhere", async () => {
-  await withTempKokuliRoots(async ({ kokuliRoot, pehRoot, ptahRoot }) => {
+  await withTempKokuliRoots(async ({ kokuliRoot, pehRoot, mechanicRoot }) => {
     await writeIndex(kokuliRoot, []);
-    const trace = await traceRun({ runId: RUN_ID, kokuliRoot, pehRoot, ptahRoot });
+    const trace = await traceRun({ runId: RUN_ID, kokuliRoot, pehRoot, mechanicRoot });
     assert.equal(trace.ok, true);
     assert.equal(trace.verum.row, null);
     assert.equal(trace.peh.count, 0);
-    assert.equal(trace.ptah.count, 0);
+    assert.equal(trace.mechanic.count, 0);
   });
 });
 
 test("traceRun handles missing INDEX.jsonl gracefully", async () => {
-  await withTempKokuliRoots(async ({ kokuliRoot, pehRoot, ptahRoot }) => {
-    const trace = await traceRun({ runId: RUN_ID, kokuliRoot, pehRoot, ptahRoot });
+  await withTempKokuliRoots(async ({ kokuliRoot, pehRoot, mechanicRoot }) => {
+    const trace = await traceRun({ runId: RUN_ID, kokuliRoot, pehRoot, mechanicRoot });
     assert.equal(trace.ok, true);
     assert.equal(trace.verum.indexExists, false);
     assert.equal(trace.verum.row, null);
@@ -349,12 +349,12 @@ test("traceRun handles missing INDEX.jsonl gracefully", async () => {
 });
 
 test("traceRun handles archive dir present but ASSESSMENT.json missing", async () => {
-  await withTempKokuliRoots(async ({ kokuliRoot, pehRoot, ptahRoot }) => {
+  await withTempKokuliRoots(async ({ kokuliRoot, pehRoot, mechanicRoot }) => {
     await writeIndex(kokuliRoot, [indexRow()]);
     await writeArchive(kokuliRoot, RUN_ID, {
       "BRIDGE_RESULT.json": { runId: RUN_ID, request: {}, summary: { totalTests: 0, passed: 0, failed: 0, findings: 0, critical: 0, high: 0 }, archive: {} },
     });
-    const trace = await traceRun({ runId: RUN_ID, kokuliRoot, pehRoot, ptahRoot });
+    const trace = await traceRun({ runId: RUN_ID, kokuliRoot, pehRoot, mechanicRoot });
     assert.equal(trace.verum.bridgeResultExists, true);
     assert.equal(trace.verum.assessmentExists, false);
     assert.equal(trace.verum.assessmentSummary, null);
@@ -364,10 +364,10 @@ test("traceRun handles archive dir present but ASSESSMENT.json missing", async (
 // ─── formatHuman ───────────────────────────────────────────────────────────
 
 test("formatHuman renders a complete trace including dashboard hint", async () => {
-  await withTempKokuliRoots(async ({ kokuliRoot, pehRoot, ptahRoot }) => {
+  await withTempKokuliRoots(async ({ kokuliRoot, pehRoot, mechanicRoot }) => {
     await writeIndex(kokuliRoot, [indexRow()]);
     await writeArchive(kokuliRoot, RUN_ID, {});
-    const trace = await traceRun({ runId: RUN_ID, kokuliRoot, pehRoot, ptahRoot });
+    const trace = await traceRun({ runId: RUN_ID, kokuliRoot, pehRoot, mechanicRoot });
     const text = formatHuman(trace);
     assert.match(text, /Kokuli Trace: 20260426T120000Z-manual-smoke-aaaaaa/);
     assert.match(text, /status:\s+passed/);
@@ -387,7 +387,7 @@ test("formatHuman shows error for invalid runId result", () => {
 // ─── --json output ─────────────────────────────────────────────────────────
 
 test("main --json produces valid parseable JSON for a known runId", async () => {
-  await withTempKokuliRoots(async ({ kokuliRoot, pehRoot, ptahRoot }) => {
+  await withTempKokuliRoots(async ({ kokuliRoot, pehRoot, mechanicRoot }) => {
     await writeIndex(kokuliRoot, [indexRow()]);
     // Capture stdout
     const chunks = [];
@@ -398,7 +398,7 @@ test("main --json produces valid parseable JSON for a known runId", async () => 
         RUN_ID, "--json",
         "--kokuli-root", kokuliRoot,
         "--peh-root", pehRoot,
-        "--ptah-root", ptahRoot,
+        "--mechanic-root", mechanicRoot,
       ]);
       assert.equal(code, 0);
     } finally {

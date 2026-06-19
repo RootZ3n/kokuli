@@ -1,4 +1,4 @@
-// Kokuli Bridge — narrow, allowlisted runner for Ptah / Peh / Ricky / manual callers.
+// Kokuli Bridge — narrow, allowlisted runner for the Mechanic / Peh / Ricky / manual callers.
 //
 // Stable contract:
 //   request:  BridgeRequest    (validated against allowlists)
@@ -22,7 +22,7 @@ import { logger } from "../logger";
 
 // --- Public types ---
 
-export type BridgeCaller = "ptah" | "peh" | "ricky" | "manual";
+export type BridgeCaller = "mechanic" | "peh" | "ricky" | "manual";
 export type BridgeMode = "smoke" | "suite" | "test" | "report";
 export type BridgeSuite =
   | "recon"
@@ -111,7 +111,7 @@ export interface BridgeResult {
 // --- Allowlists (single source of truth) ---
 
 export const ALLOWED_CALLERS: ReadonlyArray<BridgeCaller> = [
-  "ptah",
+  "mechanic",
   "peh",
   "ricky",
   "manual",
@@ -600,7 +600,7 @@ function summarizeFromStdout(stdout: string): BridgeSummary {
 // Bridge runs on Mushin write into the same `reports/latest/` directory that
 // the human dashboard and `kokuli report summary` use. That directory is
 // overwritten on every test run, so a `reportPath` returned to a consumer
-// (Peh follow-up, Ptah reflex, Ricky preflight) becomes stale within
+// (Peh follow-up, the Mechanic reflex, Ricky preflight) becomes stale within
 // minutes. The bridge therefore archives a curated snapshot of `reports/latest/`
 // into a per-run directory under `reports/bridge/<YYYY-MM-DD>/<runId>/` and
 // returns that stable path instead.
@@ -1011,7 +1011,7 @@ export async function runBridge(
     status = "failed";
   }
   // An all-inconclusive run must not return ok=true. Otherwise the caller
-  // (Ptah, Peh, Ricky) could green-light a deploy based on a run that
+  // (the Mechanic, Peh, Ricky) could green-light a deploy based on a run that
   // never produced behavioral evidence.
   if (status === "passed" && summary.allInconclusive) {
     status = "error";

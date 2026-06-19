@@ -4,7 +4,7 @@
 // Joins three independently-written audit trails:
 //   1. Kokuli:   reports/bridge/INDEX.jsonl  +  reports/bridge/<date>/<runId>/
 //   2. Peh: <state>/verum/followups-<DATE>.jsonl  (verum_followup breadcrumbs)
-//   3. Ptah:     <data>/verum/reflex-<DATE>.jsonl       (verum_reflex breadcrumbs)
+//   3. the Mechanic:     <data>/verum/reflex-<DATE>.jsonl       (verum_reflex breadcrumbs)
 //
 // Hard rules (also asserted by tests):
 //   - Read-only. Never executes a bridge run, never writes any file.
@@ -15,7 +15,7 @@
 // CLI:   node tools/verum-trace.mjs <runId> [--json]
 //                                          [--kokuli-root <path>]
 //                                          [--peh-root <path>]
-//                                          [--ptah-root <path>]
+//                                          [--mechanic-root <path>]
 //                                          [--since 7d]
 //                                          [--limit 20]
 
@@ -194,12 +194,12 @@ export function projectPehBreadcrumb(raw) {
   };
 }
 
-export function projectPtahBreadcrumb(raw) {
+export function projectMechanicBreadcrumb(raw) {
   if (!raw || typeof raw !== "object") return null;
-  if (raw.type !== "verum_reflex" && raw.source !== "ptah") return null;
+  if (raw.type !== "verum_reflex" && raw.source !== "mechanic") return null;
   return {
     type: "verum_reflex",
-    source: "ptah",
+    source: "mechanic",
     status: safeStr(raw.status) ?? "",
     mode: safeStr(raw.mode),
     suite: safeStr(raw.suite),
@@ -340,20 +340,20 @@ export async function findPehBreadcrumbs(pehRoot, runId, opts = {}) {
   );
 }
 
-export async function findPtahBreadcrumbs(ptahRoot, runId, opts = {}) {
+export async function findMechanicBreadcrumbs(mechanicRoot, runId, opts = {}) {
   const dir = path.join(
-    process.env.PTAH_DATA_DIR ?? path.join(ptahRoot, "data"),
+    process.env.MECHANIC_DATA_DIR ?? path.join(mechanicRoot, "data"),
     "verum",
   );
   return findBreadcrumbsByRunId(
-    dir, "reflex-", runId, projectPtahBreadcrumb,
+    dir, "reflex-", runId, projectMechanicBreadcrumb,
     opts.sinceIso ?? null, opts.limit ?? 20,
   );
 }
 
 // ─── Orchestrator ─────────────────────────────────────────────────────────
 
-export async function traceRun({ runId, kokuliRoot, pehRoot, ptahRoot, since, limit, now }) {
+export async function traceRun({ runId, kokuliRoot, pehRoot, mechanicRoot, since, limit, now }) {
   const v = validateRunId(runId);
   if (!v.ok) {
     return { ok: false, error: v.error, runId: typeof runId === "string" ? runId.slice(0, 32) : "" };
@@ -365,7 +365,7 @@ export async function traceRun({ runId, kokuliRoot, pehRoot, ptahRoot, since, li
   const { row, malformed: indexMalformed, indexExists } = await findKokuliIndexRow(kokuliRoot, runId);
   const archive = await checkArchiveFiles(kokuliRoot, row);
   const sq = await findPehBreadcrumbs(pehRoot, runId, { sinceIso, limit: lim });
-  const pt = await findPtahBreadcrumbs(ptahRoot, runId, { sinceIso, limit: lim });
+  const pt = await findMechanicBreadcrumbs(mechanicRoot, runId, { sinceIso, limit: lim });
 
   return {
     ok: true,
@@ -377,7 +377,7 @@ export async function traceRun({ runId, kokuliRoot, pehRoot, ptahRoot, since, li
       // exposed as their own keys at the top level to make the JSON shape obvious
     },
     peh: { count: sq.matches.length, matches: sq.matches, scannedFiles: sq.scannedFiles, malformed: sq.malformed },
-    ptah: { count: pt.matches.length, matches: pt.matches, scannedFiles: pt.scannedFiles, malformed: pt.malformed },
+    mechanic: { count: pt.matches.length, matches: pt.matches, scannedFiles: pt.scannedFiles, malformed: pt.malformed },
     files: {
       reportDirExists: archive.reportDirExists,
       bridgeResultExists: archive.bridgeResultExists,
@@ -423,12 +423,12 @@ export function formatHuman(trace) {
     );
   }
   lines.push("");
-  lines.push("Ptah:");
-  if (trace.ptah.count === 0) {
+  lines.push("the Mechanic:");
+  if (trace.mechanic.count === 0) {
     lines.push("  breadcrumbs: 0");
   } else {
-    lines.push(`  breadcrumbs: ${trace.ptah.count}`);
-    const latest = trace.ptah.matches[0];
+    lines.push(`  breadcrumbs: ${trace.mechanic.count}`);
+    const latest = trace.mechanic.matches[0];
     lines.push(`  latest:      status=${latest.status}` +
       (latest.trigger    ? ` trigger=${latest.trigger}`       : "") +
       (latest.signature  ? ` signature=${latest.signature}`   : "") +
@@ -472,7 +472,7 @@ function parseArgv(argv) {
     json: false,
     kokuliRoot: undefined,
     pehRoot: undefined,
-    ptahRoot: undefined,
+    mechanicRoot: undefined,
     since: undefined,
     limit: undefined,
     help: false,
@@ -483,7 +483,7 @@ function parseArgv(argv) {
     if (a === "--help" || a === "-h") { out.help = true; continue; }
     if (a === "--json")               { out.json = true; continue; }
     if (a === "--")                   { continue; }
-    if (a === "--kokuli-root"    || a === "--peh-root" || a === "--ptah-root" ||
+    if (a === "--kokuli-root"    || a === "--peh-root" || a === "--mechanic-root" ||
         a === "--since"         || a === "--limit") {
       const value = argv[i + 1];
       if (value === undefined || value.startsWith("--")) {
@@ -493,7 +493,7 @@ function parseArgv(argv) {
       i++;
       if (a === "--kokuli-root")    out.kokuliRoot    = value;
       if (a === "--peh-root") out.pehRoot = value;
-      if (a === "--ptah-root")     out.ptahRoot     = value;
+      if (a === "--mechanic-root")     out.mechanicRoot     = value;
       if (a === "--since")         out.since        = value;
       if (a === "--limit")         out.limit        = value;
       continue;
@@ -521,7 +521,7 @@ Flags:
   --json                   Output sanitized JSON only.
   --kokuli-root <path>      Override Kokuli repo root (default: cwd / /mnt/ai/Verum).
   --peh-root <path>   Override Peh root (default: /mnt/ai/peh-v2).
-  --ptah-root <path>       Override Ptah root (default: /mnt/ai/ptah).
+  --mechanic-root <path>       Override the Mechanic root (default: /mnt/ai/mechanic).
   --since <1d|12h|30m|ISO> Drop breadcrumbs with startedAt before threshold.
   --limit <n>              Max breadcrumb matches per source. Default 20, max 200.
   --help, -h               Show this help.
@@ -534,7 +534,7 @@ function defaultRoots() {
   return {
     kokuliRoot:    process.env.KOKULI_ROOT   ?? process.env.VERUM_ROOT ?? process.cwd(),
     pehRoot: process.env.PEH_ROOT ?? "/mnt/ai/peh-v2",
-    ptahRoot:     process.env.PTAH_ROOT     ?? "/mnt/ai/ptah",
+    mechanicRoot:     process.env.MECHANIC_ROOT     ?? "/mnt/ai/mechanic",
   };
 }
 
@@ -560,7 +560,7 @@ export async function main(argv) {
     runId: opts.runId,
     kokuliRoot:    opts.kokuliRoot    ?? roots.kokuliRoot,
     pehRoot: opts.pehRoot ?? roots.pehRoot,
-    ptahRoot:     opts.ptahRoot     ?? roots.ptahRoot,
+    mechanicRoot:     opts.mechanicRoot     ?? roots.mechanicRoot,
     since:        opts.since,
     limit:        opts.limit,
   });

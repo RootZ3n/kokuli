@@ -71,7 +71,7 @@ ${chalk.cyan("Test Categories:")}
   ${chalk.white("multi-turn")}            Multi-step attack chain testing
   ${chalk.white("fuzzing")}               Automated input mutation testing
 
-  ${chalk.white("trace <runId>")}             Cross-correlate one Kokuli Bridge runId across Kokuli, Peh, and Ptah audit trails (see docs/RUNBOOK_VERUM_TRACE.md)
+  ${chalk.white("trace <runId>")}             Cross-correlate one Kokuli Bridge runId across Kokuli, Peh, and the Mechanic audit trails (see docs/RUNBOOK_VERUM_TRACE.md)
 
   ${chalk.white("bridge smoke")}             Run baseline-chat smoke against allowlisted target
   ${chalk.white("bridge suite <name>")}      Run an allowlisted suite (recon, security, exfil, ...)
@@ -79,7 +79,7 @@ ${chalk.cyan("Test Categories:")}
   ${chalk.white("bridge report")}            Show latest report summary
   ${chalk.white("bridge health")}            Print bridge health JSON
   ${chalk.white("bridge allowlist")}         Print bridge allowlist JSON
-  ${chalk.white("    Flags: --caller <ptah|peh|ricky|manual>  --target <key>")}
+  ${chalk.white("    Flags: --caller <mechanic|peh|ricky|manual>  --target <key>")}
   ${chalk.white("           --reason <text>  --max-ms <n>  --dry-run  --json")}
 
 ${chalk.cyan("Learning Module:")}
@@ -1145,7 +1145,7 @@ async function main(): Promise<void> {
         runId: args.arg,
         kokuliRoot: process.cwd(),
         pehRoot: process.env.PEH_ROOT ?? "/mnt/ai/peh",
-        ptahRoot: process.env.PTAH_ROOT ?? "/mnt/ai/ptah",
+        mechanicRoot: process.env.MECHANIC_ROOT ?? "/mnt/ai/mechanic",
       });
       if (process.argv.includes("--json")) {
         console.log(JSON.stringify(result, null, 2));

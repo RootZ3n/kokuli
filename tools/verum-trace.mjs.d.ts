@@ -2,7 +2,7 @@ export type TraceRunOptions = {
   runId: string;
   kokuliRoot?: string;
   pehRoot?: string;
-  ptahRoot?: string;
+  mechanicRoot?: string;
   since?: string;
   limit?: number;
 };

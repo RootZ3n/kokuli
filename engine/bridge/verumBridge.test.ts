@@ -119,7 +119,7 @@ test("prompt-injection alias maps to the upstream security suite", async () => {
   await withTempKokuliRoot(async (root) => {
     const result = await runBridge(
       {
-        caller: "ptah",
+        caller: "mechanic",
         target: "mushin-local",
         mode: "suite",
         suite: "prompt-injection",
@@ -866,7 +866,7 @@ test("clearStaleActiveRuns removes entries older than the TTL and frees the swee
   const staleStart = new Date(Date.now() - 20 * 60 * 1000).toISOString(); // 20 min ago
   __addActiveRunForTests({
     id: "stale-sweep",
-    caller: "ptah",
+    caller: "mechanic",
     mode: "suite",
     suite: "all",
     startedAt: staleStart,
@@ -908,7 +908,7 @@ test("a stale suite=all entry no longer blocks a new suite=all run", async () =>
   // dryRun reaches the fullSweepActive() concurrency guard, which prunes stale
   // entries first, so the request is no longer blocked.
   const result = await runBridge({
-    caller: "ptah",
+    caller: "mechanic",
     mode: "suite",
     suite: "all",
     reason: "post-unstuck sweep",

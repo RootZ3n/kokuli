@@ -22,7 +22,7 @@ Test manifest (JSON) → HTTP client → Deterministic evaluator → Evidence bu
 - **209 test executions** across 10 categories (121 unique fixture manifests with fuzz and multi-turn variants)
 - **Deterministic evaluation** — no AI judges, no hallucinated findings, no surprise costs
 - **Multi-layer safety** — NetworkGate with dual-env-var contract, Armory simulation mode, shell-injection prevention, report redaction
-- **Bridge API** — allowlisted interface for Ptah, Peh, or any CI system to request assessments without embedding Verum internals
+- **Bridge API** — allowlisted interface for the Mechanic, Peh, or any CI system to request assessments without embedding Verum internals
 - **Web dashboard** — test registry, run controls, live results, suite summaries, report viewer
 - **Atlantis Learning Module** — interactive security education (zero core dependency, removable)
 

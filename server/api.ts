@@ -1069,7 +1069,7 @@ router.post("/learn/:id/quiz", async (req: Request, res: Response) => {
 
 // --- Kokuli Bridge routes ---
 //
-// Stable, allowlisted entry point for Ptah / Peh / Ricky.
+// Stable, allowlisted entry point for the Mechanic / Peh / Ricky.
 // All validation lives in engine/bridge/verumBridge.ts; this just adapts HTTP <-> bridge.
 
 router.get("/bridge/kokuli/health", (_req: Request, res: Response) => {

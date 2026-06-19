@@ -5,7 +5,7 @@ A 60-second guide for operators on Mushin. **Read-only**, safe to run on a live 
 ## Prerequisites
 
 - You're on Mushin or another machine with the Kokuli repo at `/path/to/kokuli`.
-- You have a `runId` (from a Ricky/Peh/Ptah breadcrumb, a preflight envelope, the dashboard, or `INDEX.jsonl`).
+- You have a `runId` (from a Ricky/Peh/the Mechanic breadcrumb, a preflight envelope, the dashboard, or `INDEX.jsonl`).
 - For the dashboard step, the Kokuli web server is running:
 
   ```bash
@@ -38,7 +38,7 @@ node tools/verum-trace.mjs <runId>
 Output sections:
 
 - **Kokuli** — index row + reportDir/reportPath + file availability
-- **Ptah** — count of reflex breadcrumbs matching this runId
+- **the Mechanic** — count of reflex breadcrumbs matching this runId
 - **Peh** — count of follow-up breadcrumbs matching this runId
 - **Summary** — totalTests / passed / failed / findings / critical / high
 - **Dashboard** — link hint to `/bridge/runs`
@@ -53,7 +53,7 @@ node tools/verum-trace.mjs <runId> --json | jq
 # Just one section
 node tools/verum-trace.mjs <runId> --json | jq '.verum.row'
 node tools/verum-trace.mjs <runId> --json | jq '.peh'
-node tools/verum-trace.mjs <runId> --json | jq '.ptah'
+node tools/verum-trace.mjs <runId> --json | jq '.mechanic'
 node tools/verum-trace.mjs <runId> --json | jq '.files'
 ```
 
@@ -81,15 +81,15 @@ If a consumer wrote breadcrumbs with a non-default state/data dir, run the trace
 PEH_STATE_DIR=/path/used/by/peh \
     node tools/verum-trace.mjs <runId>
 
-# Ptah wrote to a non-default data dir
-PTAH_DATA_DIR=/path/used/by/ptah \
+# the Mechanic wrote to a non-default data dir
+MECHANIC_DATA_DIR=/path/used/by/mechanic \
     node tools/verum-trace.mjs <runId>
 
 # Or pass explicit roots
 node tools/verum-trace.mjs <runId> \
     --verum-root /path/to/kokuli \
     --peh-root /path/to/peh \
-    --ptah-root /path/to/ptah
+    --mechanic-root /path/to/mechanic
 ```
 
 ## Quick reference of evidence locations (read-only)
@@ -99,7 +99,7 @@ node tools/verum-trace.mjs <runId> \
 | Kokuli index | `/path/to/kokuli/reports/bridge/INDEX.jsonl` | append-only JSONL, one per run |
 | Kokuli archive | `/path/to/kokuli/reports/bridge/<YYYY-MM-DD>/<runId>/` | bundle of `BRIDGE_RESULT.json` + curated `reports/latest/*` snapshot |
 | Peh breadcrumbs | `/path/to/peh/state/verum/followups-<DATE>.jsonl` | append-only JSONL, `type: "verum_followup"` |
-| Ptah breadcrumbs | `/path/to/ptah/data/verum/reflex-<DATE>.jsonl` | append-only JSONL, `type: "verum_reflex"` |
+| the Mechanic breadcrumbs | `/path/to/mechanic/data/verum/reflex-<DATE>.jsonl` | append-only JSONL, `type: "verum_reflex"` |
 | Ricky | n/a today | source of truth is the Kokuli index |
 
 ## When to use what
@@ -110,5 +110,5 @@ node tools/verum-trace.mjs <runId> \
 | Browse runs visually, filter by caller/status/since | `http://localhost:3030/bridge/runs` |
 | Scripted query over many runs | `jq` against `reports/bridge/INDEX.jsonl` |
 | Per-Peh-incident audit | `jq` against `state/verum/followups-*.jsonl` then `verum-trace` on the `runId` |
-| Per-Ptah-block audit | `jq` against `data/verum/reflex-*.jsonl` then `verum-trace` on the `runId` |
+| Per-the Mechanic-block audit | `jq` against `data/verum/reflex-*.jsonl` then `verum-trace` on the `runId` |
 | Re-run a smoke or suite | The bridge wrapper / preflight in each consumer; **not** this runbook. Tracing is read-only. |

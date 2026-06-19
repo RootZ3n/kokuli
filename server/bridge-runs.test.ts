@@ -144,7 +144,7 @@ test("applyFilters filters by caller / status / mode / suite", () => {
   const rs = [
     row({ runId: "20260426T120000Z-r-a-aaaaaa", caller: "ricky", status: "passed", mode: "smoke" }),
     row({ runId: "20260426T120100Z-s-a-bbbbbb", caller: "peh", status: "passed", mode: "suite", suite: "security" }),
-    row({ runId: "20260426T120200Z-p-a-cccccc", caller: "ptah", status: "failed", mode: "smoke" }),
+    row({ runId: "20260426T120200Z-p-a-cccccc", caller: "mechanic", status: "failed", mode: "smoke" }),
   ];
   assert.equal(applyFilters(rs, { caller: "ricky" }).length, 1);
   assert.equal(applyFilters(rs, { status: "failed" }).length, 1);
@@ -214,7 +214,7 @@ test("listBridgeRuns applies filters end-to-end", async () => {
   await withTempKokuliRoot(async (root) => {
     await writeIndex(root, [
       JSON.stringify(row({ runId: "20260426T100000Z-a-a-aaaaaa", caller: "ricky", status: "passed", startedAt: "2026-04-26T10:00:00.000Z" })),
-      JSON.stringify(row({ runId: "20260426T110000Z-b-b-bbbbbb", caller: "ptah", status: "failed", startedAt: "2026-04-26T11:00:00.000Z" })),
+      JSON.stringify(row({ runId: "20260426T110000Z-b-b-bbbbbb", caller: "mechanic", status: "failed", startedAt: "2026-04-26T11:00:00.000Z" })),
       JSON.stringify(row({ runId: "20260426T120000Z-c-c-cccccc", caller: "ricky", status: "failed", startedAt: "2026-04-26T12:00:00.000Z" })),
     ]);
     const r = await listBridgeRuns(root, { caller: "ricky", limit: 10 });
