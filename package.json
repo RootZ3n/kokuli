@@ -44,6 +44,7 @@
     "express": "^5.2.1",
     "fs-extra": "^11.3.0",
     "glob": "^11.0.1",
+    "velum-ai": "file:../velum",
     "zod": "^3.24.1"
   },
   "devDependencies": {

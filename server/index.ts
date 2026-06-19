@@ -1,6 +1,7 @@
 import express, { Request, Response, NextFunction } from "express";
 import path from "path";
 import fs from "fs-extra";
+import { velumExpress } from "velum-ai/adapters/express";
 import apiRouter from "./api";
 import { apiErrorHandler } from "./api-errors";
 import { logger, tailLog } from "../engine/logger";
@@ -109,6 +110,9 @@ app.disable("x-powered-by");
 app.use(securityHeaders);
 app.use(express.json({ limit: "1mb" }));
 app.use(apiErrorHandler);
+
+// Velum: AI privacy/injection defense middleware
+app.use(velumExpress({ defaultPiiLevel: 2 }));
 
 // Rate limit API endpoints
 app.use("/api", rateLimiter);
