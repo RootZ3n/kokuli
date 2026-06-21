@@ -3,6 +3,11 @@
     "target": "ES2022",
     "module": "CommonJS",
     "moduleResolution": "Node",
+    "baseUrl": ".",
+    "paths": {
+      "velum-ai": ["../velum/dist/index.d.ts"],
+      "velum-ai/*": ["../velum/dist/*"]
+    },
     "outDir": "dist",
     "rootDir": ".",
     "strict": true,

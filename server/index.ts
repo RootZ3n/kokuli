@@ -112,8 +112,10 @@ app.use(securityHeaders);
 app.use(express.json({ limit: "1mb" }));
 app.use(apiErrorHandler);
 
-// Velum: AI privacy/injection defense middleware
-app.use(velumExpress({ defaultPiiLevel: 2 }));
+// Velum: AI privacy/injection defense middleware.
+// velumExpress uses zero-dep structural req/res/next types; cast to Express's
+// RequestHandler (shapes match at runtime) so app.use type-checks.
+app.use(velumExpress({ defaultPiiLevel: 2 }) as unknown as express.RequestHandler);
 
 // Rate limit API endpoints
 app.use("/api", rateLimiter);
