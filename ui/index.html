@@ -217,6 +217,12 @@ function pehDevSwitchProduct(productId){
 function pehSetMode(mode){
   if(mode!=='immersive'&&mode!=='dashboard')return;
   state.pehverse.mode=mode;
+  // Switching into immersive returns to the bare map — tear down any open
+  // workspaces so the scene isn't left under a stale dashboard stack.
+  if(mode==='immersive'){
+    state.pehverse.workspaces=[];
+    state.pehverse.focus=null;
+  }
   localStorage.setItem('pehverse-mode',mode);
   render();
 }
@@ -564,8 +570,12 @@ function renderWorkspaceHeader(w,def,isTile){
 function pehWorkspaceBody(w,deckMarkup){
   const def=pehWorkspaceDef(w.defId); if(!def)return'';
   if(def.kind==='deck')return `<div class="peh-deck-wrap">${deckMarkup}</div>`;
-  // No benchmark lanes in Kokuli — every non-deck workspace is an
-  // atmospheric placeholder that links to its investigation console.
+  // Workspaces backed by a live renderer (app.js · KokuliScenes) get a loading
+  // shell that the backend wiring fills with real evidence on the next
+  // MutationObserver pass — never the static "coming soon" placeholder.
+  if(window.KokuliScenes&&window.KokuliScenes.has(w.defId)){
+    return window.KokuliScenes.loading('Pulling the case file…');
+  }
   return pehPlaceholderBody(def);
 }
 function pehPlaceholderBody(def){
@@ -709,6 +719,13 @@ window.pehCloseAllWorkspaces=pehCloseAllWorkspaces;
 window.pehBackToMap=pehBackToMap;
 window.pehOpenRelatedLane=pehOpenRelatedLane;
 window.pehHotspot=pehHotspot;
+
+// Auto-open is intentionally disabled. The UI boots into the immersive map
+// and the operator opens workspaces deliberately (hotspot / fast travel) —
+// nothing should pop a dashboard open on load. Kept as an exposed no-op so
+// any lingering caller is a safe no-op rather than a ReferenceError.
+function pehAutoOpenDashboard(){ /* no-op: never auto-open a dashboard */ }
+window.pehAutoOpenDashboard=pehAutoOpenDashboard;
 
 // ── Boot ────────────────────────────────────────────────────────────────
 // No sign-in, no server. The UI loads directly into the Investigation.
