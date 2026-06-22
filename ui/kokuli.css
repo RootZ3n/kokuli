@@ -627,3 +627,69 @@ button{font-family:inherit}
 }
 .inv-case::before{content:"🔍 ";font-size:11px}
 .inv-foot{font-size:11px;color:var(--ink-dim);text-align:center;letter-spacing:.06em;padding-top:4px}
+
+/* ══════════════════════════════════════════════════════════════════════
+   PEH ONBOARDING — first-launch overlay + guided tour
+   ══════════════════════════════════════════════════════════════════════ */
+.peh-onboard{
+  position:fixed;inset:0;z-index:500;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:rgba(4,6,14,.82);backdrop-filter:blur(8px);
+  animation:pehFade .2s ease-out;
+}
+.peh-onboard-card{
+  display:flex;flex-direction:column;align-items:center;gap:18px;
+  padding:32px 28px;max-width:min(420px,90vw);width:100%;
+  background:linear-gradient(180deg,rgba(13,19,40,.98),rgba(8,12,24,.98));
+  border:1px solid var(--border-subtle);border-radius:20px;
+  box-shadow:0 20px 80px rgba(0,0,0,.7),0 0 0 1px rgba(96,165,250,.08) inset;
+}
+.peh-onboard-img{
+  width:clamp(80px,20vw,120px);aspect-ratio:1;border-radius:50%;
+  object-fit:cover;border:3px solid var(--peh-accent);
+  box-shadow:0 0 0 5px color-mix(in srgb,var(--peh-accent) 30%,transparent),0 10px 30px rgba(0,0,0,.6);
+}
+.peh-onboard-bubble{
+  text-align:center;
+  background:linear-gradient(160deg,color-mix(in srgb,var(--peh-accent) 18%,rgba(8,12,36,.92)),rgba(8,12,24,.94));
+  border:1px solid color-mix(in srgb,var(--blue-neon) 25%,var(--border-subtle));
+  border-radius:14px;padding:16px 20px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06);
+}
+.peh-onboard-name{
+  display:block;font-size:10px;font-weight:800;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--brass-bright);margin-bottom:6px;
+}
+.peh-onboard-text{
+  margin:0;font-size:15px;line-height:1.5;color:var(--ink);font-weight:500;
+}
+.peh-onboard-actions{
+  display:flex;gap:10px;width:100%;
+}
+.peh-onboard-btn{
+  flex:1;font:inherit;font-size:13px;font-weight:700;
+  padding:12px 16px;border-radius:12px;cursor:pointer;
+  transition:background .15s,border-color .15s,transform .1s;
+}
+.peh-onboard-btn.primary{
+  background:linear-gradient(120deg,var(--peh-accent),var(--peh-accent2));
+  border:0;color:#080c18;
+}
+.peh-onboard-btn.primary:hover{
+  transform:translateY(-1px);
+  box-shadow:0 6px 20px color-mix(in srgb,var(--peh-accent) 40%,transparent);
+}
+.peh-onboard-btn.secondary{
+  background:transparent;border:1px solid var(--border-subtle);color:var(--ink-soft);
+}
+.peh-onboard-btn.secondary:hover{border-color:var(--peh-accent);color:var(--ink)}
+
+/* ── Help button (topbar) ──────────────────────────────────────────── */
+.peh-help-btn{
+  appearance:none;border:1px solid var(--border-subtle);background:transparent;
+  color:var(--ink-dim);font:inherit;font-weight:800;font-size:15px;
+  width:32px;height:32px;border-radius:10px;cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;
+  flex:0 0 auto;transition:.15s;line-height:1;
+}
+.peh-help-btn:hover{color:var(--ink);border-color:var(--peh-accent);background:rgba(37,99,235,.12)}

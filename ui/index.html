@@ -465,6 +465,7 @@ function renderPehTopBar(product,scene){
       <button type="button" class="${pv.mode==='immersive'?'active':''}" aria-pressed="${pv.mode==='immersive'}" onclick="pehSetMode('immersive')">Immersive</button>
       <button type="button" class="${pv.mode==='dashboard'?'active':''}" aria-pressed="${pv.mode==='dashboard'}" onclick="pehSetMode('dashboard')">Dashboard</button>
     </div>
+    <button class="peh-help-btn" type="button" onclick="pehOnboarding&&pehOnboarding.reTrigger()" title="Onboarding tour — meet Peh" aria-label="Onboarding tour">?</button>
   </header>`;
 }
 
@@ -746,5 +747,6 @@ boot();
 <script src="scenes.js"></script>
 <script src="peh-guide.js"></script>
 <script src="app.js"></script>
+<script src="onboarding.js"></script>
 </body>
 </html>
