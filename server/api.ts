@@ -1163,6 +1163,51 @@ router.post("/bridge/verum/run", async (req: Request, res: Response) => {
 // GET /api/bridge/runs              — list rows from reports/bridge/INDEX.jsonl
 // GET /api/bridge/runs/:runId       — sanitized detail for a single run
 
+// --- Ecosystem Integration: /api/results (for atoni consumption) ---
+//
+// GET /api/results                  — latest run results summary (JSON)
+// GET /api/results/:runId           — detail for a specific run
+//
+// These endpoints expose Kokuli's latest assessment results in a format
+// consumable by sibling ecosystem services (atoni, pehlichi, etc.).
+// They read from the same report artifacts as the dashboard but return
+// structured JSON without HTML.
+
+router.get("/results", async (_req: Request, res: Response) => {
+  try {
+    const summaryPath = path.join(process.cwd(), "reports", "latest", "SUMMARY.json");
+    if (!fs.existsSync(summaryPath)) {
+      res.json({ ok: true, results: [], message: "No results available. Run a suite first." });
+      return;
+    }
+    const summary = await fs.readJson(summaryPath);
+    res.json({ ok: true, results: summary });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: String(err) });
+  }
+});
+
+router.get("/results/:runId", async (req: Request, res: Response) => {
+  try {
+    const runId = param(req, "runId");
+    if (!isValidKey(runId)) { res.status(400).json({ ok: false, error: "Invalid run id format" }); return; }
+    const runDir = path.join(process.cwd(), "reports", "bridge", runId);
+    if (!fs.existsSync(runDir)) {
+      res.status(404).json({ ok: false, error: "Run not found" });
+      return;
+    }
+    const summaryPath = path.join(runDir, "SUMMARY.json");
+    if (!fs.existsSync(summaryPath)) {
+      res.status(404).json({ ok: false, error: "Run summary not found" });
+      return;
+    }
+    const summary = await fs.readJson(summaryPath);
+    res.json({ ok: true, runId, results: summary });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: String(err) });
+  }
+});
+
 router.get("/bridge/runs", async (req: Request, res: Response) => {
   try {
     const q = req.query as Record<string, string | undefined>;

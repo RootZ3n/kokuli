@@ -137,7 +137,7 @@
 126|126|92|npm install
 127|127|93|npm run build
 128|128|94|npm test          # runs 260 tests
-129|129|95|npm run typecheck
+129|129|95|npm run typecheck   # type-check only (not `npm typecheck`)
 130|130|96|```
 131|131|97|
 132|132|98|Ready to go. See below for target configuration, dashboard use, and full suite execution.
@@ -286,7 +286,7 @@
 275|275|241|
 276|276|242|```bash
 277|277|243|npm test                    # runs 260 tests
-278|278|244|npm typecheck               # type-check only
+278|278|244|npm run typecheck            # type-check only
 279|279|245|```
 280|280|246|
 281|281|247|## Trust Posture
