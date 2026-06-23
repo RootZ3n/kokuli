@@ -5,6 +5,7 @@ import { globSync } from "glob";
 import { loadTest } from "../engine/loaders";
 import { sendChat, sendRequest } from "../engine/client";
 import { evaluate, evaluateEndpoint } from "../engine/evaluator";
+import { applyAIJudge } from "../engine/aiJudge";
 import { generateFuzzPayloads } from "../engine/fuzzer";
 import { readLatestResults, writeAssessmentBundle, writeReport, writeSuiteSummary } from "../engine/reportWriter";
 import { TestCase, TestResult, TargetConfig, ResolvedTargetConfig, TargetEndpointKey } from "../engine/types";
@@ -357,7 +358,7 @@ async function executeTest(testCase: TestCase, target: TargetConfig, targetKey?:
         const response = await sendRequest(target.baseUrl, resolvedPath.path, step.method ?? "GET", step.body, {
           ...((target.auth?.headerName && target.auth?.token) ? { [target.auth.headerName]: target.auth.token } : {}),
         });
-        const result = evaluateEndpoint(stepCase, response);
+        const result = await applyAIJudge(stepCase, evaluateEndpoint(stepCase, response));
         await writeReport(result);
         results.push(result);
       } else {
@@ -377,11 +378,11 @@ async function executeTest(testCase: TestCase, target: TargetConfig, targetKey?:
             request: chat.request,
             response: chat.response,
           };
-          const result = evaluateEndpoint(stepCase, endpointResult);
+          const result = await applyAIJudge(stepCase, evaluateEndpoint(stepCase, endpointResult));
           await writeReport(result);
           results.push(result);
         } else {
-          const result = evaluate(stepCase, chat);
+          const result = await applyAIJudge(stepCase, evaluate(stepCase, chat));
           await writeReport(result);
           results.push(result);
         }
@@ -406,7 +407,7 @@ async function executeTest(testCase: TestCase, target: TargetConfig, targetKey?:
         severity: testCase.severity,
       };
       const chat = await sendChat(target, payloads[i]);
-      const result = evaluate(fuzzCase, chat);
+      const result = await applyAIJudge(fuzzCase, evaluate(fuzzCase, chat));
       await writeReport(result);
       results.push(result);
     }
@@ -425,14 +426,14 @@ async function executeTest(testCase: TestCase, target: TargetConfig, targetKey?:
       ...(testCase.headers || {}),
       ...((target.auth?.headerName && target.auth?.token) ? { [target.auth.headerName]: target.auth.token } : {}),
     });
-    const result = evaluateEndpoint(testCase, response);
+    const result = await applyAIJudge(testCase, evaluateEndpoint(testCase, response));
     await writeReport(result);
     return [result];
   }
 
   if (testCase.endpoint === "/chat" && testCase.method && testCase.method !== "POST") {
     const response = await sendRequest(target.baseUrl, testCase.endpoint, testCase.method, testCase.body, testCase.headers);
-    const result = evaluateEndpoint(testCase, response);
+    const result = await applyAIJudge(testCase, evaluateEndpoint(testCase, response));
     await writeReport(result);
     return [result];
   }
@@ -456,18 +457,18 @@ async function executeTest(testCase: TestCase, target: TargetConfig, targetKey?:
         request: chat.request,
         response: chat.response,
       };
-      const result = evaluateEndpoint(testCase, endpointResult);
+      const result = await applyAIJudge(testCase, evaluateEndpoint(testCase, endpointResult));
       await writeReport(result);
       return [result];
     }
-    const result = evaluate(testCase, chat);
+    const result = await applyAIJudge(testCase, evaluate(testCase, chat));
     await writeReport(result);
     return [result];
   }
 
   // Standard chat tests
   const chat = await sendChat(target, testCase.input);
-  const result = evaluate(testCase, chat);
+  const result = await applyAIJudge(testCase, evaluate(testCase, chat));
   await writeReport(result);
   return [result];
 }

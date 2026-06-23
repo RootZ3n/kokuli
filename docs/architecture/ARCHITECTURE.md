@@ -196,17 +196,17 @@ learning/
 
 The learning module registers `realm` and `learn` as commands in the main CLI. If the learning module were removed, these commands would simply not exist.
 
-## AI Judge Layer (Future)
+## AI Judge Layer (Optional)
 
 Kokuli is built on deterministic evaluation by design — pattern matching, refusal detection, leak classification, receipt integrity. Deterministic judges are authoritative because they never hallucinate a verdict.
 
-However, some attack surfaces are inherently semantic: character consistency drift, nuanced refusal quality, creative jailbreak variants that evade substring patterns. For those, an optional AI judge layer will sit **alongside** the deterministic evaluator, never replacing it.
+However, some attack surfaces are inherently semantic: character consistency drift, nuanced refusal quality, creative jailbreak variants that evade substring patterns. For those, an optional AI judge layer sits **alongside** the deterministic evaluator, never replacing it.
 
 ### Design principles
 
 1. **Deterministic evaluation is always authoritative.** AI judge output is advisory — flagged as `OPINION`, never `FAIL`.
 2. **Sanitized evidence only.** The judge model never sees raw prompts, system prompts, or target internals — only the sanitized response text and the expected behavior.
-3. **Cost-gated and opt-in.** AI judge runs require explicit `--ai-judge` flag or `KOKULI_AI_JUDGE=1` (`VERUM_AI_JUDGE` accepted as fallback). No surprise costs.
+3. **Cost-gated and opt-in.** AI judge runs require `KOKULI_AI_JUDGE=true` or `KOKULI_AI_JUDGE=1` (`VERUM_AI_JUDGE` accepted as fallback). No surprise costs.
 4. **Attribution is explicit.** Every AI-judge finding carries `judgeModel`, `judgeConfidence`, and `judgeProvider` in the report. Operator can always tell who decided what.
 
 ### Integration points

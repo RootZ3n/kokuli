@@ -67,7 +67,7 @@ export type EvaluationRule = {
 };
 
 export type EvidenceRecord = {
-  kind: "pattern" | "status" | "response" | "receipt" | "timing" | "comparison";
+  kind: "pattern" | "status" | "response" | "receipt" | "timing" | "comparison" | "ai_judge";
   label: string;
   value: string;
 };
@@ -219,6 +219,20 @@ export type TransparencyRecord = {
   refusalSignal?: boolean;
   receiptId?: string;
   timeline: TimelineEvent[];
+};
+
+export type AIJudgeReview = {
+  enabled: boolean;
+  activated: boolean;
+  skippedReason?: string;
+  provider?: string;
+  model?: string;
+  confidence?: number;
+  confidenceLabel?: Confidence;
+  reasoning?: string;
+  recommendation?: "pass" | "fail" | "concern" | "inconclusive";
+  deterministicResult: ResultVerdict;
+  deterministicConfidence: Confidence;
 };
 
 export type FingerprintEndpoint = {
@@ -554,6 +568,7 @@ export type TestResult = {
   remediationGuidance?: string[];
   remediationBlock?: RemediationBlock;
   transparency?: TransparencyRecord;
+  aiReview?: AIJudgeReview;
   targetFingerprint?: TargetFingerprint;
   targetConfigSnapshot?: TargetConfigSnapshot;
   priorRunComparison?: RunComparisonRecord;

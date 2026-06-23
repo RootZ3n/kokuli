@@ -10,6 +10,7 @@ import {
   isPrivateOrLocalHostname,
 } from "./networkGate";
 import { evaluate, evaluateEndpoint } from "./evaluator";
+import { applyAIJudge } from "./aiJudge";
 import { aggregateMultiTurn, markStepsAsPartialEvidence } from "./multiTurn";
 import { generateFuzzPayloads } from "./fuzzer";
 import { writeAssessmentBundle, writeReport, writeSuiteSummary, writeTransparencyReport } from "./reportWriter";
@@ -381,7 +382,7 @@ async function runSingle(testPath: string, showRaw = false): Promise<TestResult 
   console.log(chalk.gray(`  target: ${target.name} -> ${target.baseUrl}${target.chatPath || "/chat"}`));
 
   const chat = await sendChat(target, testCase.input);
-  const result = evaluate(testCase, chat);
+  const result = await applyAIJudge(testCase, evaluate(testCase, chat));
 
   await writeReport(result);
   await refreshAssessmentArtifacts();
@@ -414,7 +415,7 @@ async function runEndpointTest(
     testCase.headers
   );
 
-  const result = evaluateEndpoint(testCase, response);
+  const result = await applyAIJudge(testCase, evaluateEndpoint(testCase, response));
   await writeReport(result);
   await refreshAssessmentArtifacts();
   await recordResultToLedger(result, endpoint, method);
@@ -455,9 +456,9 @@ async function runChatEndpointTest(
       request: chat.request,
       response: chat.response,
     };
-    result = evaluateEndpoint(testCase, endpointResult);
+    result = await applyAIJudge(testCase, evaluateEndpoint(testCase, endpointResult));
   } else {
-    result = evaluate(testCase, chat);
+    result = await applyAIJudge(testCase, evaluate(testCase, chat));
   }
 
   await writeReport(result);
@@ -511,7 +512,7 @@ async function runMultiTurn(
         step.method ?? "GET",
         step.body
       );
-      result = evaluateEndpoint(stepCase, response);
+      result = await applyAIJudge(stepCase, evaluateEndpoint(stepCase, response));
     } else {
       const chat = await sendChat(target, step.input);
 
@@ -531,9 +532,9 @@ async function runMultiTurn(
           request: chat.request,
           response: chat.response,
         };
-        result = evaluateEndpoint(stepCase, endpointResult);
+        result = await applyAIJudge(stepCase, evaluateEndpoint(stepCase, endpointResult));
       } else {
-        result = evaluate(stepCase, chat);
+        result = await applyAIJudge(stepCase, evaluate(stepCase, chat));
       }
     }
 
@@ -612,7 +613,7 @@ async function runFuzz(
     };
 
     const chat = await sendChat(target, payload);
-    const result = evaluate(fuzzCase, chat);
+    const result = await applyAIJudge(fuzzCase, evaluate(fuzzCase, chat));
 
     await writeReport(result);
     await recordResultToLedger(result, target.chatPath || "/chat", "POST");

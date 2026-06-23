@@ -28,7 +28,7 @@
     "web": "npm run build --silent && node dist/server/index.js",
     "run:test": "ts-node engine/cli.ts run",
     "run:suite": "ts-node engine/cli.ts suite",
-    "test": "node --test -r ts-node/register engine/logger.test.ts engine/fsAtomic.test.ts engine/assessment.test.ts engine/networkGate.test.ts engine/targets.test.ts engine/bridge/verumBridge.test.ts engine/evaluator.test.ts engine/multiTurn.test.ts engine/ledger.test.ts engine/executionStore.test.ts engine/validation.test.ts server/api.test.ts server/ping.test.ts server/bridge-runs.test.ts server/ops/armory.test.ts server/ops/redaction.test.ts server/public/js/api-client.test.js server/public/js/target-form.test.js server/public/js/armory-ui.test.js server/public/js/bridge-runs.test.js tools/verum-trace.test.mjs",
+    "test": "node --test -r ts-node/register engine/logger.test.ts engine/fsAtomic.test.ts engine/aiJudge.test.ts engine/assessment.test.ts engine/networkGate.test.ts engine/targets.test.ts engine/bridge/verumBridge.test.ts engine/evaluator.test.ts engine/multiTurn.test.ts engine/ledger.test.ts engine/executionStore.test.ts engine/validation.test.ts server/api.test.ts server/ping.test.ts server/bridge-runs.test.ts server/ops/armory.test.ts server/ops/redaction.test.ts server/public/js/api-client.test.js server/public/js/target-form.test.js server/public/js/armory-ui.test.js server/public/js/bridge-runs.test.js tools/verum-trace.test.mjs",
     "test:logic": "npm test",
     "smoke": "npm run build --silent && node dist/engine/cli.js list",
     "diagnostic": "npm run build --silent && node scripts/kokuli-diagnostic.mjs",
