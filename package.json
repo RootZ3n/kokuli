@@ -1,9 +1,17 @@
 {
   "name": "kokuli",
   "version": "0.3.0-rc.1",
-  "private": true,
   "description": "Adversarial fracture engine — pressure-test AI systems until flaws crack open.",
-  "license": "UNLICENSED",
+  "license": "MIT",
+  "author": "RootZ3n <rootz3n@proton.me>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/RootZ3n/kokuli.git"
+  },
+  "homepage": "https://github.com/RootZ3n/kokuli#readme",
+  "bugs": {
+    "url": "https://github.com/RootZ3n/kokuli/issues"
+  },
   "main": "dist/cli.js",
   "type": "commonjs",
   "engines": {
@@ -24,6 +32,7 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "build": "tsc -p tsconfig.json && mkdir -p dist/server/public && cp -r server/public/. dist/server/public/",
+    "prepublishOnly": "npm run build",
     "dev": "npm run build --silent && node dist/engine/cli.js",
     "web": "npm run build --silent && node dist/server/index.js",
     "run:test": "ts-node engine/cli.ts run",
@@ -43,7 +52,7 @@
     "express": "^5.2.1",
     "fs-extra": "^11.3.0",
     "glob": "^11.0.1",
-    "velum-ai": "file:../velum",
+    "velum-ai": "^0.2.2",
     "zod": "^3.24.1"
   },
   "devDependencies": {
